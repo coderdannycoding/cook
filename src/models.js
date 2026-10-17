@@ -1,7 +1,7 @@
 // Procedural 3D models: characters, appliances, furniture, decor, food at every stage, plates
 // and street props. Everything is built from primitives — no external assets.
 
-import * as THREE from 'three';
+import * as THREE from '../vendor/three-0.169.0.module.min.js';
 import { SURFACE_Y } from './config.js';
 import { itemKey, DISHES, itemFromKey, makePlate } from './recipes.js';
 import { ginghamTexture, rugTexture, beltTexture, counterTopTexture } from './textures.js';

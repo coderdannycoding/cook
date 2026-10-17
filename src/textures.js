@@ -1,6 +1,6 @@
 // Procedurally painted canvas textures (floors, wallpaper, tablecloths, rugs, signage, street).
 
-import * as THREE from 'three';
+import * as THREE from '../vendor/three-0.169.0.module.min.js';
 import { rand, randInt } from './utils.js';
 
 const cache = new Map();

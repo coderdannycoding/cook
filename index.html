@@ -2,22 +2,32 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pandemonium Bistro — Kitchen Chaos Tycoon</title>
-  <meta name="description" content="A frantic isometric cooking & restaurant tycoon game built with Three.js. Cook, serve, build and expand.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pandemonium Bistro</title>
+  <meta name="description" content="A frantic isometric kitchen-chaos restaurant tycoon. Cook, serve, build and expand — don't burn the place down.">
+  <meta name="theme-color" content="#10162e">
+  <meta name="color-scheme" content="dark">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Pandemonium Bistro">
+  <meta property="og:description" content="Cook, serve, build and expand in a frantic kitchen-chaos restaurant tycoon that runs in your browser.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Pandemonium Bistro">
+  <meta name="twitter:description" content="Cook, serve, build and expand in a frantic kitchen-chaos restaurant tycoon that runs in your browser.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍳</text></svg>">
+  <link rel="preload" href="vendor/fonts/fredoka-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="modulepreload" href="vendor/three-0.169.0.module.min.js">
+  <link rel="modulepreload" href="src/main.js">
+  <link rel="stylesheet" href="styles/fonts.css">
   <link rel="stylesheet" href="styles/main.css">
   <link rel="stylesheet" href="styles/hud.css">
   <link rel="stylesheet" href="styles/panels.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍳</text></svg>">
-  <script type="importmap">
-    { "imports": { "three": "./vendor/three.module.min.js" } }
-  </script>
+  <link rel="stylesheet" href="styles/touch.css">
 </head>
 <body>
-  <canvas id="game"></canvas>
+  <canvas id="game" aria-label="Pandemonium Bistro game view"></canvas>
   <div id="world-ui"></div>
   <div id="floaters"></div>
   <div id="fire-vignette"></div>
@@ -38,8 +48,9 @@
     <div id="tickets"></div>
     <div class="hud-right">
       <div id="hud-dash" class="dash-ring" title="Dash (Shift / Space)"><span>💨</span></div>
-      <button id="btn-mute" class="icon-btn glass" title="Mute">🔊</button>
-      <button id="btn-pause" class="icon-btn glass" title="Pause (Esc)">⏸</button>
+      <button id="btn-fullscreen" class="icon-btn glass hidden" title="Fullscreen" aria-label="Toggle fullscreen">⛶</button>
+      <button id="btn-mute" class="icon-btn glass" title="Mute" aria-label="Toggle sound">🔊</button>
+      <button id="btn-pause" class="icon-btn glass" title="Pause (Esc)" aria-label="Pause">⏸</button>
     </div>
   </div>
 
@@ -48,7 +59,10 @@
   <div id="toasts"></div>
   <div id="countdown"></div>
   <div id="build-help" class="glass hidden"></div>
+  <div id="build-tools" class="hidden"></div>
   <div id="night-dock" class="glass hidden"></div>
+  <div id="touch-ui" class="hidden"></div>
+  <div id="rotate-hint" class="glass hidden">↻ Turn your phone sideways for the best view</div>
   <div id="title-screen" class="hidden"></div>
   <div id="modal-root"></div>
 
@@ -61,7 +75,7 @@
     </div>
   </div>
 
-  <noscript>This game needs JavaScript (and WebGL) to run.</noscript>
+  <noscript><div class="fatal">Pandemonium Bistro needs JavaScript and WebGL to run.</div></noscript>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

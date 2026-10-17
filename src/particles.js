@@ -2,7 +2,7 @@
 // physical instanced chunks (veggie crumbs, confetti, coins) and DOM floaters
 // (cash numbers, star ratings and emoji bubbles anchored in world space).
 
-import * as THREE from 'three';
+import * as THREE from '../vendor/three-0.169.0.module.min.js';
 import { rand, clamp, TAU } from './utils.js';
 
 const VERT = /* glsl */ `

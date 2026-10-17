@@ -2,7 +2,7 @@
 // washing, crates, plate racks, trash, extinguisher stands, conveyors, grabber arms, tables
 // and the spreading fire system.
 
-import * as THREE from 'three';
+import * as THREE from '../vendor/three-0.169.0.module.min.js';
 import { COOK, SURFACE_Y } from './config.js';
 import {
   INGREDIENTS, makeIngredient, makePlate, makeExtinguisher, chopInfo, cookRule, isCookOutput, cookerAccepts,

@@ -1,6 +1,6 @@
 // First-day guided tutorial: contextual hints plus a bouncing 3D pointer over the next station.
 
-import * as THREE from 'three';
+import * as THREE from '../vendor/three-0.169.0.module.min.js';
 import { matchDish } from './recipes.js';
 
 export class Tutorial {

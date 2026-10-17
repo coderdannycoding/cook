@@ -1,6 +1,7 @@
 /* Base layout, typography, glass surfaces, buttons, title screen, loading & modals */
 
 :root {
+  color-scheme: dark;
   --font: 'Fredoka', 'Baloo 2', 'Nunito', 'Trebuchet MS', system-ui, sans-serif;
   --glass: rgba(26, 20, 44, 0.48);
   --glass-strong: rgba(26, 20, 44, 0.72);

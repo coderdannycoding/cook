@@ -1,7 +1,7 @@
 // Restaurant floor grid: object placement & rotation, occupancy, collision,
 // reachability checks (so layouts can never block a station) and serialization.
 
-import * as THREE from 'three';
+import * as THREE from '../vendor/three-0.169.0.module.min.js';
 import { CATALOG } from './catalog.js';
 import { buildAppliance, disposeObject } from './models.js';
 import { createStation } from './stations.js';

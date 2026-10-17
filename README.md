@@ -4,19 +4,55 @@ A frantic isometric **kitchen-chaos restaurant tycoon** that runs in the browser
 Cook with your hands like *Overcooked!*, design an efficient kitchen like *PlateUp!*,
 and grow a restaurant empire like *Restaurant Tycoon 3*.
 
-Built with **Three.js** (vendored, no build step) and the **Web Audio API**. Every model,
+Built with **Three.js** (vendored, no bundler needed) and the **Web Audio API**. Every model,
 texture, particle and sound is generated procedurally at runtime, with no asset files.
 
-## Run it
+## Deploy it to the web (Vercel)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcoderdannycoding%2Fcook&project-name=pandemonium-bistro&repository-name=pandemonium-bistro)
+
+The repo is ready to import as-is. There are no dependencies to install and no settings to change:
+
+1. Go to [vercel.com/new](https://vercel.com/new) and import this GitHub repository.
+2. Leave every setting at its default. *Framework Preset* shows **Other**, and `vercel.json`
+   already provides the build command (`npm run build`) and output directory (`public`).
+3. Click **Deploy**. About 20 seconds later the game is live at `https://<project>.vercel.app`.
+
+Every push to the production branch redeploys automatically, and every other branch or pull
+request gets its own preview URL. To use your own domain, open the project and go to
+**Settings → Domains**.
+
+What the build does: `scripts/build.mjs` copies `index.html`, `src/`, `styles/` and `vendor/`
+into `public/`. It fails the deploy if any file referenced from HTML, a JS import or a CSS
+`url()` is missing, then stamps the version and commit into `<meta name="version">`.
+`vercel.json` also adds a strict Content-Security-Policy and other security headers, plus
+long-lived caching for the versioned Three.js file.
+
+The same `public/` folder works on any static host. Netlify, Cloudflare Pages and GitHub Pages
+all take build command `npm run build` and publish directory `public`.
+
+### Single-file build (itch.io, offline)
+
+```bash
+npm run build:single    # → dist/pandemonium-bistro.html, everything inlined (~860 KB)
+```
+
+This bundles the JS with esbuild (fetched on demand through `npx`) and inlines all CSS and
+fonts, so the game runs from one HTML file. Upload it to itch.io as an HTML game (rename it to
+`index.html` and zip it) or share it directly. It still needs to be served over `http(s)`,
+which itch.io does for you.
+
+## Run it locally
 
 ES modules need to be served over HTTP (opening `index.html` from disk won't work):
 
 ```bash
-node serve.mjs          # zero-dependency static server → http://localhost:8080
-# or: npm start  /  python3 -m http.server 8080
+npm start               # zero-dependency static server → http://localhost:8080
+npm run preview         # production build in public/, served with the same headers as Vercel
 ```
 
-A desktop browser with WebGL 2 is recommended. Gamepads also work.
+Requires Node 18 or newer. Any browser with WebGL 2 works on desktop or mobile: Chrome, Edge,
+Firefox, and Safari 15 or later. Gamepads also work.
 
 ## Controls
 
@@ -29,6 +65,17 @@ A desktop browser with WebGL 2 is recommended. Gamepads also work.
 | Pause / settings | `Esc` |
 | Zoom | mouse wheel |
 | Build mode (night) | click to place · `R` rotate · click a placed item to move it · right-click or `X` to sell · `WASD` pans |
+
+**On phones and tablets** (detected automatically, best played in landscape):
+
+| Action | Touch |
+| --- | --- |
+| Move | virtual joystick (left thumb, anywhere on the lower left) |
+| Grab / drop / serve | ✋ button (its label shows what it will do) |
+| Chop · wash · spray | 🔪 button (tap once and it keeps working while you stand still) |
+| Dash | 💨 button |
+| Camera (night) | drag to pan · pinch to zoom |
+| Build mode | tap a card, tap the floor to preview, tap again or press ✓ to place · tap a placed item to move it · the toolbar rotates, sells and cancels |
 
 ## How to play
 
@@ -67,8 +114,13 @@ guests, and booths make guests more patient still. Progress autosaves to `localS
 ## Architecture
 
 ```
-index.html            HTML shell + import map (three → vendor/three.module.min.js)
+index.html            HTML shell (loads src/main.js as an ES module; no build step needed to run it)
 styles/               main.css (base, title, modals) · hud.css (HUD, tickets, overlays) · panels.css (night dock)
+                      touch.css (touch controls, phone layout, safe areas) · fonts.css (self-hosted Fredoka)
+vendor/               three-0.169.0.module.min.js · fonts/ (Fredoka, SIL OFL)
+scripts/              build.mjs (static build → public/) · build-single.mjs (one-file build → dist/)
+vercel.json           Vercel build settings, security headers and caching
+serve.mjs             Local static server that applies the same headers as vercel.json
 src/
   main.js             Game bootstrap, phase machine (title → countdown → day → summary → night), economy, main loop
   config.js           Tuning constants (day length, player physics, cooking/fire timings, camera)
@@ -90,10 +142,12 @@ src/
   build.js            Night build mode (ghost previews, validation, move, sell)
   ui.js               HUD, tickets, world-anchored bubbles & progress bars, prompts, toasts, dock panels, modals
   tutorial.js         Day-one guided tutorial with a 3D pointer
-  input.js            Keyboard, mouse & gamepad
+  input.js            Keyboard, mouse, touch (pointer events: taps, drags, pinches) & gamepad
+  touch.js            On-screen joystick and action buttons for touch devices
   state.js            Save/load (localStorage) and settings
 ```
 
 Debugging hook: `window.__game` exposes the running game instance in the browser console.
 
-Three.js is MIT-licensed. See `vendor/THREE-LICENSE`.
+Three.js is MIT-licensed (see `vendor/THREE-LICENSE`). The Fredoka font is licensed under the
+SIL Open Font License (see `vendor/fonts/OFL.txt`).

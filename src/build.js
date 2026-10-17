@@ -1,7 +1,7 @@
 // Night-time grid build mode: ghost previews, rotation, placement validation (including
 // reachability), moving existing objects and selling them.
 
-import * as THREE from 'three';
+import * as THREE from '../vendor/three-0.169.0.module.min.js';
 import { CATALOG } from './catalog.js';
 import { ECON } from './config.js';
 import { buildAppliance } from './models.js';
@@ -18,6 +18,8 @@ export class BuildMode {
     this.ghostMats = [];
     this.hover = null;
     this.lastHelp = '';
+    this.pending = null;
+    this.toolsKey = '';
   }
 
   enter() {
@@ -28,6 +30,7 @@ export class BuildMode {
 
   exit() {
     this.cancel();
+    this.renderTools(null);
     this.active = false;
     const r = this.game.renderer;
     r.setGridVisible(false);
@@ -39,6 +42,12 @@ export class BuildMode {
     this.cancelMove();
     this.selectedType = type;
     this.makeGhost(CATALOG[type]);
+    const input = this.game.input;
+    if (input.touchMode) {
+      // No hover on touch screens: start the preview in the middle of the space above the dock
+      input.hover.x = window.innerWidth / 2;
+      input.hover.y = window.innerHeight * (0.5 - this.game.ui.dockFraction() / 2);
+    }
   }
 
   cancel() {
@@ -99,13 +108,29 @@ export class BuildMode {
   }
 
   help(text) {
+    const touch = this.game.input.touchMode;
     const t = text || (this.selectedType || this.moving
-      ? '<b>Click</b> to place · <kbd>R</kbd> rotate · <b>Right-click</b>/<kbd>Esc</kbd> cancel'
-      : '<b>Pick an item</b> below to buy · <b>Click</b> a placed item to move it · <b>Right-click</b> or <kbd>X</kbd> to sell (75% refund) · <kbd>WASD</kbd> pan · wheel zoom');
+      ? (touch ? '<b>Tap</b> a spot to preview · <b>tap it again</b> to place' : '<b>Click</b> to place · <kbd>R</kbd> rotate · <b>Right-click</b>/<kbd>Esc</kbd> cancel')
+      : (touch
+        ? '<b>Pick an item</b> below to buy · <b>Tap</b> a placed item to move or sell it · drag to pan, pinch to zoom'
+        : '<b>Pick an item</b> below to buy · <b>Click</b> a placed item to move it · <b>Right-click</b> or <kbd>X</kbd> to sell (75% refund) · drag or <kbd>WASD</kbd> to pan · wheel zoom'));
     if (t !== this.lastHelp) {
       this.lastHelp = t;
       this.game.ui.setBuildHelp(t);
     }
+  }
+
+  footprintAt(def, sx, sy) {
+    const p = this.game.renderer.screenToGround(sx, sy);
+    if (!p) return null;
+    const [w0, d0] = def.size;
+    const w = this.rot % 2 ? d0 : w0, d = this.rot % 2 ? w0 : d0;
+    return { x: Math.floor(p.x - w / 2 + 0.5), z: Math.floor(p.z - d / 2 + 0.5) };
+  }
+
+  rotate() {
+    this.rot = (this.rot + 1) % 4;
+    this.game.audio.click();
   }
 
   update() {
@@ -113,11 +138,8 @@ export class BuildMode {
     const g = this.game;
     const input = g.input;
     const r = g.renderer;
-    const p = r.screenToGround(input.mouse.x, input.mouse.y);
-    if (input.wasPressed('KeyR')) {
-      this.rot = (this.rot + 1) % 4;
-      g.audio.click();
-    }
+    const tap = input.tap && input.tap.button === 0 ? input.tap : null;
+    if (input.wasPressed('KeyR')) this.rotate();
     if (input.wasPressed('Escape') && (this.selectedType || this.moving)) {
       this.cancel();
       g.ui.renderDock();
@@ -125,10 +147,9 @@ export class BuildMode {
     const placing = this.selectedType || this.moving;
     if (placing) {
       const def = this.moving ? this.moving.def : CATALOG[this.selectedType];
-      const [w0, d0] = def.size;
-      const w = this.rot % 2 ? d0 : w0, d = this.rot % 2 ? w0 : d0;
-      if (!p) return;
-      const x = Math.floor(p.x - w / 2 + 0.5), z = Math.floor(p.z - d / 2 + 0.5);
+      const at = this.footprintAt(def, input.hover.x, input.hover.y);
+      if (!at) { this.renderTools(null); return; }
+      const { x, z } = at;
       const check = g.grid.canPlace(def, x, z, this.rot, this.moving);
       const afford = this.moving || g.state.cash >= def.price;
       const ok = check.ok && afford;
@@ -140,44 +161,96 @@ export class BuildMode {
       r.setTileMarkers(fp.cells, ok);
       r.hideHighlight();
       const reason = !check.ok ? check.reason : !afford ? 'Not enough cash' : '';
-      this.help(`${this.moving ? 'Moving' : 'Placing'} <b>${def.name}</b>${this.moving ? '' : ` (${formatMoney(def.price)})`}${reason ? ` — <span class="bad">${reason}</span>` : ''} · <b>Click</b> place · <kbd>R</kbd> rotate · <b>Right-click</b> cancel`);
-      if (input.mouse.clicked[0]) {
-        if (ok) this.commit(def, x, z);
-        else {
-          g.audio.error();
-          if (reason) g.ui.toast(reason, 'warn');
-        }
+      this.pending = { def, x, z, ok, reason };
+      const how = input.touchMode ? '<b>Tap again</b> to place' : '<b>Click</b> place · <kbd>R</kbd> rotate · <b>Right-click</b> cancel';
+      this.help(`${this.moving ? 'Moving' : 'Placing'} <b>${def.name}</b>${this.moving ? '' : ` (${formatMoney(def.price)})`}${reason ? ` — <span class="bad">${reason}</span>` : ''} · ${how}`);
+      if (tap) {
+        // A tap on the ghost confirms; a tap elsewhere just moves the preview there (touch).
+        const t = this.footprintAt(def, tap.x, tap.y);
+        if (t && t.x === x && t.z === z) this.tryCommit();
       }
       if (input.mouse.clicked[2]) {
         this.cancel();
         g.ui.renderDock();
       }
+      this.renderTools({ moving: this.moving, ok });
       return;
     }
 
-    // Hover / pick existing objects
+    // Hover / pick existing objects (mouse hovers; touch taps)
     r.setTileMarkers([], true);
-    this.hover = null;
-    if (p) {
+    this.pending = null;
+    const pick = (sx, sy) => {
+      const p = r.screenToGround(sx, sy);
+      if (!p) return null;
       const tx = Math.floor(p.x), tz = Math.floor(p.z);
-      this.hover = g.grid.objectAt(tx, tz) || (g.grid.inBounds(tx, tz) ? g.grid.floorOcc[g.grid.idx(tx, tz)] : null);
+      return g.grid.objectAt(tx, tz) || (g.grid.inBounds(tx, tz) ? g.grid.floorOcc[g.grid.idx(tx, tz)] : null);
+    };
+    this.hover = input.touchMode ? null : pick(input.hover.x, input.hover.y);
+    const tapped = tap ? pick(tap.x, tap.y) : null;
+    if (tapped) {
+      this.startMove(tapped);
+      return;
     }
     if (this.hover) {
       const o = this.hover;
       r.showHighlight(o.cx, 0.05, o.cz, o.w, o.d, '#9ad0ff');
       this.help(`<b>${o.def.name}</b> · <b>Click</b> to move · <b>Right-click</b>/<kbd>X</kbd> sell for <b>${formatMoney(Math.round(o.def.price * ECON.sellRefund))}</b>`);
-      if (input.mouse.clicked[0]) {
-        this.moving = o;
-        this.rot = o.rot;
-        o.mesh.visible = false;
-        this.makeGhost(o.def);
-        g.audio.pickup();
-      } else if (input.mouse.clicked[2] || input.wasPressed('KeyX') || input.wasPressed('Delete')) {
-        this.sell(o);
-      }
+      if (input.mouse.clicked[2] || input.wasPressed('KeyX') || input.wasPressed('Delete')) this.sell(o);
     } else {
       r.hideHighlight();
       this.help();
+    }
+    this.renderTools(null);
+  }
+
+  startMove(o) {
+    this.moving = o;
+    this.rot = o.rot;
+    o.mesh.visible = false;
+    this.makeGhost(o.def);
+    this.game.audio.pickup();
+  }
+
+  tryCommit() {
+    const g = this.game;
+    const pd = this.pending;
+    if (!pd) return;
+    if (pd.ok) this.commit(pd.def, pd.x, pd.z);
+    else {
+      g.audio.error();
+      if (pd.reason) g.ui.toast(pd.reason, 'warn');
+    }
+  }
+
+  // On-screen toolbar so placement never requires a keyboard or right mouse button.
+  renderTools(st) {
+    const T = this.game.ui.e.buildTools;
+    const key = st ? `${st.moving ? 'm' : 'p'}:${st.ok ? 1 : 0}:${st.moving ? st.moving.uid : ''}` : '';
+    if (key === this.toolsKey) return;
+    this.toolsKey = key;
+    if (!st) {
+      T.classList.add('hidden');
+      T.innerHTML = '';
+      return;
+    }
+    const refund = st.moving ? formatMoney(Math.round(st.moving.def.price * ECON.sellRefund)) : '';
+    T.innerHTML = `<button type="button" data-tool="rotate">⟳ Rotate</button>
+      <button type="button" class="ok" data-tool="place" ${st.ok ? '' : 'disabled'}>✓ Place here</button>
+      ${st.moving ? `<button type="button" class="bad" data-tool="sell">🗑 Sell ${refund}</button>` : ''}
+      <button type="button" data-tool="cancel">✕ Cancel</button>`;
+    T.classList.remove('hidden');
+    if (!T.onclick) {
+      T.onclick = (ev) => {
+        const b = ev.target.closest('button');
+        if (!b || b.disabled) return;
+        const g = this.game;
+        const tool = b.dataset.tool;
+        if (tool === 'rotate') this.rotate();
+        else if (tool === 'place') this.tryCommit();
+        else if (tool === 'sell' && this.moving) this.sell(this.moving);
+        else if (tool === 'cancel') { g.audio.click(); this.cancel(); g.ui.renderDock(); }
+      };
     }
   }
 
@@ -208,6 +281,11 @@ export class BuildMode {
 
   sell(o) {
     const g = this.game;
+    if (this.moving === o) {
+      this.moving = null;
+      this.removeGhost();
+      this.game.renderer.setTileMarkers([], true);
+    }
     const refund = Math.round(o.def.price * ECON.sellRefund);
     g.particles.poof(o.cx, 0.4, o.cz, '#ffffff', 14);
     g.grid.remove(o);

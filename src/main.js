@@ -1,7 +1,7 @@
 // Pandemonium Bistro — game bootstrap, phase machine (title → day → summary → night),
 // economy, ratings and the main loop that wires every module together.
 
-import * as THREE from 'three';
+import * as THREE from '../vendor/three-0.169.0.module.min.js';
 import { DAY, FLOOR_LEVELS, ECON, CAMERA } from './config.js';
 import { EventBus, clamp, formatMoney } from './utils.js';
 import { AudioEngine } from './audio.js';
@@ -17,6 +17,7 @@ import { StaffManager } from './staff.js';
 import { BuildMode } from './build.js';
 import { UI } from './ui.js';
 import { Tutorial } from './tutorial.js';
+import { TouchControls } from './touch.js';
 import { Player } from './entities.js';
 import { newGameState, saveGame, loadGame, loadSettings, saveSettings } from './state.js';
 import {
@@ -56,6 +57,8 @@ class Game {
     this.staff = new StaffManager(this);
     this.build = new BuildMode(this);
     this.ui = new UI(this);
+    this.touch = new TouchControls(this);
+    this.input.onTouchMode = () => this.ui.onInputModeChanged();
     this.tutorial = new Tutorial(this);
 
     this.state = null;
@@ -81,15 +84,36 @@ class Game {
     window.addEventListener('visibilitychange', () => {
       if (document.hidden && this.phase === 'day' && !this.paused) this.togglePause(true);
     });
-    // Unlock audio on any first gesture
+    // Unlock audio on any user gesture (iOS only counts touchend/click as activation)
     const unlock = () => { this.audio.init(); this.audio.setMuted(this.audio.muted); };
-    window.addEventListener('pointerdown', unlock, { once: false });
-    window.addEventListener('keydown', unlock, { once: false });
+    for (const ev of ['pointerdown', 'touchend', 'click', 'keydown']) window.addEventListener(ev, unlock, { passive: true });
+    this.wakeLock = null;
+  }
+
+  // Keep phone screens awake during a shift; harmless if refused.
+  async setWakeLock(on) {
+    try {
+      if (on && !this.wakeLock && navigator.wakeLock && document.visibilityState === 'visible') {
+        this.wakeLock = await navigator.wakeLock.request('screen');
+        this.wakeLock.addEventListener?.('release', () => { this.wakeLock = null; });
+      } else if (!on && this.wakeLock) {
+        await this.wakeLock.release();
+        this.wakeLock = null;
+      }
+    } catch {
+      this.wakeLock = null;
+    }
   }
 
   // ======================================================================= boot
   async boot() {
     this.ui.setLoading(0.05, 'Firing up the stoves…');
+    // Signage & UI are painted onto canvases, so wait (briefly) for the web font first.
+    try {
+      await Promise.race([document.fonts?.load('700 64px Fredoka') ?? Promise.resolve(), new Promise((r) => setTimeout(r, 2500))]);
+    } catch {
+      /* fall back to system fonts */
+    }
     await nextFrame();
     await this.bakeThumbnails();
     this.ui.setLoading(1, 'Ready!');
@@ -466,6 +490,7 @@ class Game {
     this.audio.startMusic('day');
     this.ui.banner(`Day ${this.state.day}`, this.state.day === 1 ? 'Grand opening!' : `${this.state.rating.toFixed(1)}★ · ${formatMoney(this.state.cash)}`);
     if (this.state.day === 1) this.tutorial.start();
+    this.setWakeLock(true);
   }
 
   endDay() {
@@ -507,6 +532,7 @@ class Game {
 
   enterNight() {
     this.phase = 'night';
+    this.setWakeLock(false);
     for (const st of this.grid.stations()) st.clearForDay();
     this.fire.clear();
     this.player.held = null;
@@ -588,6 +614,8 @@ class Game {
     this.ui.updateTickets();
     this.ui.updateWorld();
     this.ui.updatePrompt();
+    this.touch.update();
+    this.ui.updateRotateHint();
     this.audio.update();
     this.renderer.render();
     input.endFrame();
@@ -598,6 +626,7 @@ class Game {
     const W = this.grid.W, H = this.grid.H;
     const input = this.input;
     if (input.wheel) this.userZoom = clamp(this.userZoom * (input.wheel > 0 ? 1.08 : 1 / 1.08), 0.65, 1.45);
+    if (input.pinch !== 1) this.userZoom = clamp(this.userZoom * input.pinch, 0.55, 1.6);
 
     switch (this.phase) {
       case 'title': {
@@ -651,8 +680,11 @@ class Game {
           const mv = input.moveVector();
           const yaw = r.yaw;
           const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
-          this.camPan.x = clamp(this.camPan.x + (rx * mv.x + fx * mv.y) * dt * 8, -W / 2, W / 2);
-          this.camPan.z = clamp(this.camPan.z + (rz * mv.x + fz * mv.y) * dt * 8, -H / 2, H / 2);
+          // Drag (mouse or finger) pans the camera; screen pixels -> ground units
+          const upp = r.viewSize / Math.max(1, r.height);
+          const gx = -input.dragX * upp, gy = input.dragY * upp / Math.sin(CAMERA.elevation);
+          this.camPan.x = clamp(this.camPan.x + (rx * mv.x + fx * mv.y) * dt * 8 + rx * gx + fx * gy, -W / 2, W / 2);
+          this.camPan.z = clamp(this.camPan.z + (rz * mv.x + fz * mv.y) * dt * 8 + rz * gx + fz * gy, -H / 2, H / 2);
           this.build.update(dt);
         }
         // Keep the restaurant centred in the space above the night dock
@@ -779,11 +811,46 @@ class Game {
   }
 }
 
-const game = new Game();
-window.__game = game;
-game.boot().catch((e) => {
-  console.error(e);
+function showFatal(title, detail) {
   const L = document.getElementById('loading');
-  if (L) L.querySelector('.load-text').textContent = `Something went wrong: ${e.message}`;
-});
+  if (!L) return;
+  L.classList.remove('fade');
+  L.innerHTML = `<div class="load-card fatal-card"><div class="load-logo">🍳</div><div class="load-title"></div><p class="fatal-text"></p></div>`;
+  L.querySelector('.load-title').textContent = title;
+  L.querySelector('.fatal-text').textContent = detail;
+}
+
+function hasWebGL2() {
+  try {
+    const c = document.createElement('canvas');
+    return !!(window.WebGL2RenderingContext && c.getContext('webgl2'));
+  } catch {
+    return false;
+  }
+}
+
+function start() {
+  if (!hasWebGL2()) {
+    showFatal('WebGL 2 is unavailable', 'This game needs WebGL 2. Try an up-to-date Chrome, Edge, Firefox or Safari, and make sure hardware acceleration is turned on.');
+    return;
+  }
+  let game;
+  try {
+    game = new Game();
+  } catch (e) {
+    console.error(e);
+    showFatal('The kitchen failed to open', `Your browser couldn't start the 3D renderer (${e.message}). Reloading the page often helps.`);
+    return;
+  }
+  window.__game = game;
+  game.boot().catch((e) => {
+    console.error(e);
+    showFatal('Something went wrong', `${e.message}. Reloading the page often helps.`);
+  });
+}
+
+// Inside a claude.ai artifact viewer, boot through its hot-update hook; elsewhere just start.
+const hot = window.claude?.hot;
+if (hot?.ready) hot.ready(start);
+else start();
 

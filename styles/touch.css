@@ -1,0 +1,234 @@
+/* Touch controls, build toolbar, small-screen layout, safe areas and fatal screens */
+
+#game, #touch-ui { touch-action: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+
+/* ---------------------------------------------------------------- joystick & buttons */
+#touch-ui { position: fixed; inset: 0; z-index: 19; pointer-events: none; }
+.stick-zone {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 46vw;
+  height: 62vh;
+  pointer-events: auto;
+}
+.stick-base {
+  position: absolute;
+  left: max(90px, calc(env(safe-area-inset-left, 0px) + 90px));
+  top: calc(100% - 110px - env(safe-area-inset-bottom, 0px));
+  width: 128px;
+  height: 128px;
+  margin: -64px 0 0 -64px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.16));
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 6px 18px rgba(10, 6, 30, 0.35);
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+.stick-base.on { opacity: 1; }
+.stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 58px;
+  height: 58px;
+  margin: -29px 0 0 -29px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffb347, #ff6f61);
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 4px 12px rgba(255, 95, 109, 0.5);
+}
+
+.tbtns {
+  position: absolute;
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  width: 236px;
+  height: 196px;
+  pointer-events: none;
+}
+.tbtn {
+  position: absolute;
+  pointer-events: auto;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  color: #fff;
+  font-family: var(--font);
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  box-shadow: 0 8px 18px rgba(10, 6, 30, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.08s ease, filter 0.15s, opacity 0.15s;
+  overflow: hidden;
+}
+.tbtn i { font-style: normal; font-size: 26px; line-height: 1; }
+.tbtn span { font-size: 11.5px; line-height: 1.05; max-width: 92%; text-align: center; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
+.tbtn.down { transform: scale(0.9); filter: brightness(1.2); }
+.tbtn.idle { opacity: 0.6; }
+.tbtn.pick { right: 0; bottom: 0; width: 108px; height: 108px; background: linear-gradient(135deg, #ffb347, #ff6f61 60%, #ff4f8b); }
+.tbtn.work { right: 118px; bottom: 6px; width: 92px; height: 92px; background: linear-gradient(135deg, #5ee07a, #2fb7a0); }
+.tbtn.dash { right: 18px; bottom: 120px; width: 72px; height: 72px; background: linear-gradient(135deg, #5ec8ff, #4a69bd); }
+.tbtn.dash i { font-size: 22px; }
+.tbtn.dash .cd {
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(rgba(10, 6, 30, 0.55) calc(var(--cd, 0) * 360deg), transparent 0);
+  pointer-events: none;
+}
+.tbtn.dash:not(.cooling) .cd { display: none; }
+
+/* While touch controls are up, keep prompts & hints clear of the thumbs */
+body.touch-play #prompt { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-width: calc(100vw - 560px); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+body.touch-play #prompt kbd { display: none; }
+body.touch-play #hint { bottom: auto; top: calc(178px + env(safe-area-inset-top, 0px)); max-width: min(520px, 60vw); font-size: 14px; padding: 8px 14px; }
+body.touch-play .dash-ring { display: none; }
+
+/* ---------------------------------------------------------------- build toolbar */
+#build-tools {
+  position: fixed;
+  left: 50%;
+  top: calc(56px + env(safe-area-inset-top, 0px));
+  transform: translateX(-50%);
+  z-index: 26;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: calc(100vw - 32px);
+}
+#build-tools button {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: var(--glass-strong);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+#build-tools button.ok { background: linear-gradient(135deg, #5ee07a, #2fb7a0); }
+#build-tools button.bad { background: linear-gradient(135deg, #ff7a7a, #e0455f); }
+#build-tools button:disabled { opacity: 0.45; }
+
+/* ---------------------------------------------------------------- misc screens */
+#rotate-hint {
+  position: fixed;
+  left: 50%;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  transform: translateX(-50%);
+  z-index: 45;
+  border-radius: 99px;
+  padding: 8px 16px;
+  font-size: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fatal-card { max-width: min(460px, calc(100vw - 32px)); }
+.fatal-text { color: var(--muted); font-size: 16px; line-height: 1.5; margin: 0; }
+.fatal { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; background: #10162e; color: #fffaf2; font: 600 18px/1.5 var(--font); z-index: 200; }
+
+/* ---------------------------------------------------------------- safe areas */
+#hud {
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  padding-left: calc(14px + env(safe-area-inset-left, 0px));
+  padding-right: calc(14px + env(safe-area-inset-right, 0px));
+}
+#night-dock { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+#prompt { bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+
+/* ---------------------------------------------------------------- small / short screens (phones) */
+@media (max-height: 520px), (max-width: 640px) {
+  .hud-left { width: 132px; gap: 5px; }
+  .hud-box { padding: 5px 8px; border-radius: 11px; gap: 5px; }
+  .hud-box b { font-size: 15px; }
+  .hud-box .ico { font-size: 15px; }
+  .hud-day-row b { font-size: 14px; }
+  #hud-clock { font-size: 12px; }
+  .stars { font-size: 13px; }
+  .stars-box #hud-stars b { font-size: 13px; }
+  .stars-box small, .amb-box { display: none; }
+  .icon-btn { width: 36px; height: 36px; font-size: 16px; border-radius: 10px; }
+  .dash-ring { width: 36px; height: 36px; }
+  .dash-ring span { width: 30px; height: 30px; font-size: 15px; }
+  .ticket { width: 84px; padding: 5px 5px 7px; }
+  .t-dish { height: 42px; }
+  .t-dish img { width: 46px; height: 46px; }
+  .t-name { font-size: 10.5px; }
+  .t-parts { display: none; }
+  #toasts { top: calc(118px + env(safe-area-inset-top, 0px)); }
+  .toast { font-size: 13.5px; padding: 8px 14px; }
+  #countdown span { font-size: 96px; }
+  .banner b { font-size: 52px; }
+  .banner small { font-size: 18px; }
+  .bubble { width: 42px; height: 42px; }
+  .bubble img { width: 30px; height: 30px; }
+  #night-dock { padding: 8px 10px 10px; border-radius: 18px; }
+  .dock-top { flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .dock-tabs { flex-wrap: wrap; }
+  .tab { padding: 6px 10px; font-size: 13px; }
+  .open-btn { padding: 8px 12px; font-size: 14px; margin-left: auto; }
+  .dock-panel { max-height: 40vh; }
+  .card { width: 96px; padding: 6px; }
+  .card img { width: 58px; height: 58px; }
+  .card .c-name { font-size: 12px; }
+  .card.staff, .card.hire { width: 150px; }
+  .cards.upgrades .card { width: 170px; }
+  .cuisines { grid-template-columns: 1fr; }
+  #build-help { font-size: 12px; padding: 6px 12px; white-space: normal; text-align: center; width: max-content; max-width: calc(100vw - 32px); }
+  .title-card { padding: 20px 20px 16px; border-radius: 22px; max-height: calc(100vh - 24px); overflow: auto; }
+  .tagline { margin: 10px 0 14px; font-size: 14px; }
+  .title-buttons { gap: 8px; }
+  .title-buttons .big-btn { padding: 10px; font-size: 16px; }
+  .modal { padding: 18px 18px; }
+  .tbtn.pick { width: 92px; height: 92px; }
+  .tbtn.work { width: 78px; height: 78px; right: 100px; }
+  .tbtn.dash { width: 62px; height: 62px; bottom: 102px; }
+  .tbtns { width: 200px; height: 170px; }
+}
+
+/* Modal actions stay reachable when a modal scrolls (short phone screens) */
+.modal .m-actions {
+  position: sticky;
+  bottom: -26px;
+  margin-bottom: -26px;
+  padding: 12px 0 26px;
+  background: linear-gradient(to bottom, transparent, var(--glass-strong) 35%);
+}
+@media (max-height: 520px) {
+  .modal { padding: 14px 18px; max-height: calc(100vh - 16px); }
+  .modal .m-actions { bottom: -14px; margin-bottom: -14px; padding: 8px 0 14px; }
+  .modal h2 { font-size: 20px; margin-bottom: 4px; }
+  .grade { width: 48px; height: 48px; font-size: 30px; border-radius: 12px; }
+  .sum-stats { margin: 10px 0 8px; gap: 6px; }
+  .sum-stats div { padding: 4px 2px; }
+  .sum-stats b { font-size: 17px; }
+  .sum-money { padding: 6px 12px; }
+  .sum-line { font-size: 13px; padding: 2px 0; }
+  .sum-line.total { font-size: 15px; margin-top: 4px; padding-top: 4px; }
+  .critic-line, .unlock { margin-top: 6px; font-size: 13px; }
+  .help-grid ul { font-size: 13px; }
+  .settings { gap: 8px; margin: 8px 0 4px; }
+}
+
+/* Short screens: the night dock becomes a compact, horizontally scrolling strip */
+@media (max-height: 520px) {
+  .dock-info { display: none; }
+  #night-dock .chips, #night-dock .cards { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-bottom: 4px; }
+  #night-dock .chips { margin-bottom: 6px; }
+  #night-dock .chip, #night-dock .card { flex: none; }
+  #night-dock .cards .card-label { width: auto; flex: none; align-self: center; writing-mode: vertical-rl; transform: rotate(180deg); margin: 0; font-size: 11px; }
+  #night-dock .dock-panel { max-height: 38vh; }
+  #night-dock .card .c-desc { display: none; }
+  #night-dock .cards.upgrades .card { width: 156px; }
+  .expand-tip { margin-top: 4px; font-size: 12px; }
+}

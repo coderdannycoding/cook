@@ -52,7 +52,9 @@ export class UI {
       hud: $('#hud'), tickets: $('#tickets'), world: $('#world-ui'), prompt: $('#prompt'), toasts: $('#toasts'),
       hint: $('#hint'), dock: $('#night-dock'), modal: $('#modal-root'), title: $('#title-screen'), countdown: $('#countdown'),
       vignette: $('#fire-vignette'), loading: $('#loading'), buildHelp: $('#build-help'),
+      buildTools: $('#build-tools'), rotateHint: $('#rotate-hint'), fullscreen: $('#btn-fullscreen'),
     };
+    this.rotateDismissed = false;
     this.ticketEls = new Map();
     this.worldEls = new Map();
     this.used = new Set();
@@ -79,6 +81,20 @@ export class UI {
     $('#btn-mute').addEventListener('click', () => {
       g.audio.click();
       g.setMuted(!g.audio.muted);
+    });
+    // Fullscreen is optional: some browsers / embedded viewers refuse it.
+    const fsEl = document.documentElement;
+    if (document.fullscreenEnabled && fsEl.requestFullscreen) {
+      this.e.fullscreen.classList.remove('hidden');
+      this.e.fullscreen.addEventListener('click', () => {
+        g.audio.click();
+        const p = document.fullscreenElement ? document.exitFullscreen() : fsEl.requestFullscreen({ navigationUI: 'hide' });
+        Promise.resolve(p).catch(() => this.toast('Fullscreen is not available here', 'warn'));
+      });
+    }
+    this.e.rotateHint.addEventListener('click', () => {
+      this.rotateDismissed = true;
+      this.e.rotateHint.classList.add('hidden');
     });
     this.e.dock.addEventListener('click', (ev) => this.onDockClick(ev));
     this.e.dock.addEventListener('change', (ev) => this.onDockChange(ev));
@@ -122,9 +138,9 @@ export class UI {
           <span>Chef apron</span>
           ${colors.map((c) => `<button class="swatch ${c === cur ? 'on' : ''}" data-color="${c}" style="background:${c}" aria-label="apron ${c}"></button>`).join('')}
         </div>
-        <div class="title-keys">
-          <span><kbd>WASD</kbd> move</span><span><kbd>Shift</kbd>/<kbd>Space</kbd> dash</span>
-          <span><kbd>E</kbd> pick / drop</span><span><kbd>F</kbd> chop · wash · spray</span><span><kbd>Esc</kbd> pause</span>
+        <div class="title-keys">${this.game.input.touchMode
+          ? '<span>🕹️ Left thumb: move</span><span>✋ Grab · 🔪 Use · 💨 Dash buttons</span><span>Pinch to zoom</span>'
+          : '<span><kbd>WASD</kbd> move</span><span><kbd>Shift</kbd>/<kbd>Space</kbd> dash</span><span><kbd>E</kbd> pick / drop</span><span><kbd>F</kbd> chop · wash · spray</span><span><kbd>Esc</kbd> pause</span>'}
         </div>
       </div>`;
     T.onclick = (ev) => {
@@ -344,9 +360,11 @@ export class UI {
     const pl = g.player;
     const d = g.interact.describe(pl, pl.target);
     const parts = [];
+    const touch = g.input.touchMode;
     if (pl.held) parts.push(`<span class="holding">✋ ${esc(itemLabel(pl.held))}</span>`);
-    if (d.e) parts.push(`<span><kbd>E</kbd> ${esc(d.e)}</span>`);
-    if (d.f) parts.push(`<span><kbd>F</kbd> ${esc(d.f)}</span>`);
+    // Touch players see the actions on the buttons themselves
+    if (d.e && !touch) parts.push(`<span><kbd>E</kbd> ${esc(d.e)}</span>`);
+    if (d.f && !touch) parts.push(`<span><kbd>F</kbd> ${esc(d.f)}</span>`);
     if (d.warn) parts.push(`<span class="pwarn-text">⚠ ${esc(d.warn)}</span>`);
     const html = parts.join('');
     if (P.dataset.h !== html) {
@@ -370,9 +388,32 @@ export class UI {
   }
 
   // ------------------------------------------------------------- hint (tutorial)
+  // Rewrite keyboard instructions for touch players
+  touchify(html) {
+    if (!this.game.input.touchMode) return html;
+    return html
+      .replace(/<kbd>WASD<\/kbd>/g, 'the <b>joystick</b>')
+      .replace(/<kbd>Shift<\/kbd> or <kbd>Space<\/kbd>/g, 'the <b>💨 Dash</b> button')
+      .replace(/(press |with |\()?<kbd>E<\/kbd>\)?/g, (m, pre) => `${pre === '(' ? '(' : pre || ''}<b>✋ Grab</b>${m.endsWith(')') ? ')' : ''}`)
+      .replace(/(press |hold )?<kbd>F<\/kbd>/g, (m, pre) => `${pre || ''}<b>🔪 Use</b>`);
+  }
+
+  onInputModeChanged() {
+    if (!this.e.title.classList.contains('hidden')) this.showTitle();
+    this.game.build.lastHelp = '';
+    this.e.hint.dataset.h = '';
+  }
+
+  updateRotateHint() {
+    const g = this.game;
+    const show = g.input.touchMode && !this.rotateDismissed && window.innerHeight > window.innerWidth * 1.05 && g.phase !== 'boot';
+    toggle(this.e.rotateHint, 'hidden', !show);
+  }
+
   setHint(html) {
     const H = this.e.hint;
     if (!html) { H.classList.add('hidden'); return; }
+    html = this.touchify(html);
     if (H.dataset.h !== html) {
       H.dataset.h = html;
       H.innerHTML = `${html}<button class="hint-skip" data-act="skip-tut">Skip tutorial</button>`;
@@ -688,6 +729,7 @@ export class UI {
           </ul></div>
       </div>
       <div class="help-keys"><span><kbd>WASD</kbd>/<kbd>Arrows</kbd> move</span><span><kbd>Shift</kbd>/<kbd>Space</kbd> dash</span><span><kbd>E</kbd>/Left-click pick & drop</span><span><kbd>F</kbd>/Right-click chop, wash, spray</span><span><kbd>Esc</kbd> pause</span><span>Mouse wheel zoom</span></div>
+      <div class="help-keys"><span>📱 On touch screens: left thumb moves the chef, <b>✋ Grab</b> / <b>🔪 Use</b> / <b>💨 Dash</b> buttons on the right · drag to pan and pinch to zoom at night</span></div>
       <div class="m-actions"><button class="big-btn primary" data-a="ok">Got it!</button></div>`, 'wide');
     w.onclick = (ev) => {
       if (ev.target.dataset.a === 'ok') { this.game.audio.click(); this.closeModal(w); }

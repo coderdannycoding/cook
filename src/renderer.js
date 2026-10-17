@@ -1,7 +1,7 @@
 // Three.js renderer: isometric orthographic camera, soft shadows, day/night lighting,
 // a pooled set of warm point lights, the restaurant shell + street, and a thumbnail baker.
 
-import * as THREE from 'three';
+import * as THREE from '../vendor/three-0.169.0.module.min.js';
 import { CAMERA, WALL_HEIGHT, FRONT_WALL_HEIGHT, LIGHT_POOL_SIZE } from './config.js';
 import { clamp, damp, lerp, rand } from './utils.js';
 import {

@@ -1,7 +1,7 @@
 // Characters: shared kinematics + expressive procedural animation (bobbing, squash & stretch,
 // floating hands that grip held items, blinking, moods), plus the Player, Customer and Staff types.
 
-import * as THREE from 'three';
+import * as THREE from '../vendor/three-0.169.0.module.min.js';
 import { PLAYER } from './config.js';
 import { buildCharacter, buildItem, playerLook, criticLook, randomCustomerLook, staffLook, disposeObject } from './models.js';
 import { STAFF_LEVELS } from './catalog.js';
