@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { PLAYER } from './config.js';
-import { buildCharacter, buildItem, playerLook, criticLook, randomCustomerLook, staffLook } from './models.js';
+import { buildCharacter, buildItem, playerLook, criticLook, randomCustomerLook, staffLook, disposeObject } from './models.js';
 import { STAFF_LEVELS } from './catalog.js';
 import { clamp, damp, dampAngle, rand } from './utils.js';
 
@@ -206,6 +206,7 @@ export class Character {
 
   dispose() {
     this.game.charGroup.remove(this.root);
+    disposeObject(this.root);
   }
 }
 
@@ -342,7 +343,8 @@ export class Player extends Character {
         }
       }
     }
-    g.audio.setLoop('spray', this.spraying ? 1 : 0);
+    g.audio.setLoop('spray', this.spraying || g.staffSpraying ? 1 : 0);
+    g.staffSpraying = false;
     this.working = working;
 
     // Cash magnet
@@ -405,10 +407,11 @@ export class Customer extends Character {
     this.speed = rand(1.9, 2.4);
     this.emoteT = rand(2, 5);
     if (critic) {
-      const ring = new THREE.Mesh(
-        new THREE.RingGeometry(0.42, 0.55, 32).rotateX(-Math.PI / 2),
-        new THREE.MeshBasicMaterial({ color: '#ffd700', transparent: true, opacity: 0.7, depthWrite: false }),
-      );
+      const ringGeo = new THREE.RingGeometry(0.42, 0.55, 32).rotateX(-Math.PI / 2);
+      ringGeo.userData.own = true;
+      const ringMat = new THREE.MeshBasicMaterial({ color: '#ffd700', transparent: true, opacity: 0.7, depthWrite: false });
+      ringMat.userData.unique = true;
+      const ring = new THREE.Mesh(ringGeo, ringMat);
       ring.position.y = 0.03;
       ring.renderOrder = 6;
       this.root.add(ring);

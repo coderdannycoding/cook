@@ -8,7 +8,7 @@ import {
   floorTexture, wallTexture, grassTexture, sidewalkTexture, roadTexture, signTexture, openSignTexture, setMaxAnisotropy,
 } from './textures.js';
 import {
-  mat, mesh, box, cyl, sph, torus, mergeStatic, buildStreetLamp, buildTree, buildCar, buildBench, buildPointer, envMats,
+  mat, mesh, box, cyl, sph, torus, mergeStatic, buildStreetLamp, buildTree, buildCar, buildBench, buildPointer, envMats, disposeObject,
 } from './models.js';
 
 const SKY_KEYS = [
@@ -46,7 +46,8 @@ export class Renderer {
     this.canvas = canvas;
     this.overlay = overlay;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.maxPixelRatio = Math.min(window.devicePixelRatio || 1, 1.75);
+    this.renderer.setPixelRatio(this.maxPixelRatio);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -171,6 +172,20 @@ export class Renderer {
     this.pointer.visible = false;
     this.scene.add(this.pointer);
     this.pointerPos = new THREE.Vector3();
+  }
+
+  // Adaptive quality: 2 = full, 1 = reduced resolution, 0 = low (also cheaper shadows)
+  setQuality(level) {
+    this.quality = level;
+    const pr = level >= 2 ? this.maxPixelRatio : level === 1 ? Math.max(1, this.maxPixelRatio * 0.7) : 1;
+    this.renderer.setPixelRatio(pr);
+    this.renderer.shadowMap.type = level === 0 ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+    if (level === 0 && this.sun.shadow.mapSize.x > 1024) {
+      this.sun.shadow.mapSize.set(1024, 1024);
+      this.sun.shadow.map?.dispose();
+      this.sun.shadow.map = null;
+    }
+    this.resize();
   }
 
   resize() {
@@ -409,7 +424,11 @@ export class Renderer {
 
   _buildStreet(W, H, doorX) {
     const g = this.streetGroup;
-    while (g.children.length) g.remove(g.children[0]);
+    while (g.children.length) {
+      const c = g.children[0];
+      g.remove(c);
+      disposeObject(c);
+    }
     this.cars.length = 0;
     const cx = W / 2;
 
@@ -752,6 +771,7 @@ export class ThumbnailBaker {
     this.renderer.render(this.scene, this.camera);
     const url = this.canvas.toDataURL('image/png');
     this.scene.remove(object);
+    disposeObject(object);
     return url;
   }
 

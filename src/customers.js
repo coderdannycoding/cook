@@ -453,6 +453,19 @@ export class CustomerManager {
     const H = this.grid.H;
     const out = this.doorOut;
     const edgeX = gr.fromLeft ? this.grid.W + 12 : -12;
+    if (reason === 'angry' && gr.table) {
+      // Guests who already got their food still pay for it (no tip) before storming out with the group
+      let paid = 0;
+      for (const c of gr.members) {
+        if (!c.order || !(c.ate || c.state === 'eating' || c.state === 'done')) continue;
+        paid += DISHES[c.order].price;
+        g.applyReview(c.review, c.critic ? 0.15 : 0.025);
+      }
+      if (paid) {
+        gr.table.cash += paid;
+        g.today.revenue += paid;
+      }
+    }
     gr.members.forEach((c, i) => {
       if (c.ticket && c.ticket.state === 'open') g.orders.fail(c.ticket);
       if (reason === 'angry' && (c.state === 'waiting' || c.state === 'seated')) {

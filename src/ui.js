@@ -17,6 +17,26 @@ function el(html) {
 }
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
+// Change-only DOM writes: per-frame UI must not thrash layout/paint when nothing changed.
+function setText(node, text) {
+  if (node._t !== text) { node._t = text; node.textContent = text; }
+}
+function setHTML(node, html) {
+  if (node._h !== html) { node._h = html; node.innerHTML = html; }
+}
+function setStyle(node, prop, value) {
+  const k = `_s_${prop}`;
+  if (node[k] !== value) { node[k] = value; node.style[prop] = value; }
+}
+function setVar(node, name, value) {
+  const k = `_v_${name}`;
+  if (node[k] !== value) { node[k] = value; node.style.setProperty(name, value); }
+}
+function toggle(node, cls, on) {
+  const k = `_c_${cls}`;
+  if (node[k] !== on) { node[k] = on; node.classList.toggle(cls, on); }
+}
+
 function starsHTML(rating) {
   const pct = clamp((rating / 5) * 100, 0, 100);
   return `<span class="stars"><span class="stars-bg">★★★★★</span><span class="stars-fg" style="width:${pct}%">★★★★★</span></span>`;
@@ -141,24 +161,31 @@ export class UI {
     const g = this.game;
     const s = g.state;
     if (!s) return;
+    if (!this.h) {
+      this.h = {
+        cash: $('#hud-cash'), day: $('#hud-day'), clock: $('#hud-clock'), fill: $('#hud-clock-fill'), sun: $('#hud-sun'),
+        stars: $('#hud-stars'), next: $('#hud-next'), amb: $('#hud-amb'), dash: $('#hud-dash'), mute: $('#btn-mute'),
+      };
+    }
+    const h = this.h;
     this.cashShown += (s.cash - this.cashShown) * Math.min(1, dt * 8);
     if (Math.abs(s.cash - this.cashShown) < 0.5) this.cashShown = s.cash;
-    $('#hud-cash').textContent = formatMoney(this.cashShown);
-    $('#hud-day').textContent = `Day ${g.phase === 'summary' ? s.day - 1 : s.day}`;
+    setText(h.cash, formatMoney(this.cashShown));
+    setText(h.day, `Day ${g.phase === 'summary' ? s.day - 1 : s.day}`);
     const night = g.phase === 'night' || g.phase === 'summary';
-    $('#hud-clock').textContent = night ? 'Closed' : formatClock(Math.min(g.clock, DAY.closeHour + 0.99));
+    setText(h.clock, night ? 'Closed' : formatClock(Math.min(g.clock, DAY.closeHour + 0.99)));
     const prog = clamp((g.clock - DAY.openHour) / (DAY.closeHour - DAY.openHour), 0, 1);
-    $('#hud-clock-fill').style.width = `${night ? 100 : prog * 100}%`;
-    $('#hud-sun').textContent = night ? '🌙' : g.clock >= 19 ? '🌇' : g.clock >= 17.5 ? '🌆' : '☀️';
-    $('#hud-stars').innerHTML = `${starsHTML(s.rating)}<b>${s.rating.toFixed(2)}</b>`;
+    setStyle(h.fill, 'width', `${night ? 100 : Math.round(prog * 200) / 2}%`);
+    setText(h.sun, night ? '🌙' : g.clock >= 19 ? '🌇' : g.clock >= 17.5 ? '🌆' : '☀️');
+    setHTML(h.stars, `${starsHTML(Math.round(s.rating * 100) / 100)}<b>${s.rating.toFixed(2)}</b>`);
     const next = CUISINE_ORDER.map((id) => CUISINES[id]).find((c) => c.stars > s.rating);
-    $('#hud-next').textContent = next ? `Next: ${next.icon} ${next.stars.toFixed(1)}★` : 'All cuisines unlocked!';
-    $('#hud-amb').textContent = `${Math.round(g.ambience * 100)}%`;
+    setText(h.next, next ? `Next: ${next.icon} ${next.stars.toFixed(1)}★` : 'All cuisines unlocked!');
+    setText(h.amb, `${Math.round(g.ambience * 100)}%`);
     const dash = g.player ? clamp(1 - g.player.dashCD / g.upg('dash'), 0, 1) : 1;
-    $('#hud-dash').style.setProperty('--p', dash);
-    $('#hud-dash').classList.toggle('ready', dash >= 1);
-    this.e.vignette.classList.toggle('on', g.fire.count > 0);
-    $('#btn-mute').textContent = g.audio.muted ? '🔇' : '🔊';
+    setVar(h.dash, '--p', String(Math.round(dash * 40) / 40));
+    toggle(h.dash, 'ready', dash >= 1);
+    toggle(this.e.vignette, 'on', g.fire.count > 0);
+    setText(h.mute, g.audio.muted ? '🔇' : '🔊');
   }
 
   flashCash(good = true) {
@@ -203,14 +230,19 @@ export class UI {
   }
 
   updateTickets() {
+    const n = this.ticketEls.size;
+    const room = this.e.tickets.clientWidth || window.innerWidth * 0.6;
+    const per = n ? room / n : 999;
+    toggle(this.e.tickets, 'compact', per < 122 && per >= 86);
+    toggle(this.e.tickets, 'tiny', per < 86);
     for (const t of this.game.orders.tickets) {
       const node = this.ticketEls.get(t.id);
       if (!node) continue;
       const p = clamp(t.customer.patience, 0, 1);
-      const fill = node.querySelector('.t-fill');
-      fill.style.width = `${p * 100}%`;
-      node.classList.toggle('warn', p <= 0.5 && p > 0.25);
-      node.classList.toggle('danger', p <= 0.25);
+      if (!node._fill) node._fill = node.querySelector('.t-fill');
+      setStyle(node._fill, 'width', `${Math.round(p * 200) / 2}%`);
+      toggle(node, 'warn', p <= 0.5 && p > 0.25);
+      toggle(node, 'danger', p <= 0.25);
     }
   }
 
@@ -230,8 +262,14 @@ export class UI {
 
   place(node, x, y, z) {
     const p = this.game.renderer.project(x, y, z);
-    node.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -100%)`;
-    node.style.display = p.visible ? '' : 'none';
+    setStyle(node, 'transform', `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -100%)`);
+    setStyle(node, 'display', p.visible ? '' : 'none');
+  }
+
+  ring(node, p, color) {
+    if (!node._ring) node._ring = node.querySelector('.ring-fg');
+    setStyle(node._ring, 'strokeDashoffset', `${Math.round(119.4 * (1 - p))}`);
+    setStyle(node._ring, 'stroke', color);
   }
 
   updateWorld() {
@@ -248,10 +286,8 @@ export class UI {
             <svg class="ring" viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" class="ring-bg"/><circle cx="22" cy="22" r="19" class="ring-fg"/></svg>
             <img src="${this.thumb(`dish:${c.order}`)}" alt="">${c.critic ? '<span class="crown">👑</span>' : ''}`);
           const p = clamp(c.patience, 0, 1);
-          const fg = node.querySelector('.ring-fg');
-          fg.style.strokeDashoffset = `${119.4 * (1 - p)}`;
-          fg.style.stroke = p > 0.5 ? '#5ee07a' : p > 0.25 ? '#ffc93c' : '#ff4d4d';
-          node.classList.toggle('urgent', p <= 0.25);
+          this.ring(node, p, p > 0.5 ? '#5ee07a' : p > 0.25 ? '#ffc93c' : '#ff4d4d');
+          toggle(node, 'urgent', p <= 0.25);
           this.place(node, c.pos.x, y, c.pos.z);
         } else if (c.state === 'seated') {
           const node = this.w(`t${c.root.id}`, 'bubble think', '<span>💭</span>');
@@ -259,9 +295,7 @@ export class UI {
         } else if (c.group.state === 'queue' && c === c.group.members[0]) {
           const node = this.w(`q${c.root.id}`, 'bubble queue', '<svg class="ring" viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" class="ring-bg"/><circle cx="22" cy="22" r="19" class="ring-fg"/></svg><span>⏳</span>');
           const p = clamp(1 - c.group.queueT / c.group.queueMax, 0, 1);
-          const fg = node.querySelector('.ring-fg');
-          fg.style.strokeDashoffset = `${119.4 * (1 - p)}`;
-          fg.style.stroke = p > 0.4 ? '#9ad0ff' : '#ff8a5c';
+          this.ring(node, p, p > 0.4 ? '#9ad0ff' : '#ff8a5c');
           this.place(node, c.pos.x, y, c.pos.z);
         }
       }
@@ -276,17 +310,16 @@ export class UI {
         if (!info) continue;
         const node = this.w(`p${st.obj.uid}`, 'progress', '<div class="pfill"></div><span class="pwarn">!</span>');
         const fill = node.firstChild;
-        fill.style.width = `${clamp(info.value, 0, 1) * 100}%`;
-        fill.style.background = info.color;
-        node.classList.toggle('warn', !!info.warn);
+        setStyle(fill, 'width', `${Math.round(clamp(info.value, 0, 1) * 50) * 2}%`);
+        setStyle(fill, 'background', info.color);
+        toggle(node, 'warn', !!info.warn);
         this.place(node, st.x, st.topY + 0.75, st.z);
       }
       // Staff status
       for (const m of g.staff.members) {
         if (!m.status) continue;
         const node = this.w(`s${m.data.id}`, 'staff-tag', '');
-        const html = `${m.status}`;
-        if (node.dataset.h !== html) { node.dataset.h = html; node.textContent = html; }
+        setText(node, m.status);
         this.place(node, m.pos.x, 1.75, m.pos.z);
       }
     }
@@ -307,7 +340,7 @@ export class UI {
   updatePrompt() {
     const g = this.game;
     const P = this.e.prompt;
-    if (g.phase !== 'day' || !g.player) { P.classList.add('hidden'); return; }
+    if (g.phase !== 'day' || !g.player) { toggle(P, 'hidden', true); return; }
     const pl = g.player;
     const d = g.interact.describe(pl, pl.target);
     const parts = [];
@@ -320,7 +353,7 @@ export class UI {
       P.dataset.h = html;
       P.innerHTML = html;
     }
-    P.classList.toggle('hidden', !html);
+    toggle(P, 'hidden', !html);
   }
 
   // ------------------------------------------------------------- toasts

@@ -74,7 +74,9 @@ class Game {
     this.camPan = new THREE.Vector3();
     this.countdownT = 0;
     this.closingAnnounced = false;
+    this.announced = {};
     this.last = performance.now();
+    this.perf = { t: 0, frames: 0, slow: 0 };
 
     window.addEventListener('visibilitychange', () => {
       if (document.hidden && this.phase === 'day' && !this.paused) this.togglePause(true);
@@ -455,6 +457,7 @@ class Game {
     this.today = blankDay(this.state.rating);
     this.clock = DAY.openHour - 0.25;
     this.closingAnnounced = false;
+    this.announced = {};
     this.camPan.set(0, 0, 0);
     this.phase = 'countdown';
     this.countdownT = 0;
@@ -535,11 +538,33 @@ class Game {
   loop() {
     const tick = (now) => {
       requestAnimationFrame(tick);
-      const dt = Math.min(0.05, Math.max(0, (now - this.last) / 1000));
+      const raw = Math.max(0, (now - this.last) / 1000);
+      const dt = Math.min(0.05, raw);
       this.last = now;
       this.frame(dt);
+      if (raw < 1) this.watchPerformance(raw);
     };
     requestAnimationFrame(tick);
+  }
+
+  // Drop render resolution / shadow quality if the machine can't keep up
+  watchPerformance(rawDt) {
+    const p = this.perf;
+    if (this.phase !== 'day' || this.paused || (this.renderer.quality ?? 2) === 0) return;
+    p.t += rawDt;
+    p.frames++;
+    if (p.t < 4) return;
+    const fps = p.frames / p.t;
+    p.t = 0;
+    p.frames = 0;
+    if (fps < 40) {
+      p.slow++;
+      if (p.slow < 2) return;
+      p.slow = 0;
+      const q = (this.renderer.quality ?? 2) - 1;
+      this.renderer.setQuality(q);
+      console.info(`[perf] ${fps.toFixed(0)} fps — lowering render quality to ${q}`);
+    } else p.slow = 0;
   }
 
   frame(dt) {
@@ -659,6 +684,23 @@ class Game {
     r.targetYaw = CAMERA.yaw;
     r.setTimeOfDay(this.clock, dt);
     r.setClock(this.clock);
+
+    // Rush hours & fires switch to the frantic music track
+    if (open) {
+      const rush = this.fire.count > 0 || (this.clock >= 18 && this.clock < 20);
+      this.audio.startMusic(rush ? 'rush' : 'day');
+      for (const [hour, key, text] of [[11.75, 'lunch', '🍽️ Lunch rush! Customers are flooding in.'], [17.75, 'dinner', '🌆 Dinner rush! Keep those pans moving!']]) {
+        if (this.clock >= hour && !this.announced[key]) {
+          this.announced[key] = true;
+          this.ui.toast(text, 'info');
+          this.audio.bell();
+        }
+      }
+      if (this.state.cash < 0 && !this.announced.debt) {
+        this.announced.debt = true;
+        this.ui.toast("📉 You're in the red! Serve more dishes before buying anything else.", 'warn');
+      }
+    }
 
     this.player.update(dt);
     if (open) this.customers.update(dt);

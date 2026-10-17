@@ -275,8 +275,9 @@ class FloaterLayer {
       const pop = t < 0.15 ? 0.4 + (t / 0.15) * 0.75 : t < 0.25 ? 1.15 - ((t - 0.15) / 0.1) * 0.15 : 1;
       const alpha = t > 0.7 ? 1 - (t - 0.7) / 0.3 : 1;
       const wob = f.wobble ? Math.sin(t * 12 + f.seed) * f.wobble : 0;
-      f.el.style.transform = `translate(${p.x + wob}px, ${p.y}px) translate(-50%, -50%) scale(${pop * f.scale})`;
-      f.el.style.opacity = p.visible ? alpha : 0;
+      f.el.style.transform = `translate(${(p.x + wob).toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -50%) scale(${(pop * f.scale).toFixed(3)})`;
+      const op = p.visible ? alpha.toFixed(2) : '0';
+      if (f.op !== op) { f.op = op; f.el.style.opacity = op; }
     }
   }
 

@@ -213,8 +213,8 @@ class Brain {
     const s = this.s;
     this.failCool -= dt;
     if (!this.task) {
-      if (s.held) this.task = this.disposeHeld();
-      else if (this.failCool <= 0) this.task = this.pickTask();
+      if (s.held) { this.task = this.disposeHeld(); this.taskName = 'dispose'; }
+      else if (this.failCool <= 0) this.task = this.fireTask() || this.pickTask();
       if (!this.task) { this.idle(dt); return; }
       this.idleT = 0;
     }
@@ -223,6 +223,10 @@ class Brain {
       if (r.done) this.finish(false);
     } catch (e) {
       if (!(e instanceof JobFail)) console.warn('[staff AI]', e);
+      if (window.__aiStats) {
+        const k = `${this.s.role}:${this.taskName || '?'}:${e.message}`;
+        window.__aiStats[k] = (window.__aiStats[k] || 0) + 1;
+      }
       this.finish(true);
     }
   }
@@ -236,6 +240,7 @@ class Brain {
     }
     this.claims = [];
     this.target = null;
+    this.firefighting = false;
     this.s.path = null;
     this.s.vel.set(0, 0, 0);
     if (failed) {
@@ -272,7 +277,7 @@ class Brain {
 
   stations(pred) { return this.grid.stations().filter((st) => st.fire <= 0 && pred(st)); }
 
-  *walkTo(st) {
+  *walkTo(st, opts = {}) {
     const s = this.s;
     const grid = this.grid;
     let attempts = 0;
@@ -294,7 +299,7 @@ class Brain {
       let best = Infinity, stuckT = 0, arrived = false;
       while (!arrived) {
         const dt = (yield) || 0.016;
-        if (st.fire > 0) fail('fire');
+        if (st.fire > 0 && !opts.allowFire) fail('fire');
         const r = s.followPath(dt, s.speed);
         if (r === 'arrived' || r === 'none') { arrived = true; break; }
         const d = Math.hypot(goal.x - s.pos.x, goal.z - s.pos.z);
@@ -340,6 +345,7 @@ class Brain {
 
   // Put whatever we're holding somewhere sensible.
   *disposeHeld() {
+    this.taskName = 'disposeHeld';
     const s = this.s;
     const it = s.held;
     if (!it) return;
@@ -363,6 +369,46 @@ class Brain {
     this.claim(target);
     yield* this.walkTo(target);
     if (!this.act(target)) fail('dispose failed');
+  }
+
+  // Any staff member will grab the extinguisher and fight a fire (one at a time).
+  fireTask() {
+    const fires = this.grid.stations().filter((st) => st.fire > 0);
+    if (!fires.length) return null;
+    if (this.g.staff.members.some((m) => m !== this.s && m.brain && m.brain.firefighting)) return null;
+    if (this.g.player.held && this.g.player.held.kind === 'tool') return null;
+    const loose = this.grid.stations().find((st) => st.item && st.item.kind === 'tool' && st.fire <= 0);
+    const stand = this.nearest(this.grid.stations('extinguisher').filter((st) => st.has));
+    const src = loose || stand;
+    if (!src) return null;
+    this.firefighting = true;
+    return this.fightFire(src);
+  }
+
+  *fightFire(src) {
+    this.taskName = 'fire';
+    const s = this.s;
+    s.status = '🧯';
+    yield* this.walkTo(src);
+    if (!this.act(src) || !s.held || s.held.kind !== 'tool') fail('no extinguisher');
+    let guard = 0;
+    for (;;) {
+      const fires = this.grid.stations().filter((st) => st.fire > 0);
+      if (!fires.length || guard++ > 12) break;
+      const target = this.nearest(fires);
+      yield* this.walkTo(target, { allowFire: true });
+      let t = 0;
+      while (target.fire > 0 && t < 7) {
+        const dt = (yield) || 0.016;
+        t += dt;
+        s.faceTo(target.x, target.z);
+        const dx = Math.sin(s.facing), dz = Math.cos(s.facing);
+        for (let i = 0; i < 2; i++) this.g.particles.foam(s.pos.x + dx * 0.5, 1.0, s.pos.z + dz * 0.5, dx, dz);
+        this.g.fire.spray(s.pos.x, s.pos.z, dx, dz, dt);
+        this.g.staffSpraying = true;
+      }
+    }
+    this.firefighting = false;
   }
 
   idle(dt) {
@@ -422,6 +468,7 @@ export class WaiterBrain extends Brain {
   }
 
   *deliver(pass, cust) {
+    this.taskName = 'deliver';
     const s = this.s;
     this.claim(pass);
     cust.claimedBy = s;
@@ -439,6 +486,7 @@ export class WaiterBrain extends Brain {
   }
 
   *clearTable(table) {
+    this.taskName = 'clearTable';
     this.claim(table);
     this.s.status = '🧹';
     yield* this.walkTo(table);
@@ -453,6 +501,7 @@ export class WaiterBrain extends Brain {
   }
 
   *collect(table) {
+    this.taskName = 'collect';
     this.claim(table);
     this.s.status = '💵';
     yield* this.walkTo(table);
@@ -474,6 +523,8 @@ export class DishwasherBrain extends Brain {
     const racks = this.stations((st) => st.kind === 'platerack');
     const clean = this.stations((st) => (st.kind === 'sink' || st.kind === 'autowasher') && this.free(st) && st.clean > 0);
     if (clean.length && racks.length) return this.restock(this.nearest(clean));
+    const parked = this.stations((st) => (st.kind === 'counter' || st.kind === 'pass') && this.free(st) && st.item && st.item.kind === 'plate' && st.item.dirty);
+    if (parked.length) return this.clearTable(this.nearest(parked));
     const hasWaiter = this.g.staff.members.some((m) => m.role === 'waiter');
     if (!hasWaiter) {
       const tables = this.stations((st) => st.kind === 'table' && this.free(st) && st.hasDirty());
@@ -483,6 +534,7 @@ export class DishwasherBrain extends Brain {
   }
 
   *wash(sink) {
+    this.taskName = 'wash';
     const s = this.s;
     this.claim(sink);
     s.status = '🧽';
@@ -504,6 +556,7 @@ export class DishwasherBrain extends Brain {
   }
 
   *restock(src) {
+    this.taskName = 'restock';
     const s = this.s;
     this.claim(src);
     s.status = '🍽️';
@@ -519,6 +572,7 @@ export class DishwasherBrain extends Brain {
   }
 
   *clearTable(table) {
+    this.taskName = 'clearTable';
     this.claim(table);
     this.s.status = '🧹';
     yield* this.walkTo(table);
@@ -565,20 +619,29 @@ export class ChefBrain extends Brain {
       }
       if (ck.fire > 0) continue;
       const mine = this.tending.has(ck);
-      if (!mine && !this.free(ck)) continue;
-      if (it.state === 'burnt') return this.rescue(ck);
+      const other = ck.reservedBy && ck.reservedBy !== this.s ? ck.reservedBy : null;
+      // A colleague who is busy elsewhere can't save it in time — step in
+      const otherBusy = !other || !other.brain || other.brain.taskName !== 'rescue';
       const done = isCookOutput(ck.cookType, it);
-      if (mine && (done || it.cook > 0.7)) return this.rescue(ck);
-      if (!mine && done && it.burn > 0.25) return this.rescue(ck);
+      if (it.state === 'burnt' && otherBusy) return this.rescue(ck);
+      if (mine && (done || it.cook > 0.55)) return this.rescue(ck);
+      if (done && it.burn > 0.12 && otherBusy) return this.rescue(ck);
     }
-    // 2. Head chefs plate complete dishes
+    // 2. Free up clogged counters by binning leftovers nobody needs
+    if (this.freeCounters().length < 2) {
+      const stale = this.findStale();
+      if (stale) return this.binStale(stale);
+    }
+    // 3. Head chefs plate complete dishes
     if (this.s.data.level >= 3) {
       const job = this.findPlating();
       if (job) return this.plate(job);
     }
-    // 3. Prep what open orders still need
+    // 4. Prep what open orders still need
     const needs = computeNeeds(this.g, this);
-    const keys = [...needs.keys()];
+    let keys = [...needs.keys()];
+    // While something is on the heat, only take short jobs so we're back in time
+    if (this.tending.size) keys = keys.filter((k) => { const c = chainFor(k); return !c.cooker && !c.toppings.length; });
     // Prioritise slow cooked items first so they start early
     keys.sort((a, b) => (chainFor(b).cooker ? 1 : 0) - (chainFor(a).cooker ? 1 : 0));
     for (const k of keys) {
@@ -587,13 +650,55 @@ export class ChefBrain extends Brain {
     return null;
   }
 
+  // Loose food / partial plates on counters that no open order can use
+  findStale() {
+    const orders = openOrders(this.g);
+    const keys = new Set();
+    for (const o of orders) {
+      for (const part of DISHES[o.order].parts) {
+        keys.add(part);
+        for (const t of chainFor(part).toppings) keys.add(`${t}:chopped`);
+      }
+    }
+    let best = null, bd = Infinity;
+    for (const st of this.grid.stations()) {
+      if ((st.kind !== 'counter' && st.kind !== 'pass') || !st.item || !this.free(st) || st.fire > 0) continue;
+      const it = st.item;
+      let useful;
+      if (it.kind === 'plate') {
+        if (it.dirty || !it.contents.length) continue;
+        useful = orders.some((o) => it.contents.every((c) => DISHES[o.order].parts.includes(itemKey(c))));
+      } else if (it.kind === 'ing') {
+        useful = it.state !== 'burnt' && [...keys].some((k) => canBecome(it, k));
+      } else continue;
+      if (useful) continue;
+      const d = this.dist(st);
+      if (d < bd) { bd = d; best = st; }
+    }
+    return best;
+  }
+
+  *binStale(st) {
+    this.taskName = 'cleanup';
+    this.claim(st);
+    this.s.status = '🗑️';
+    yield* this.walkTo(st);
+    if (!st.item || !this.act(st)) fail('stale gone');
+    this.release(st);
+    const bin = this.nearest(this.stations((x) => x.kind === 'trash'));
+    if (!bin) fail('no bin');
+    yield* this.walkTo(bin);
+    this.act(bin);
+  }
+
   feasible(key) {
     const c = chainFor(key);
     const hasLoose = !!this.findLooseFor(key);
-    if (!hasLoose && !this.grid.stations('crate').some((st) => st.ing === c.ing)) return false;
+    const crates = this.stations((st) => st.kind === 'crate');
+    if (!hasLoose && !crates.some((st) => st.ing === c.ing)) return false;
     if (c.chop && !this.stations((st) => st.kind === 'board' && this.free(st) && !st.item).length && !hasLoose) return false;
     if (c.cooker && !this.stations((st) => st.kind === 'cooker' && st.cookType === c.cooker && this.free(st) && !st.item).length) return false;
-    for (const t of c.toppings) if (!this.grid.stations('crate').some((st) => st.ing === t)) return false;
+    for (const t of c.toppings) if (!crates.some((st) => st.ing === t)) return false;
     if (c.toppings.length && !this.freeCounters().length) return false;
     if (!c.cooker && !this.freeCounters().length) return false;
     return true;
@@ -615,14 +720,17 @@ export class ChefBrain extends Brain {
     });
   }
 
-  // A loose item somewhere (counter / finished board) that can become `key`
-  findLooseFor(key) {
+  // A loose item somewhere (counter / finished board) that can become `key`.
+  // Items already in their final form only count when we want them as-is (e.g. pizza toppings) —
+  // otherwise they're already counted as supply and moving them achieves nothing.
+  findLooseFor(key, allowFinal = false) {
     let best = null, bestScore = Infinity;
     for (const st of this.grid.stations()) {
       if (!st.item || st.fire > 0 || !this.free(st)) continue;
       if (!['counter', 'board', 'pass', 'conveyor'].includes(st.kind)) continue;
       if (st.kind === 'board' && (chopInfo(st.item) || st.workT > 0)) continue;
       if (!canBecome(st.item, key)) continue;
+      if (!allowFinal && itemKey(st.item) === key) continue;
       const progress = st.item.state === 'raw' ? 1 : 0;
       const score = this.dist(st) + progress * 3;
       if (score < bestScore) { bestScore = score; best = st; }
@@ -630,10 +738,10 @@ export class ChefBrain extends Brain {
     return best;
   }
 
-  *obtain(key) {
+  *obtain(key, allowFinal = false) {
     // Leaves the chef holding an item that can become `key`
     const c = chainFor(key);
-    const loose = this.findLooseFor(key);
+    const loose = this.findLooseFor(key, allowFinal);
     if (loose) {
       this.claim(loose);
       yield* this.walkTo(loose);
@@ -672,6 +780,7 @@ export class ChefBrain extends Brain {
   }
 
   *prep(key) {
+    this.taskName = 'prep';
     const s = this.s;
     const c = chainFor(key);
     this.target = key;
@@ -687,7 +796,7 @@ export class ChefBrain extends Brain {
       for (const t of c.toppings) {
         if (!counter.item) fail('base stolen');
         if ((counter.item.toppings || []).includes(t)) continue;
-        yield* this.obtain(`${t}:chopped`);
+        yield* this.obtain(`${t}:chopped`, true);
         if (chopInfo(s.held)) yield* this.chopHeld();
         yield* this.walkTo(counter);
         if (!counter.item || !canTop(counter.item, s.held)) fail('topping');
@@ -722,8 +831,10 @@ export class ChefBrain extends Brain {
   }
 
   *rescue(ck) {
+    this.taskName = 'rescue';
     const s = this.s;
     ck.reservedBy = s;
+    this.tending.add(ck);
     this.claims.push(ck);
     s.status = '⏲️';
     yield* this.walkTo(ck);
@@ -780,6 +891,7 @@ export class ChefBrain extends Brain {
   }
 
   *plate(job) {
+    this.taskName = 'plate';
     const s = this.s;
     const { cust, sources, plateSrc, pass } = job;
     cust.platedBy = s;

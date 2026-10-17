@@ -42,6 +42,7 @@ export function umat(color, o = {}) {
   const m = new THREE.MeshStandardMaterial({
     color, roughness: o.r ?? 0.6, metalness: o.m ?? 0, emissive: o.e ?? '#000000', emissiveIntensity: o.ei ?? 1,
   });
+  m.userData.unique = true;
   if (o.op !== undefined) { m.transparent = true; m.opacity = o.op; m.depthWrite = false; }
   return m;
 }
@@ -160,7 +161,18 @@ function mergeGeometries(geos, withUv) {
   out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   if (uv) out.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   out.computeBoundingSphere();
+  out.userData.merged = true;
   return out;
+}
+
+// Free GPU resources owned by an object (merged geometries & unique materials). Cached ones are shared.
+export function disposeObject(root) {
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    if (o.geometry?.userData.merged || o.geometry?.userData.own) o.geometry.dispose();
+    const ms = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of ms) if (m?.userData.unique) m.dispose();
+  });
 }
 
 export function mergeStatic(root) {

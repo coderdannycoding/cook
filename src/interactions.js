@@ -45,12 +45,12 @@ export class Interactions {
     if (!this.canTransfer(st, item)) return false;
     if (st.kind === 'trash') {
       if (item.kind === 'plate') {
-        st.dispose(item.contents.length);
+        st.binIt(item.contents.length);
         item.contents = [];
         item.ver++;
         return item;
       }
-      st.dispose(1);
+      st.binIt(1);
       return null;
     }
     if (SPECIAL.has(st.kind)) {

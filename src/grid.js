@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { CATALOG } from './catalog.js';
-import { buildAppliance } from './models.js';
+import { buildAppliance, disposeObject } from './models.js';
 import { createStation } from './stations.js';
 import { clamp, uid, easeOutBack, DIRS4 } from './utils.js';
 
@@ -229,6 +229,7 @@ export class Grid {
     if (i >= 0) this.objects.splice(i, 1);
     this.group.remove(obj.mesh);
     obj.station?.dispose?.();
+    disposeObject(obj.mesh);
     this.rebuildOccupancy();
   }
 

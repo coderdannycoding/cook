@@ -149,9 +149,9 @@ export const STAFF_TYPES = {
   dish:   { name: 'Dishwasher', icon: '🧽', hire: 130, wage: 16, desc: 'Scrubs dirty plates at the sink and restocks the plate rack.' },
 };
 export const STAFF_LEVELS = [
-  { speed: 2.7, work: 0.75, label: 'Trainee' },
-  { speed: 3.3, work: 1.0, label: 'Pro' },
-  { speed: 4.0, work: 1.35, label: 'Master' },
+  { speed: 3.0, work: 0.8, label: 'Trainee' },
+  { speed: 3.6, work: 1.1, label: 'Pro' },
+  { speed: 4.3, work: 1.45, label: 'Master' },
 ];
 export const STAFF_UPGRADE_COST = [0, 220, 450];
 export const MAX_STAFF = 6;

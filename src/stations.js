@@ -496,7 +496,7 @@ export class TrashStation extends Station {
   canTake() { return false; }
   accepts(item) { return item.kind === 'ing' || (item.kind === 'plate' && !item.dirty && item.contents.length > 0); }
   canAccept(item) { return this.fire <= 0 && this.accepts(item); }
-  dispose(n = 1) {
+  binIt(n = 1) {
     this.lid = 1;
     this.changed();
     this.game.audio.trash();
