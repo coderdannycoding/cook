@@ -850,7 +850,18 @@ function start() {
 }
 
 // Inside a claude.ai artifact viewer, boot through its hot-update hook; elsewhere just start.
+// Boot exactly once, and don't wait forever if the hook never calls back.
+let booted = false;
+const bootOnce = () => {
+  if (booted) return;
+  booted = true;
+  start();
+};
 const hot = window.claude?.hot;
-if (hot?.ready) hot.ready(start);
-else start();
+if (hot?.ready) {
+  hot.ready(bootOnce);
+  setTimeout(bootOnce, 4000);
+} else {
+  bootOnce();
+}
 

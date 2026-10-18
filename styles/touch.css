@@ -148,10 +148,11 @@ body.touch-play .dash-ring { display: none; }
 
 /* ---------------------------------------------------------------- small / short screens (phones) */
 @media (max-height: 520px), (max-width: 640px) {
-  .hud-left { width: 132px; gap: 5px; }
+  .hud-left { width: 146px; gap: 5px; }
   .hud-box { padding: 5px 8px; border-radius: 11px; gap: 5px; }
   .hud-box b { font-size: 15px; }
   .hud-box .ico { font-size: 15px; }
+  .hud-day-row { gap: 5px; white-space: nowrap; }
   .hud-day-row b { font-size: 14px; }
   #hud-clock { font-size: 12px; }
   .stars { font-size: 13px; }

@@ -28,6 +28,12 @@ into `public/`. It fails the deploy if any file referenced from HTML, a JS impor
 `vercel.json` also adds a strict Content-Security-Policy and other security headers, plus
 long-lived caching for the versioned Three.js file.
 
+The CSP blocks third-party scripts, including the Vercel Toolbar that Vercel can inject into
+preview deployments, so the toolbar won't show on previews. Production is unaffected. To turn it
+back on, add the sources from
+[Vercel's toolbar CSP docs](https://vercel.com/docs/vercel-toolbar/managing-toolbar) to the
+`Content-Security-Policy` header in `vercel.json`.
+
 The same `public/` folder works on any static host. Netlify, Cloudflare Pages and GitHub Pages
 all take build command `npm run build` and publish directory `public`.
 
@@ -38,9 +44,10 @@ npm run build:single    # → dist/pandemonium-bistro.html, everything inlined (
 ```
 
 This bundles the JS with esbuild (fetched on demand through `npx`) and inlines all CSS and
-fonts, so the game runs from one HTML file. Upload it to itch.io as an HTML game (rename it to
-`index.html` and zip it) or share it directly. It still needs to be served over `http(s)`,
-which itch.io does for you.
+fonts, so the game runs from one HTML file. It even opens straight from disk with a double-click.
+For itch.io, rename it to `index.html`, zip it and upload it as an HTML game. The single file uses
+inline scripts, so don't serve it with this repo's `vercel.json` headers: the Vercel deploy uses
+the multi-file `public/` build instead.
 
 ## Run it locally
 
