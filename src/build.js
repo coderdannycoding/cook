@@ -1,6 +1,7 @@
 // Night-time grid build mode: ghost previews, rotation, placement validation (including
 // reachability), moving existing objects and selling them.
 
+import { icon } from './icons.js';
 import * as THREE from '../vendor/three-0.169.0.module.min.js';
 import { CATALOG } from './catalog.js';
 import { ECON } from './config.js';
@@ -42,12 +43,8 @@ export class BuildMode {
     this.cancelMove();
     this.selectedType = type;
     this.makeGhost(CATALOG[type]);
-    const input = this.game.input;
-    if (input.touchMode) {
-      // No hover on touch screens: start the preview in the middle of the space above the dock
-      input.hover.x = window.innerWidth / 2;
-      input.hover.y = window.innerHeight * (0.5 - this.game.ui.dockFraction() / 2);
-    }
+    // Touch screens have no hover: the preview sits in the middle of the room until the first tap
+    this.aimed = !this.game.input.touchMode;
   }
 
   cancel() {
@@ -110,10 +107,10 @@ export class BuildMode {
   help(text) {
     const touch = this.game.input.touchMode;
     const t = text || (this.selectedType || this.moving
-      ? (touch ? '<b>Tap</b> a spot to preview · <b>tap it again</b> to place' : '<b>Click</b> to place · <kbd>R</kbd> rotate · <b>Right-click</b>/<kbd>Esc</kbd> cancel')
+      ? (touch ? '<b>Tap</b> a spot to preview it, then <b>tap again</b> to place' : '<b>Click</b> to place · <kbd>R</kbd> rotates · <b>right-click</b> or <kbd>Esc</kbd> cancels')
       : (touch
-        ? '<b>Pick an item</b> below to buy · <b>Tap</b> a placed item to move or sell it · drag to pan, pinch to zoom'
-        : '<b>Pick an item</b> below to buy · <b>Click</b> a placed item to move it · <b>Right-click</b> or <kbd>X</kbd> to sell (75% refund) · drag or <kbd>WASD</kbd> to pan · wheel zoom'));
+        ? '<b>Choose an item</b> below to buy it · <b>tap</b> a placed item to move or sell it · drag to pan, pinch to zoom'
+        : '<b>Choose an item</b> below to buy it · <b>click</b> a placed item to move it · <b>right-click</b> or <kbd>X</kbd> sells it for 75% back · drag or <kbd>WASD</kbd> pans'));
     if (t !== this.lastHelp) {
       this.lastHelp = t;
       this.game.ui.setBuildHelp(t);
@@ -146,6 +143,13 @@ export class BuildMode {
     }
     const placing = this.selectedType || this.moving;
     if (placing) {
+      if (tap) this.aimed = true;
+      if (!this.aimed) {
+        // follows the room centre while the camera settles (the dock folds away on phones)
+        const c = r.project(g.grid.W / 2, 0, g.grid.H / 2);
+        input.hover.x = c.x;
+        input.hover.y = c.y;
+      }
       const def = this.moving ? this.moving.def : CATALOG[this.selectedType];
       const at = this.footprintAt(def, input.hover.x, input.hover.y);
       if (!at) { this.renderTools(null); return; }
@@ -163,7 +167,7 @@ export class BuildMode {
       const reason = !check.ok ? check.reason : !afford ? 'Not enough cash' : '';
       this.pending = { def, x, z, ok, reason };
       const how = input.touchMode ? '<b>Tap again</b> to place' : '<b>Click</b> place · <kbd>R</kbd> rotate · <b>Right-click</b> cancel';
-      this.help(`${this.moving ? 'Moving' : 'Placing'} <b>${def.name}</b>${this.moving ? '' : ` (${formatMoney(def.price)})`}${reason ? ` — <span class="bad">${reason}</span>` : ''} · ${how}`);
+      this.help(`${this.moving ? 'Moving' : 'Placing'} <b>${def.name}</b>${this.moving ? '' : ` (${formatMoney(def.price)})`}${reason ? `: <span class="bad">${reason}</span>` : ''} · ${how}`);
       if (tap) {
         // A tap on the ghost confirms; a tap elsewhere just moves the preview there (touch).
         const t = this.footprintAt(def, tap.x, tap.y);
@@ -204,7 +208,14 @@ export class BuildMode {
     this.renderTools(null);
   }
 
+  // While an item is being placed on a phone, fold the dock down to its tab row so the floor is visible
+  updatePeek() {
+    const placing = !!(this.selectedType || this.moving);
+    this.game.ui.setDockPeek(placing && (this.game.input.touchMode || window.innerHeight < 560));
+  }
+
   startMove(o) {
+    this.aimed = true; // the preview starts where the item was tapped or clicked
     this.moving = o;
     this.rot = o.rot;
     o.mesh.visible = false;
@@ -235,10 +246,10 @@ export class BuildMode {
       return;
     }
     const refund = st.moving ? formatMoney(Math.round(st.moving.def.price * ECON.sellRefund)) : '';
-    T.innerHTML = `<button type="button" data-tool="rotate">⟳ Rotate</button>
-      <button type="button" class="ok" data-tool="place" ${st.ok ? '' : 'disabled'}>✓ Place here</button>
-      ${st.moving ? `<button type="button" class="bad" data-tool="sell">🗑 Sell ${refund}</button>` : ''}
-      <button type="button" data-tool="cancel">✕ Cancel</button>`;
+    T.innerHTML = `<button type="button" data-tool="rotate">${icon('rotate')}Rotate</button>
+      <button type="button" class="ok" data-tool="place" ${st.ok ? '' : 'disabled'}>${icon('check')}Place here</button>
+      ${st.moving ? `<button type="button" class="bad" data-tool="sell">${icon('trash')}Sell for ${refund}</button>` : ''}
+      <button type="button" data-tool="cancel">${icon('x')}Cancel</button>`;
     T.classList.remove('hidden');
     if (!T.onclick) {
       T.onclick = (ev) => {

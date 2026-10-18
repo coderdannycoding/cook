@@ -1,6 +1,8 @@
 // On-screen controls for phones & tablets: a floating joystick on the left half of the screen
 // and Grab / Use / Dash buttons on the right. Buttons show the action they'll perform right now.
 
+import { icon } from './icons.js';
+
 const STICK_RADIUS = 54;
 
 function el(tag, cls, html = '') {
@@ -26,9 +28,9 @@ export class TouchControls {
     this.zone.appendChild(this.base);
     this.buttons = el('div', 'tbtns');
     this.btn = {
-      dash: el('button', 'tbtn dash', '<i>💨</i><span>Dash</span><b class="cd"></b>'),
-      work: el('button', 'tbtn work', '<i>🔪</i><span>Use</span>'),
-      pick: el('button', 'tbtn pick', '<i>✋</i><span>Grab</span>'),
+      dash: el('button', 'tbtn dash', `<i>${icon('wind')}</i><span>Dash</span><b class="cd"></b>`),
+      work: el('button', 'tbtn work', `<i>${icon('knife')}</i><span>Use</span>`),
+      pick: el('button', 'tbtn pick', `<i>${icon('hand')}</i><span>Grab</span>`),
     };
     for (const [k, b] of Object.entries(this.btn)) {
       b.type = 'button';
@@ -115,12 +117,12 @@ export class TouchControls {
     }
   }
 
-  setLabel(k, text, emoji) {
-    const key = `${text}|${emoji}`;
+  setLabel(k, text, ic) {
+    const key = `${text}|${ic}`;
     if (this.labels[k] === key) return;
     this.labels[k] = key;
     const b = this.btn[k];
-    b.querySelector('i').textContent = emoji;
+    b.querySelector('i').innerHTML = icon(ic);
     b.querySelector('span').textContent = text;
   }
 
@@ -133,12 +135,13 @@ export class TouchControls {
     const d = g.interact.describe(pl, pl.target);
     const short = (s, fallback) => {
       if (!s) return fallback;
-      const t = s.replace(/^(Take|Place|Add|Plate) /, '');
-      return t.length > 16 ? `${t.slice(0, 15)}…` : t;
+      // Buttons are small: drop any price in brackets but keep the verb, so "Grab" still reads as an action
+      const t = s.replace(/\s*\(.*\)$/, '');
+      return t.length > 15 ? `${t.slice(0, 14)}…` : t;
     };
     const holdingTool = pl.held && pl.held.kind === 'tool';
-    this.setLabel('pick', short(d.e, pl.held ? 'Drop' : 'Grab'), pl.held ? '🫳' : '✋');
-    this.setLabel('work', short(d.f, holdingTool ? 'Spray' : 'Use'), holdingTool ? '🧯' : d.f && /Wash/.test(d.f) ? '🧽' : d.f && /cash/i.test(d.f) ? '💵' : '🔪');
+    this.setLabel('pick', short(d.e, pl.held ? 'Drop' : 'Grab'), pl.held ? 'drop' : 'hand');
+    this.setLabel('work', short(d.f, holdingTool ? 'Spray' : 'Use'), holdingTool ? 'extinguisher' : d.f && /Wash/.test(d.f) ? 'sponge' : d.f && /cash/i.test(d.f) ? 'coin' : 'knife');
     this.btn.pick.classList.toggle('idle', !d.e);
     this.btn.work.classList.toggle('idle', !d.f);
     const cd = Math.max(0, pl.dashCD);

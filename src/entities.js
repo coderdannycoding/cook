@@ -339,7 +339,7 @@ export class Player extends Character {
         else this.workLatch = null;
         if (!working && input.workPressed && this.held && this.target.canWork?.(this)) {
           g.audio.error();
-          g.particles.label(this.pos.x, 1.9, this.pos.z, 'Hands full!', 'f-warn');
+          g.particles.label(this.pos.x, 1.9, this.pos.z, 'Hands full', 'f-warn');
         }
       }
     }

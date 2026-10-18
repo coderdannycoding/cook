@@ -258,7 +258,7 @@ export class CookerStation extends Station {
         this.smolder = 0;
         g.audio.fail();
         g.today.burnt++;
-        g.ui.toast(`🔥 ${this.name}: food burnt! Bin it before it ignites!`, 'warn');
+        g.ui.toast(`Food burnt on the ${this.name}. Bin it before it catches fire.`, 'warn', 'fire');
         g.events.emit('burnt', { station: this });
       }
     } else if (it.state === 'burnt') {
@@ -880,7 +880,7 @@ export class FireSystem {
     g.today.fires++;
     const p = st.worldPos();
     for (let i = 0; i < 10; i++) g.particles.fire(p.x, p.y, p.z, 1);
-    g.ui.toast(`🔥 FIRE at the ${st.name}! Grab the extinguisher!`, 'danger');
+    g.ui.toast(`Fire at the ${st.name}. Grab the extinguisher.`, 'danger', 'fire');
     g.events.emit('fire', { station: st });
   }
 
@@ -947,7 +947,7 @@ export class FireSystem {
         g.audio.extinguish();
         g.particles.poof(st.x, 1.0, st.z, '#ffffff', 14);
         g.today.extinguished++;
-        g.ui.toast(`🧯 Fire out at the ${st.name}!`, 'good');
+        g.ui.toast(`The fire at the ${st.name} is out`, 'good', 'extinguisher');
         g.events.emit('extinguished', { station: st });
       }
     }

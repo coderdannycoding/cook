@@ -1,6 +1,6 @@
-// HTML/CSS glassmorphic interface: HUD, animated order tickets, world-anchored bubbles &
-// progress bars, action prompts, toasts, the night-time Build/Staff/Upgrades/Menu dock,
-// and all modal screens (title, summary, pause, help).
+// HTML/CSS interface: HUD, order tickets, world-anchored bubbles & progress bars, action prompts,
+// toasts, the night-time Build/Staff/Upgrades/Menu dock, and all modal screens (title, receipt,
+// pause, help). Styling lives in styles/*.css; icons come from icons.js.
 
 import { DISHES, CUISINES, CUISINE_ORDER, ticketParts, itemLabel } from './recipes.js';
 import {
@@ -8,6 +8,7 @@ import {
 } from './catalog.js';
 import { formatMoney, formatClock, clamp } from './utils.js';
 import { DAY } from './config.js';
+import { icon, hasIcon } from './icons.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 function el(html) {
@@ -16,6 +17,8 @@ function el(html) {
   return t.content.firstElementChild;
 }
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+// The data-a action of whatever was clicked inside a modal (the click may land on a label inside a button)
+const actionOf = (ev) => ev.target.closest && ev.target.closest('[data-a]')?.dataset.a;
 
 // Change-only DOM writes: per-frame UI must not thrash layout/paint when nothing changed.
 function setText(node, text) {
@@ -42,7 +45,8 @@ function starsHTML(rating) {
   return `<span class="stars"><span class="stars-bg">★★★★★</span><span class="stars-fg" style="width:${pct}%">★★★★★</span></span>`;
 }
 
-const ROLE_BLURB = { chef: '🔪 Preps & cooks', waiter: '🍽️ Serves & clears', dish: '🧽 Washes plates' };
+const ROLE_ICON = { chef: 'chefhat', waiter: 'bowtie', dish: 'sponge' };
+const ROLE_BLURB = { chef: 'Preps and cooks', waiter: 'Serves and clears', dish: 'Washes plates' };
 
 export class UI {
   constructor(game) {
@@ -54,7 +58,9 @@ export class UI {
       vignette: $('#fire-vignette'), loading: $('#loading'), buildHelp: $('#build-help'),
       buildTools: $('#build-tools'), rotateHint: $('#rotate-hint'), fullscreen: $('#btn-fullscreen'),
     };
+    for (const n of document.querySelectorAll('[data-icon]')) n.innerHTML = icon(n.dataset.icon);
     this.rotateDismissed = false;
+    this.rotateTimer = 0;
     this.ticketEls = new Map();
     this.worldEls = new Map();
     this.used = new Set();
@@ -89,30 +95,35 @@ export class UI {
       this.e.fullscreen.addEventListener('click', () => {
         g.audio.click();
         const p = document.fullscreenElement ? document.exitFullscreen() : fsEl.requestFullscreen({ navigationUI: 'hide' });
-        Promise.resolve(p).catch(() => this.toast('Fullscreen is not available here', 'warn'));
+        Promise.resolve(p).catch(() => this.toast('Fullscreen isn’t available in this browser', 'warn'));
       });
     }
-    this.e.rotateHint.addEventListener('click', () => {
-      this.rotateDismissed = true;
-      this.e.rotateHint.classList.add('hidden');
-    });
+    this.e.rotateHint.addEventListener('click', () => this.dismissRotateHint());
     this.e.dock.addEventListener('click', (ev) => this.onDockClick(ev));
     this.e.dock.addEventListener('change', (ev) => this.onDockChange(ev));
-    // hover blip on buttons
+    // A soft blip when the mouse moves onto a new button, never a rattle when sweeping across a row
+    let lastHover = null, lastBlip = 0;
     document.addEventListener('mouseover', (ev) => {
-      if (ev.target.closest && ev.target.closest('button, .card')) g.audio.hover();
+      const b = ev.target.closest && ev.target.closest('button, .card');
+      if (!b || b === lastHover) return;
+      lastHover = b;
+      const now = performance.now();
+      if (now - lastBlip < 120) return;
+      lastBlip = now;
+      g.audio.hover();
     });
   }
 
   setLoading(p, text) {
     const L = this.e.loading;
-    if (!L) return;
-    $('.load-fill', L).style.width = `${Math.round(p * 100)}%`;
+    const fill = L && $('.load-fill', L);
+    if (!fill) return;
+    fill.style.width = `${Math.round(p * 100)}%`;
     if (text) $('.load-text', L).textContent = text;
   }
   hideLoading() {
     this.e.loading.classList.add('fade');
-    setTimeout(() => this.e.loading.remove(), 700);
+    setTimeout(() => this.e.loading.remove(), 600);
   }
 
   thumb(key) { return this.thumbs[key] || ''; }
@@ -123,24 +134,26 @@ export class UI {
     const save = g.peekSave();
     const T = this.e.title;
     T.classList.remove('hidden');
-    const colors = ['#e74c3c', '#3d9be9', '#2ecc71', '#f39c12', '#9b59b6', '#ff6fa8'];
+    // apron fabrics: tomato cotton, denim, sage, mustard, plum, charcoal
+    const colors = ['#c8442b', '#34506e', '#3f7a4f', '#d39b2c', '#6a3b55', '#3b3734'];
     const cur = g.settings.color || colors[0];
     T.innerHTML = `
-      <div class="title-card glass">
-        <div class="logo"><span class="logo-pan">🍳</span><h1>Pandemonium<br><span>Bistro</span></h1></div>
-        <p class="tagline">A frantic kitchen-chaos tycoon. Cook, serve, build, expand — don't burn the place down.</p>
+      <div class="title-card">
+        <div class="logo"><h1>Pandemonium<span>Bistro</span></h1></div>
+        <div class="hours">Open daily · 10 AM to 10 PM</div>
+        <p class="tagline">Cook every order by hand while the dining room fills up. After closing, rearrange the kitchen, hire help and put new dishes on the menu.</p>
         <div class="title-buttons">
-          ${save ? `<button class="big-btn primary" data-act="continue">▶ Continue <small>Day ${save.day} · ${formatMoney(save.cash)} · ${save.rating.toFixed(1)}★</small></button>` : ''}
-          <button class="big-btn ${save ? '' : 'primary'}" data-act="new">✨ New Restaurant</button>
-          <button class="big-btn ghost" data-act="help">📖 How to Play</button>
+          ${save ? `<button class="big-btn primary" data-act="continue">Continue <small>Day ${save.day} · ${formatMoney(save.cash)} · ${save.rating.toFixed(1)}★</small></button>` : ''}
+          <button class="big-btn ${save ? '' : 'primary'}" data-act="new">New restaurant</button>
+          <button class="big-btn ghost" data-act="help">How to play</button>
         </div>
         <div class="apron">
-          <span>Chef apron</span>
-          ${colors.map((c) => `<button class="swatch ${c === cur ? 'on' : ''}" data-color="${c}" style="background:${c}" aria-label="apron ${c}"></button>`).join('')}
+          <span>Apron</span>
+          ${colors.map((c) => `<button class="swatch ${c === cur ? 'on' : ''}" data-color="${c}" style="background:${c}" aria-label="Apron colour ${c}" title="Apron colour"></button>`).join('')}
         </div>
         <div class="title-keys">${this.game.input.touchMode
-          ? '<span>🕹️ Left thumb: move</span><span>✋ Grab · 🔪 Use · 💨 Dash buttons</span><span>Pinch to zoom</span>'
-          : '<span><kbd>WASD</kbd> move</span><span><kbd>Shift</kbd>/<kbd>Space</kbd> dash</span><span><kbd>E</kbd> pick / drop</span><span><kbd>F</kbd> chop · wash · spray</span><span><kbd>Esc</kbd> pause</span>'}
+          ? `<span>${icon('joystick')} Left thumb moves</span><span>${icon('hand')} Grab</span><span>${icon('knife')} Use</span><span>${icon('wind')} Dash</span>`
+          : '<span><kbd>WASD</kbd> move</span><span><kbd>Shift</kbd>/<kbd>Space</kbd> dash</span><span><kbd>E</kbd> pick up / put down</span><span><kbd>F</kbd> chop, wash, spray</span><span><kbd>Esc</kbd> pause</span>'}
         </div>
       </div>`;
     T.onclick = (ev) => {
@@ -159,7 +172,7 @@ export class UI {
       if (act === 'continue') { this.hideTitle(); g.continueGame(); }
       if (act === 'new') {
         if (save) {
-          this.confirm('Start a new restaurant?', 'Your current save will be overwritten.', 'Start fresh', () => { this.hideTitle(); g.newGame(); });
+          this.confirm('Start a new restaurant?', `This replaces your saved restaurant (day ${save.day}).`, 'Start over', () => { this.hideTitle(); g.newGame(); });
         } else { this.hideTitle(); g.newGame(); }
       }
       if (act === 'help') this.showHelp();
@@ -180,7 +193,7 @@ export class UI {
     if (!this.h) {
       this.h = {
         cash: $('#hud-cash'), day: $('#hud-day'), clock: $('#hud-clock'), fill: $('#hud-clock-fill'), sun: $('#hud-sun'),
-        stars: $('#hud-stars'), next: $('#hud-next'), amb: $('#hud-amb'), dash: $('#hud-dash'), mute: $('#btn-mute'),
+        stars: $('#hud-stars'), next: $('#hud-next'), dash: $('#hud-dash'), mute: $('#btn-mute'),
       };
     }
     const h = this.h;
@@ -192,16 +205,15 @@ export class UI {
     setText(h.clock, night ? 'Closed' : formatClock(Math.min(g.clock, DAY.closeHour + 0.99)));
     const prog = clamp((g.clock - DAY.openHour) / (DAY.closeHour - DAY.openHour), 0, 1);
     setStyle(h.fill, 'width', `${night ? 100 : Math.round(prog * 200) / 2}%`);
-    setText(h.sun, night ? '🌙' : g.clock >= 19 ? '🌇' : g.clock >= 17.5 ? '🌆' : '☀️');
+    setHTML(h.sun, icon(night ? 'moon' : g.clock >= 17.5 ? 'sunset' : 'sun'));
     setHTML(h.stars, `${starsHTML(Math.round(s.rating * 100) / 100)}<b>${s.rating.toFixed(2)}</b>`);
     const next = CUISINE_ORDER.map((id) => CUISINES[id]).find((c) => c.stars > s.rating);
-    setText(h.next, next ? `Next: ${next.icon} ${next.stars.toFixed(1)}★` : 'All cuisines unlocked!');
-    setText(h.amb, `${Math.round(g.ambience * 100)}%`);
+    setText(h.next, next ? `${next.name} at ${next.stars.toFixed(1)}★` : 'Every cuisine unlocked');
     const dash = g.player ? clamp(1 - g.player.dashCD / g.upg('dash'), 0, 1) : 1;
     setVar(h.dash, '--p', String(Math.round(dash * 40) / 40));
     toggle(h.dash, 'ready', dash >= 1);
     toggle(this.e.vignette, 'on', g.fire.count > 0);
-    setText(h.mute, g.audio.muted ? '🔇' : '🔊');
+    setHTML(h.mute, icon(g.audio.muted ? 'mute' : 'sound'));
   }
 
   flashCash(good = true) {
@@ -222,13 +234,15 @@ export class UI {
   addTicket(t) {
     const d = DISHES[t.dish];
     const parts = ticketParts(t.dish);
+    // Slips never hang perfectly straight on the rail
+    const tilt = (((t.id * 37) % 7) - 3) * 0.7;
     const node = el(`
-      <div class="ticket ${t.critic ? 'critic' : ''}">
-        ${t.critic ? '<div class="t-crown">👑 CRITIC</div>' : ''}
+      <div class="ticket ${t.critic ? 'critic' : ''}" style="--tilt:${tilt}deg">
+        ${t.critic ? '<div class="t-crown">CRITIC</div>' : ''}
         <div class="t-head"><span class="t-table">T${t.table}</span><span class="t-price">$${d.price}</span></div>
         <div class="t-dish"><img src="${this.thumb(`dish:${t.dish}`)}" alt=""></div>
         <div class="t-name">${esc(d.name)}</div>
-        <div class="t-parts">${parts.map((p) => `<div class="t-part"><img src="${this.thumb(`item:${p.key}`)}" alt="">${p.badge ? `<span class="badge">${p.badge}</span>` : ''}</div>`).join('')}</div>
+        <div class="t-parts">${parts.map((p) => `<div class="t-part"><img src="${this.thumb(`item:${p.key}`)}" alt="">${p.badge ? `<span class="badge">${icon(p.badge)}</span>` : ''}</div>`).join('')}</div>
         <div class="t-bar"><div class="t-fill"></div></div>
       </div>`);
     this.e.tickets.appendChild(node);
@@ -292,6 +306,7 @@ export class UI {
     const g = this.game;
     this.used.clear();
     const showWorld = g.phase === 'day' || g.phase === 'countdown';
+    const RING = '<svg class="ring" viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" class="ring-bg"/><circle cx="22" cy="22" r="19" class="ring-fg"/></svg>';
     if (showWorld || g.phase === 'title') {
       // Customers
       for (const c of g.customers.allCustomers()) {
@@ -299,26 +314,25 @@ export class UI {
         if (c.state === 'waiting') {
           const key = `c${c.root.id}`;
           const node = this.w(key, `bubble ${c.critic ? 'critic' : ''}`, `
-            <svg class="ring" viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" class="ring-bg"/><circle cx="22" cy="22" r="19" class="ring-fg"/></svg>
-            <img src="${this.thumb(`dish:${c.order}`)}" alt="">${c.critic ? '<span class="crown">👑</span>' : ''}`);
+            ${RING}<img src="${this.thumb(`dish:${c.order}`)}" alt="">${c.critic ? `<span class="crown">${icon('crown')}</span>` : ''}`);
           const p = clamp(c.patience, 0, 1);
-          this.ring(node, p, p > 0.5 ? '#5ee07a' : p > 0.25 ? '#ffc93c' : '#ff4d4d');
+          this.ring(node, p, p > 0.5 ? '#3f8f5a' : p > 0.25 ? '#e0a020' : '#d8452c');
           toggle(node, 'urgent', p <= 0.25);
           this.place(node, c.pos.x, y, c.pos.z);
         } else if (c.state === 'seated') {
-          const node = this.w(`t${c.root.id}`, 'bubble think', '<span>💭</span>');
+          const node = this.w(`t${c.root.id}`, 'bubble think', icon('dots'));
           this.place(node, c.pos.x, y, c.pos.z);
         } else if (c.group.state === 'queue' && c === c.group.members[0]) {
-          const node = this.w(`q${c.root.id}`, 'bubble queue', '<svg class="ring" viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" class="ring-bg"/><circle cx="22" cy="22" r="19" class="ring-fg"/></svg><span>⏳</span>');
+          const node = this.w(`q${c.root.id}`, 'bubble queue', `${RING}${icon('timer')}`);
           const p = clamp(1 - c.group.queueT / c.group.queueMax, 0, 1);
-          this.ring(node, p, p > 0.4 ? '#9ad0ff' : '#ff8a5c');
+          this.ring(node, p, p > 0.4 ? '#3f8f5a' : '#d8452c');
           this.place(node, c.pos.x, y, c.pos.z);
         }
       }
       // Stations
       for (const st of g.grid.stations()) {
         if (st.fire > 0) {
-          const node = this.w(`f${st.obj.uid}`, 'st-icon fire', '🔥');
+          const node = this.w(`f${st.obj.uid}`, 'st-icon fire', icon('fire'));
           this.place(node, st.x, 1.9, st.z);
           continue;
         }
@@ -335,7 +349,8 @@ export class UI {
       for (const m of g.staff.members) {
         if (!m.status) continue;
         const node = this.w(`s${m.data.id}`, 'staff-tag', '');
-        setText(node, m.status);
+        if (hasIcon(m.status)) setHTML(node, icon(m.status));
+        else setText(node, m.status);
         this.place(node, m.pos.x, 1.75, m.pos.z);
       }
     }
@@ -361,11 +376,11 @@ export class UI {
     const d = g.interact.describe(pl, pl.target);
     const parts = [];
     const touch = g.input.touchMode;
-    if (pl.held) parts.push(`<span class="holding">✋ ${esc(itemLabel(pl.held))}</span>`);
+    if (pl.held) parts.push(`<span class="holding">${icon('hand')}${esc(itemLabel(pl.held))}</span>`);
     // Touch players see the actions on the buttons themselves
     if (d.e && !touch) parts.push(`<span><kbd>E</kbd> ${esc(d.e)}</span>`);
     if (d.f && !touch) parts.push(`<span><kbd>F</kbd> ${esc(d.f)}</span>`);
-    if (d.warn) parts.push(`<span class="pwarn-text">⚠ ${esc(d.warn)}</span>`);
+    if (d.warn) parts.push(`<span class="pwarn-text">${icon('warn')}${esc(d.warn)}</span>`);
     const html = parts.join('');
     if (P.dataset.h !== html) {
       P.dataset.h = html;
@@ -375,16 +390,33 @@ export class UI {
   }
 
   // ------------------------------------------------------------- toasts
-  toast(text, type = 'info') {
-    const node = el(`<div class="toast ${type}">${esc(text)}</div>`);
-    this.e.toasts.appendChild(node);
-    while (this.e.toasts.children.length > 4) this.e.toasts.firstChild.remove();
+  // Short messages down the right edge. A repeat of a message already on screen just stays up
+  // longer instead of stacking a copy, and at most three show at once.
+  toast(text, type = 'info', ic = '') {
+    const T = this.e.toasts;
+    const life = type === 'danger' || type === 'gold' ? 4000 : 2800;
+    for (const n of T.children) {
+      if (n._text === text && !n.classList.contains('out')) {
+        clearTimeout(n._timer);
+        n._timer = setTimeout(() => this.dropToast(n), life);
+        return;
+      }
+    }
+    const node = el(`<div class="toast ${type}" role="status">${ic ? icon(ic) : ''}<span>${esc(text)}</span></div>`);
+    node._text = text;
+    T.appendChild(node);
+    const live = [...T.children].filter((n) => !n.classList.contains('out'));
+    const max = window.innerHeight < 560 ? 2 : 3;
+    for (const n of live.slice(0, Math.max(0, live.length - max))) this.dropToast(n);
     requestAnimationFrame(() => node.classList.add('in'));
-    setTimeout(() => {
-      node.classList.remove('in');
-      node.classList.add('out');
-      setTimeout(() => node.remove(), 400);
-    }, type === 'danger' || type === 'gold' ? 4200 : 3200);
+    node._timer = setTimeout(() => this.dropToast(node), life);
+  }
+
+  dropToast(node) {
+    clearTimeout(node._timer);
+    node.classList.remove('in');
+    node.classList.add('out');
+    setTimeout(() => node.remove(), 300);
   }
 
   // ------------------------------------------------------------- hint (tutorial)
@@ -393,9 +425,9 @@ export class UI {
     if (!this.game.input.touchMode) return html;
     return html
       .replace(/<kbd>WASD<\/kbd>/g, 'the <b>joystick</b>')
-      .replace(/<kbd>Shift<\/kbd> or <kbd>Space<\/kbd>/g, 'the <b>💨 Dash</b> button')
-      .replace(/(press |with |\()?<kbd>E<\/kbd>\)?/g, (m, pre) => `${pre === '(' ? '(' : pre || ''}<b>✋ Grab</b>${m.endsWith(')') ? ')' : ''}`)
-      .replace(/(press |hold )?<kbd>F<\/kbd>/g, (m, pre) => `${pre || ''}<b>🔪 Use</b>`);
+      .replace(/<kbd>Shift<\/kbd> or <kbd>Space<\/kbd>/g, 'the <b>Dash</b> button')
+      .replace(/(press |with |\()?<kbd>E<\/kbd>\)?/g, (m, pre) => `${pre === '(' ? '(' : pre || ''}<b>Grab</b>${m.endsWith(')') ? ')' : ''}`)
+      .replace(/(press |hold )?<kbd>F<\/kbd>/g, (m, pre) => `${pre || ''}<b>Use</b>`);
   }
 
   onInputModeChanged() {
@@ -404,10 +436,18 @@ export class UI {
     this.e.hint.dataset.h = '';
   }
 
+  // Phones held upright get a one-off nudge to turn sideways; tablets have room either way.
   updateRotateHint() {
     const g = this.game;
-    const show = g.input.touchMode && !this.rotateDismissed && window.innerHeight > window.innerWidth * 1.05 && g.phase !== 'boot';
+    const phone = Math.min(window.innerWidth, window.innerHeight) < 600;
+    const show = g.input.touchMode && phone && !this.rotateDismissed && window.innerHeight > window.innerWidth * 1.05 && g.phase !== 'boot';
     toggle(this.e.rotateHint, 'hidden', !show);
+    if (show && !this.rotateTimer) this.rotateTimer = setTimeout(() => this.dismissRotateHint(), 7000);
+  }
+
+  dismissRotateHint() {
+    this.rotateDismissed = true;
+    this.e.rotateHint.classList.add('hidden');
   }
 
   setHint(html) {
@@ -416,14 +456,14 @@ export class UI {
     html = this.touchify(html);
     if (H.dataset.h !== html) {
       H.dataset.h = html;
-      H.innerHTML = `${html}<button class="hint-skip" data-act="skip-tut">Skip tutorial</button>`;
+      H.innerHTML = `${html}<button class="hint-skip" data-act="skip-tut">Skip the tutorial</button>`;
       H.classList.remove('pop');
       void H.offsetWidth;
       H.classList.add('pop');
     }
     H.classList.remove('hidden');
     H.onclick = (ev) => {
-      if (ev.target.dataset.act === 'skip-tut') this.game.tutorial.skip();
+      if (ev.target.closest('[data-act="skip-tut"]')) this.game.tutorial.skip();
     };
   }
 
@@ -454,16 +494,22 @@ export class UI {
   renderDock() {
     const g = this.game;
     const D = this.e.dock;
-    const tabs = [['build', '🔨 Build'], ['staff', '👥 Staff'], ['upgrades', '⚡ Upgrades'], ['menu', '📜 Menu']];
+    const tabs = [['build', 'hammer', 'Build'], ['staff', 'people', 'Staff'], ['upgrades', 'chevrons', 'Upgrades'], ['menu', 'menu', 'Menu']];
     const wages = g.staff.totalWages();
+    // Re-rendering after a purchase must not throw the player back to the top or start of a list
+    const keep = this.dockTab === this._dockTabShown ? [...D.querySelectorAll('.dock-panel, .dock-panel .cards, .dock-panel .chips')].map((n) => [n.scrollTop, n.scrollLeft]) : [];
+    this._dockTabShown = this.dockTab;
     D.innerHTML = `
       <div class="dock-top">
-        <div class="dock-tabs">${tabs.map(([id, n]) => `<button class="tab ${this.dockTab === id ? 'on' : ''}" data-tab="${id}">${n}</button>`).join('')}</div>
-        <div class="dock-info">Wages <b>${formatMoney(wages)}</b>/day · Rent <b>${formatMoney(g.rent())}</b>/day</div>
-        <button class="tab collapse" data-act="collapse" title="Show / hide the panel">${this.dockCollapsed ? '▴ Show' : '▾ Hide'}</button>
-        <button class="big-btn primary open-btn" data-act="open">☀️ Open for Day ${g.state.day}</button>
+        <div class="dock-tabs">${tabs.map(([id, ic, n]) => `<button class="tab ${this.dockTab === id ? 'on' : ''}" data-tab="${id}">${icon(ic)}${n}</button>`).join('')}</div>
+        <div class="dock-info">Ambience <b>${Math.round(g.ambience * 100)}%</b>, wages <b>${formatMoney(wages)}</b> and rent <b>${formatMoney(g.rent())}</b> a day</div>
+        <button class="tab collapse" data-act="collapse" title="Show or hide the panel">${this.dockCollapsed ? 'Show' : 'Hide'}</button>
+        <button class="big-btn primary open-btn" data-act="open">Open for day ${g.state.day}</button>
       </div>
       <div class="dock-panel ${this.dockCollapsed ? 'hidden' : ''}">${this.renderPanel()}</div>`;
+    [...D.querySelectorAll('.dock-panel, .dock-panel .cards, .dock-panel .chips')].forEach((n, i) => {
+      if (keep[i]) [n.scrollTop, n.scrollLeft] = keep[i];
+    });
     this.e.buildHelp.classList.toggle('hidden', this.dockTab !== 'build');
   }
 
@@ -480,27 +526,21 @@ export class UI {
   renderBuild() {
     const g = this.game;
     const s = g.state;
-    const cats = CATEGORIES.map((c) => `<button class="chip ${this.buildCat === c.id ? 'on' : ''}" data-cat="${c.id}">${c.icon} ${c.name}</button>`).join('');
+    const cats = CATEGORIES.map((c) => `<button class="chip ${this.buildCat === c.id ? 'on' : ''}" data-cat="${c.id}">${icon(c.icon)}${c.name}</button>`).join('');
+    const decor = (n) => (n ? `<span title="Ambience">${icon('lamp')}+${n}</span>` : '');
     let cards = '';
     if (this.buildCat === 'style') {
-      const fl = Object.entries(FLOOR_THEMES).map(([id, t]) => {
-        const owned = s.ownedThemes.includes(`floor:${id}`);
-        const on = s.floorTheme === id;
-        return `<button class="card style ${on ? 'selected' : ''}" data-theme="floor:${id}">
-          <div class="swatch-img" style="background-image:url(${this.thumb(`floor:${id}`)})"></div>
+      const theme = (kind, id, t, tall) => {
+        const owned = s.ownedThemes.includes(`${kind}:${id}`);
+        const on = (kind === 'floor' ? s.floorTheme : s.wallTheme) === id;
+        return `<button class="card style ${on ? 'selected' : ''}" data-theme="${kind}:${id}">
+          <div class="swatch-img ${tall ? 'tall' : ''}" style="background-image:url(${this.thumb(`${kind}:${id}`)})"></div>
           <div class="c-name">${t.name}</div>
-          <div class="c-meta">${on ? '✔ Applied' : owned ? 'Owned' : formatMoney(t.price)}${t.decor ? ` · +${t.decor}✨` : ''}</div>
+          <div class="c-meta">${on ? `${icon('check')}In use` : owned ? 'Owned' : `<b>${formatMoney(t.price)}</b>`}${decor(t.decor)}</div>
         </button>`;
-      }).join('');
-      const wl = Object.entries(WALL_THEMES).map(([id, t]) => {
-        const owned = s.ownedThemes.includes(`wall:${id}`);
-        const on = s.wallTheme === id;
-        return `<button class="card style ${on ? 'selected' : ''}" data-theme="wall:${id}">
-          <div class="swatch-img tall" style="background-image:url(${this.thumb(`wall:${id}`)})"></div>
-          <div class="c-name">${t.name}</div>
-          <div class="c-meta">${on ? '✔ Applied' : owned ? 'Owned' : formatMoney(t.price)}${t.decor ? ` · +${t.decor}✨` : ''}</div>
-        </button>`;
-      }).join('');
+      };
+      const fl = Object.entries(FLOOR_THEMES).map(([id, t]) => theme('floor', id, t, false)).join('');
+      const wl = Object.entries(WALL_THEMES).map(([id, t]) => theme('wall', id, t, true)).join('');
       cards = `<div class="card-label">Flooring</div>${fl}<div class="card-label">Wallpaper</div>${wl}`;
     } else {
       cards = catalogByCategory(this.buildCat).map((d) => {
@@ -511,14 +551,14 @@ export class UI {
         return `<button class="card ${locked ? 'locked' : ''} ${!afford ? 'poor' : ''} ${sel ? 'selected' : ''}" data-buy="${d.id}" title="${esc(d.desc)}">
           <img src="${this.thumb(`cat:${d.id}`)}" alt="">
           <div class="c-name">${esc(d.name)}</div>
-          <div class="c-meta"><b>${formatMoney(d.price)}</b>${d.decor ? ` · +${d.decor}✨` : ''}${count ? ` · ×${count}` : ''}</div>
-          ${locked ? `<div class="lock">🔒 ${CUISINES[d.req].icon} ${esc(CUISINES[d.req].name)}</div>` : ''}
+          <div class="c-meta"><b>${formatMoney(d.price)}</b>${decor(d.decor)}${count ? `<span>×${count}</span>` : ''}</div>
+          ${locked ? `<div class="lock">${icon('lock')}${esc(CUISINES[d.req].name)}</div>` : ''}
         </button>`;
       }).join('');
     }
     const floorNext = UPGRADES.floor.levels[s.upgrades.floor];
     return `<div class="chips">${cats}</div><div class="cards">${cards}</div>
-      ${floorNext ? `<div class="expand-tip">🏗️ Need more space? <button class="mini-btn" data-upg="floor">Expand floor — ${formatMoney(floorNext.price)}</button></div>` : ''}`;
+      ${floorNext ? `<div class="expand-tip">Need more room? <button class="mini-btn" data-upg="floor">Expand the floor (${formatMoney(floorNext.price)})</button></div>` : ''}`;
   }
 
   renderStaff() {
@@ -529,45 +569,44 @@ export class UI {
       const L = STAFF_LEVELS[d.level - 1];
       const up = g.staff.upgradeCost(d);
       return `<div class="card staff">
-        <div class="portrait role-${d.role}">${T.icon}</div>
+        <div class="portrait role-${d.role}">${icon(ROLE_ICON[d.role])}</div>
         <div class="c-name">${esc(d.name)}</div>
         <div class="c-role">${T.name} · <span class="lvl">${L.label}</span></div>
         <div class="pips">${[1, 2, 3].map((i) => `<i class="${i <= d.level ? 'on' : ''}"></i>`).join('')}</div>
         <div class="c-meta">Speed ${L.speed.toFixed(1)} · Skill ${Math.round(L.work * 100)}%</div>
         <div class="c-meta">Wage ${formatMoney(g.staff.wage(d))}/day</div>
         <div class="row">
-          ${up !== null ? `<button class="mini-btn ${g.state.cash < up ? 'poor' : ''}" data-staff-up="${d.id}">⬆ ${formatMoney(up)}</button>` : '<span class="maxed">MAX</span>'}
-          <button class="mini-btn danger" data-staff-fire="${d.id}">Fire</button>
+          ${up !== null ? `<button class="mini-btn ${g.state.cash < up ? 'poor' : ''}" data-staff-up="${d.id}">${icon('chevrons')}${formatMoney(up)}</button>` : '<span class="maxed">Fully trained</span>'}
+          <button class="mini-btn danger" data-staff-fire="${d.id}">Let go</button>
         </div>
       </div>`;
     }).join('');
     const hires = Object.entries(STAFF_TYPES).map(([role, T]) => `
       <button class="card hire ${g.state.cash < T.hire || roster.length >= MAX_STAFF ? 'poor' : ''}" data-hire="${role}" title="${esc(T.desc)}">
-        <div class="portrait role-${role}">${T.icon}</div>
-        <div class="c-name">Hire ${T.name}</div>
+        <div class="portrait role-${role}">${icon(ROLE_ICON[role])}</div>
+        <div class="c-name">Hire a ${T.name.toLowerCase()}</div>
         <div class="c-meta">${ROLE_BLURB[role]}</div>
         <div class="c-meta"><b>${formatMoney(T.hire)}</b> + ${formatMoney(T.wage)}/day</div>
         <div class="c-desc">${esc(T.desc)}</div>
       </button>`).join('');
-    return `<div class="card-label">Your team (${roster.length}/${MAX_STAFF})</div>
-      <div class="cards">${cards || '<div class="empty">No staff yet — it\'s just you and the stove. Hire some help!</div>'}</div>
-      <div class="card-label">Recruit</div><div class="cards">${hires}</div>`;
+    return `<div class="card-label">Your team, ${roster.length} of ${MAX_STAFF}</div>
+      <div class="cards">${cards || '<div class="empty">No staff yet. It’s just you and the stove.</div>'}</div>
+      <div class="card-label">Hire</div><div class="cards">${hires}</div>`;
   }
 
   renderUpgrades() {
     const g = this.game;
     const s = g.state;
-    return `<div class="cards upgrades">${Object.entries(UPGRADES).map(([id, U]) => {
+    // A kitchen supplier's price list: one line per item, current level ticked off
+    return `<div class="pricelist">${Object.entries(UPGRADES).map(([id, U]) => {
       const lvl = s.upgrades[id] || 0;
       const next = U.levels[lvl];
       const cur = lvl === 0 ? U.base : U.levels[lvl - 1].value;
-      return `<div class="card upgrade">
-        <div class="u-icon">${U.icon}</div>
-        <div class="c-name">${esc(U.name)}</div>
-        <div class="c-desc">${esc(U.desc)}</div>
-        <div class="pips">${U.levels.map((_, i) => `<i class="${i < lvl ? 'on' : ''}"></i>`).join('')}</div>
-        <div class="c-meta">Now: ${esc(U.fmt(cur))}</div>
-        ${next ? `<button class="mini-btn ${s.cash < next.price ? 'poor' : ''}" data-upg="${id}">${esc(U.fmt(next.value))} — ${formatMoney(next.price)}</button>` : '<span class="maxed">MAXED</span>'}
+      return `<div class="pl-row">
+        <span class="pl-ic">${icon(U.icon)}</span>
+        <div class="pl-txt"><b>${esc(U.name)}</b><small>${esc(U.desc)}</small><small class="pl-now">Now: ${esc(U.fmt(cur))}</small></div>
+        <span class="pips" title="Level ${lvl} of ${U.levels.length}">${U.levels.map((_, i) => `<i class="${i < lvl ? 'on' : ''}"></i>`).join('')}</span>
+        ${next ? `<button class="mini-btn ${s.cash < next.price ? 'poor' : ''}" data-upg="${id}" title="Upgrade to ${esc(U.fmt(next.value))}"><span>${esc(U.fmt(next.value))}</span><b>${formatMoney(next.price)}</b></button>` : '<span class="maxed">Sold out</span>'}
       </div>`;
     }).join('')}</div>`;
   }
@@ -587,15 +626,15 @@ export class UI {
           <input type="checkbox" data-dish="${did}" ${on ? 'checked' : ''} ${owned ? '' : 'disabled'}>
           <img src="${this.thumb(`dish:${did}`)}" alt="">
           <span class="d-name">${esc(D.name)} <b>$${D.price}</b></span>
-          <span class="d-status">${owned ? (miss.length ? `Needs: ${esc(miss.join(', '))}` : '✓ Ready') : ''}</span>
+          <span class="d-status">${owned ? (miss.length ? `Needs ${esc(miss.join(', '))}` : 'Ready to cook') : ''}</span>
         </label>`;
       }).join('');
       let action = '';
-      if (owned) action = '<span class="owned">✔ On the menu</span>';
-      else if (!starOk) action = `<span class="locked-txt">🔒 Requires ${C.stars.toFixed(1)}★</span>`;
-      else action = `<button class="mini-btn ${s.cash < C.price ? 'poor' : ''}" data-cuisine="${cid}">Unlock — ${formatMoney(C.price)}</button>`;
-      return `<div class="cuisine ${owned ? 'owned' : ''} ${!starOk && !owned ? 'locked' : ''}" style="--accent:${C.color}">
-        <div class="cu-head"><span class="cu-icon">${C.icon}</span><div><div class="c-name">${esc(C.name)}</div><div class="c-desc">${esc(C.blurb)}</div></div>${action}</div>
+      if (owned) action = `<span class="owned">${icon('check')}On the menu</span>`;
+      else if (!starOk) action = `<span class="locked-txt">${icon('lock')}Needs ${C.stars.toFixed(1)}★</span>`;
+      else action = `<button class="mini-btn ${s.cash < C.price ? 'poor' : ''}" data-cuisine="${cid}">Unlock for ${formatMoney(C.price)}</button>`;
+      return `<div class="cuisine ${!starOk && !owned ? 'locked' : ''}">
+        <div class="cu-head"><img class="cu-icon" src="${this.thumb(`dish:${C.dishes[0]}`)}" alt=""><div><div class="c-name">${esc(C.name)}</div><div class="c-desc">${esc(C.blurb)}</div></div>${action}</div>
         <div class="dishes">${dishes}</div>
       </div>`;
     }).join('')}</div>`;
@@ -622,8 +661,8 @@ export class UI {
     if (b.dataset.act === 'collapse') { this.dockCollapsed = !this.dockCollapsed; this.renderDock(); return; }
     if (b.dataset.buy) {
       const d = CATALOG[b.dataset.buy];
-      if (d.req && !g.state.cuisines[d.req]) { this.toast(`Unlock ${CUISINES[d.req].name} in the Menu tab first`, 'warn'); g.audio.error(); return; }
-      if (g.state.cash < d.price) { this.toast('Not enough cash!', 'warn'); g.audio.error(); return; }
+      if (d.req && !g.state.cuisines[d.req]) { this.toast(`Unlock ${CUISINES[d.req].name} in the Menu tab first`, 'warn', 'lock'); g.audio.error(); return; }
+      if (g.state.cash < d.price) { this.toast(`You need ${formatMoney(d.price)} for that`, 'warn', 'coin'); g.audio.error(); return; }
       g.build.select(d.id);
       this.renderDock();
       return;
@@ -631,19 +670,19 @@ export class UI {
     if (b.dataset.theme) { g.buyTheme(b.dataset.theme); this.renderDock(); return; }
     if (b.dataset.hire) {
       const r = g.staff.hire(b.dataset.hire);
-      if (!r.ok) { this.toast(r.msg, 'warn'); g.audio.error(); } else this.toast(`👋 ${r.member.name} joined the team!`, 'good');
+      if (!r.ok) { this.toast(r.msg, 'warn'); g.audio.error(); } else this.toast(`${r.member.name} joined the team`, 'good', 'people');
       this.renderDock();
       return;
     }
     if (b.dataset.staffUp) {
       const r = g.staff.upgrade(b.dataset.staffUp);
-      if (!r.ok) { this.toast(r.msg || 'Cannot upgrade', 'warn'); g.audio.error(); }
+      if (!r.ok) { this.toast(r.msg || 'Can’t train them any further', 'warn'); g.audio.error(); }
       this.renderDock();
       return;
     }
     if (b.dataset.staffFire) {
       const d = g.state.staff.find((x) => x.id === b.dataset.staffFire);
-      this.confirm(`Let ${d.name} go?`, 'They will leave immediately. No refunds on training!', 'Fire', () => { g.staff.fire(d.id); this.renderDock(); });
+      this.confirm(`Let ${d.name} go?`, 'They leave right away, and their training isn’t refunded.', 'Let go', () => { g.staff.fire(d.id); this.renderDock(); });
       return;
     }
     if (b.dataset.upg) { g.buyUpgrade(b.dataset.upg); this.renderDock(); return; }
@@ -670,13 +709,34 @@ export class UI {
     return this._dockFrac.v;
   }
 
+  // Fraction of the screen height taken by the HUD and order tickets at the top, so the day camera
+  // can keep the kitchen below them. Estimated from the layout (stable: doesn't jump as tickets come and go).
+  hudFraction() {
+    const w = window.innerWidth, h = window.innerHeight;
+    const c = this._hudFrac;
+    if (c && c.w === w && c.h === h) return c.v;
+    const px = w <= 640 && h > w ? 250 : h <= 520 || w <= 640 ? 118 : 196;
+    const v = Math.min(0.42, px / Math.max(1, h));
+    this._hudFrac = { w, h, v };
+    return v;
+  }
+
+  setDockPeek(on) {
+    if (!!this._peek === on) return;
+    this._peek = on;
+    this.e.dock.classList.toggle('peek', on);
+    document.body.classList.toggle('dock-peek', on);
+    this._dockFrac.t = -1;
+  }
+
   setBuildHelp(text) {
     this.e.buildHelp.innerHTML = text;
   }
 
   // ------------------------------------------------------------- modals
   modal(html, cls = '') {
-    const wrap = el(`<div class="modal-wrap"><div class="modal glass ${cls}">${html}</div></div>`);
+    const inner = cls.includes('receipt') ? `<div class="receipt-paper">${html}</div>` : html;
+    const wrap = el(`<div class="modal-wrap"><div class="modal ${cls}">${inner}</div></div>`);
     this.e.modal.appendChild(wrap);
     requestAnimationFrame(() => wrap.classList.add('in'));
     this.modalStack.push(wrap);
@@ -697,7 +757,7 @@ export class UI {
     const w = this.modal(`<h2>${esc(title)}</h2><p>${esc(text)}</p>
       <div class="m-actions"><button class="big-btn ghost" data-a="no">Cancel</button><button class="big-btn primary" data-a="yes">${esc(okText)}</button></div>`);
     w.onclick = (ev) => {
-      const a = ev.target.dataset.a;
+      const a = actionOf(ev);
       if (!a) return;
       this.game.audio.click();
       this.closeModal(w);
@@ -706,33 +766,36 @@ export class UI {
   }
 
   showHelp() {
+    const touch = this.game.input.touchMode;
+    const key = (k, t) => (touch ? `<b>${t}</b>` : `<kbd>${k}</kbd>`);
     const w = this.modal(`
-      <h2>📖 How to Play</h2>
+      <h2>How to play</h2>
       <div class="help-grid">
-        <div><h3>☀️ Day Shift</h3>
+        <div><h3>${icon('sun')}Service, 10 AM to 10 PM</h3>
           <ul>
-            <li>Customers sit and order. Tickets show each dish & its steps: 🔪 chop, 🍳 sear, ♨️ boil, 🫧 fry, 🔥 bake.</li>
-            <li>Grab ingredients from crates <kbd>E</kbd>, chop on boards <kbd>F</kbd>, cook on the right station.</li>
-            <li>Take a clean plate, scoop the prepared parts onto it, carry it to the table and <kbd>E</kbd> to serve.</li>
-            <li>Pizza & tarts: knead dough into a base, add chopped toppings onto it, then bake.</li>
-            <li>Clear dirty plates <kbd>E</kbd> → sink → hold <kbd>F</kbd> to wash. Walk near tables to pocket cash.</li>
-            <li>Food left on the heat burns, then catches fire 🔥 — grab the extinguisher and hold <kbd>F</kbd>!</li>
+            <li>Guests sit down and order. Each ticket shows the dish, what goes on the plate, and how to prepare each part: ${icon('knife')} chop, ${icon('pan')} sear, ${icon('pot')} boil, ${icon('fryer')} fry, ${icon('oven')} bake.</li>
+            <li>Take ingredients from the crates (${key('E', 'Grab')}), chop them on a board (${key('F', 'Use')}), then cook them on the right station.</li>
+            <li>Pick up a clean plate, add each finished part, carry it to the table and press ${key('E', 'Grab')} to serve.</li>
+            <li>Pizza and tarts start as dough. Knead it into a base, add the chopped toppings, then bake.</li>
+            <li>When guests leave, take their dirty plates to the sink and hold ${key('F', 'Use')} to wash them. Walk past a paid table to collect the money.</li>
+            <li>Food left on the heat burns, then catches fire. Grab the extinguisher and hold ${key('F', 'Use')} to put it out.</li>
           </ul></div>
-        <div><h3>🌙 Night Phase</h3>
+        <div><h3>${icon('moon')}After closing</h3>
           <ul>
-            <li><b>Build:</b> buy & place stations, tables and decor. <kbd>R</kbd> rotates, click a placed item to move it, <kbd>X</kbd>/right-click sells.</li>
-            <li><b>Staff:</b> hire Sous-Chefs, Waiters and Dishwashers and level them up.</li>
-            <li><b>Upgrades:</b> faster dash, sharper knives, fireproof stoves, more plates, bigger floor.</li>
-            <li><b>Menu:</b> earn stars to unlock new cuisines, then toggle dishes on & off.</li>
-            <li>Décor raises ✨ Ambience → more patience & bigger tips. Lamps calm nearby guests.</li>
-            <li>👑 Food critics demand speed — wow them for a big bonus.</li>
+            <li><b>Build:</b> buy and place stations, tables and decorations. ${touch ? 'Tap a placed item to move or sell it.' : '<kbd>R</kbd> rotates, click a placed item to move it, <kbd>X</kbd> or right-click sells it.'}</li>
+            <li><b>Staff:</b> hire sous-chefs, waiters and dishwashers, and train them up.</li>
+            <li><b>Upgrades:</b> faster dash, sharper knives, fireproof stoves, more plates, a bigger floor.</li>
+            <li><b>Menu:</b> earn stars to unlock new cuisines, then choose which dishes to serve.</li>
+            <li>Decorations raise ambience, so guests wait longer and tip more. Lamps calm the guests sitting near them.</li>
+            <li>Food critics wear a gold crown. Serve them quickly for a big bonus.</li>
           </ul></div>
       </div>
-      <div class="help-keys"><span><kbd>WASD</kbd>/<kbd>Arrows</kbd> move</span><span><kbd>Shift</kbd>/<kbd>Space</kbd> dash</span><span><kbd>E</kbd>/Left-click pick & drop</span><span><kbd>F</kbd>/Right-click chop, wash, spray</span><span><kbd>Esc</kbd> pause</span><span>Mouse wheel zoom</span></div>
-      <div class="help-keys"><span>📱 On touch screens: left thumb moves the chef, <b>✋ Grab</b> / <b>🔪 Use</b> / <b>💨 Dash</b> buttons on the right · drag to pan and pinch to zoom at night</span></div>
-      <div class="m-actions"><button class="big-btn primary" data-a="ok">Got it!</button></div>`, 'wide');
+      ${touch
+        ? '<div class="help-keys"><span>Left thumb: move</span><span><b>Grab</b>: pick up, put down, serve</span><span><b>Use</b>: chop, wash, spray</span><span><b>Dash</b>: sprint</span><span>At night, drag to pan and pinch to zoom</span></div>'
+        : '<div class="help-keys"><span><kbd>WASD</kbd>/<kbd>Arrows</kbd> move</span><span><kbd>Shift</kbd>/<kbd>Space</kbd> dash</span><span><kbd>E</kbd>/left-click pick up and put down</span><span><kbd>F</kbd>/right-click chop, wash, spray</span><span><kbd>Esc</kbd> pause</span><span>Mouse wheel zooms</span></div>'}
+      <div class="m-actions"><button class="big-btn primary" data-a="ok">Back to the kitchen</button></div>`, 'wide');
     w.onclick = (ev) => {
-      if (ev.target.dataset.a === 'ok') { this.game.audio.click(); this.closeModal(w); }
+      if (actionOf(ev) === 'ok') { this.game.audio.click(); this.closeModal(w); }
     };
   }
 
@@ -740,23 +803,23 @@ export class UI {
     const g = this.game;
     const v = g.audio.vol;
     const w = this.modal(`
-      <h2>⏸ Paused</h2>
+      <h2>Paused</h2>
       <div class="settings">
         <label>Master <input type="range" min="0" max="1" step="0.05" value="${v.master}" data-vol="master"></label>
         <label>Effects <input type="range" min="0" max="1" step="0.05" value="${v.sfx}" data-vol="sfx"></label>
         <label>Music <input type="range" min="0" max="1" step="0.05" value="${v.music}" data-vol="music"></label>
       </div>
       <div class="m-actions col">
-        <button class="big-btn primary" data-a="resume">▶ Resume</button>
-        <button class="big-btn ghost" data-a="help">📖 How to Play</button>
-        <button class="big-btn ghost" data-a="quit">🏠 Save & Quit to Title</button>
+        <button class="big-btn primary" data-a="resume">Resume</button>
+        <button class="big-btn ghost" data-a="help">How to play</button>
+        <button class="big-btn ghost" data-a="quit">Save and quit to title</button>
       </div>`);
     w.oninput = (ev) => {
       const k = ev.target.dataset.vol;
       if (k) { g.audio.setVolumes({ [k]: parseFloat(ev.target.value) }); g.settings.volume = { ...g.audio.vol }; g.saveSettings(); }
     };
     w.onclick = (ev) => {
-      const a = ev.target.dataset.a;
+      const a = actionOf(ev);
       if (!a) return;
       g.audio.click();
       if (a === 'resume') g.togglePause(false);
@@ -766,35 +829,53 @@ export class UI {
     return w;
   }
 
+  // The end-of-day report, printed as a till receipt
   showSummary(rep, onContinue) {
     const g = this.game;
-    const line = (label, v, cls = '') => `<div class="sum-line ${cls}"><span>${label}</span><b>${v > 0 ? '+' : ''}${formatMoney(v)}</b></div>`;
-    const criticTxt = rep.critic === 'wowed' ? '🌟 The critic loved you!' : rep.critic === 'meh' ? '🧐 The critic was lukewarm' : rep.critic === 'angry' ? '😤 The critic walked out' : '';
-    const unlocks = rep.newCuisines.map((c) => `<div class="unlock">🔓 ${CUISINES[c].icon} <b>${CUISINES[c].name}</b> can now be unlocked in the Menu!</div>`).join('');
+    const money = (v) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${formatMoney(Math.abs(v))}`;
+    // costs print red only when there was a cost
+    const row = (label, v, cls = '', zero = false) => `<div class="r-row ${zero ? '' : cls}"><span>${label}</span><i></i><b>${v}</b></div>`;
+    const critic = {
+      wowed: ['gold', 'crown', 'The critic loved it. Expect a glowing review.'],
+      meh: ['', 'dots', 'The critic left unimpressed.'],
+      angry: ['', 'warn', 'The critic walked out before eating.'],
+    }[rep.critic];
+    const unlocks = rep.newCuisines.map((c) => `<div class="r-note gold">${icon('lock')}<span><b>${CUISINES[c].name}</b> is ready to unlock in the Menu tab.</span></div>`).join('');
     const grade = rep.net > 400 ? 'S' : rep.net > 250 ? 'A' : rep.net > 120 ? 'B' : rep.net > 0 ? 'C' : 'D';
+    const delta = Math.round((rep.ratingAfter - rep.ratingBefore) * 100);
     const w = this.modal(`
-      <div class="sum-head"><div class="grade g-${grade}">${grade}</div><div><h2>Day ${rep.day} complete!</h2><p>${starsHTML(rep.ratingAfter)} ${rep.ratingBefore.toFixed(2)} → <b>${rep.ratingAfter.toFixed(2)}</b> ${rep.ratingAfter >= rep.ratingBefore ? '📈' : '📉'}</p></div></div>
-      <div class="sum-stats">
-        <div><b>${rep.served}</b><span>served</span></div>
-        <div><b>${rep.lost}</b><span>walked out</span></div>
-        <div><b>${rep.turnedAway}</b><span>turned away</span></div>
-        <div><b>${rep.burnt}</b><span>burnt</span></div>
-        <div><b>${rep.fires}</b><span>fires</span></div>
+      <div class="r-head">
+        <div><div class="r-name">Pandemonium Bistro</div><div class="r-meta">Day ${rep.day} · Closed 10:00 PM</div></div>
+        <div class="stamp g-${grade}" title="Grade for the day">${grade}<small>GRADE</small></div>
       </div>
-      <div class="sum-money">
-        ${line('Food sales', rep.revenue)}
-        ${line('Tips', rep.tips)}
-        ${rep.criticBonus ? line('Critic bonus', rep.criticBonus, 'gold') : ''}
-        ${line('Ingredients', -rep.ingredients, 'neg')}
-        ${line('Staff wages', -rep.wages, 'neg')}
-        ${line('Rent & utilities', -rep.rent, 'neg')}
-        <div class="sum-line total"><span>Net profit</span><b class="${rep.net >= 0 ? 'pos' : 'neg'}">${rep.net > 0 ? '+' : ''}${formatMoney(rep.net)}</b></div>
+      <hr class="r-rule">
+      <div class="r-cols">
+        <div class="r-sec">
+          ${row('Guests served', rep.served)}
+          ${row('Walked out', rep.lost)}
+          ${row('Turned away', rep.turnedAway)}
+          ${row('Dishes burnt', rep.burnt)}
+          ${row('Fires', rep.fires)}
+        </div>
+        <hr class="r-rule r-mid">
+        <div class="r-sec">
+          ${row('Food sales', money(rep.revenue))}
+          ${row('Tips', money(rep.tips))}
+          ${rep.criticBonus ? row('Critic bonus', money(rep.criticBonus), 'gold') : ''}
+          ${row('Ingredients', money(-rep.ingredients), 'neg', !rep.ingredients)}
+          ${row('Staff wages', money(-rep.wages), 'neg', !rep.wages)}
+          ${row('Rent & utilities', money(-rep.rent), 'neg', !rep.rent)}
+          <hr class="r-rule double">
+          <div class="r-row total"><span>Net</span><i></i><b class="${rep.net >= 0 ? 'pos' : 'neg'}">${money(rep.net)}</b></div>
+        </div>
       </div>
-      ${criticTxt ? `<div class="critic-line">${criticTxt}</div>` : ''}
+      <div class="r-rating">${starsHTML(rep.ratingAfter)} ${rep.ratingBefore.toFixed(2)} → <b>${rep.ratingAfter.toFixed(2)}</b>${delta ? `<span class="${delta > 0 ? 'up' : 'down'}">${icon(delta > 0 ? 'trendup' : 'trenddown')}</span>` : ''}</div>
+      ${critic ? `<div class="r-note ${critic[0]}">${icon(critic[1])}<span>${critic[2]}</span></div>` : ''}
       ${unlocks}
-      <div class="m-actions"><button class="big-btn primary" data-a="go">🌙 Continue to Night</button></div>`, 'summary');
+      <div class="r-thanks">Thank you · Come again</div>
+      <div class="m-actions"><button class="big-btn primary" data-a="go">Close up for the night</button></div>`, 'receipt');
     w.onclick = (ev) => {
-      if (ev.target.dataset.a === 'go') {
+      if (actionOf(ev) === 'go') {
         g.audio.click();
         this.closeModal(w);
         onContinue();

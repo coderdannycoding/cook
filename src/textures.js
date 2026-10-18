@@ -303,27 +303,26 @@ export function signTexture(text, sub = '') {
   return cached(`sign:${text}:${sub}`, () => {
     const W = 1024, H = 256;
     const [c, g] = makeCanvas(W, H);
-    const grad = g.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, '#3b1f4a');
-    grad.addColorStop(1, '#221030');
-    g.fillStyle = grad;
+    // A hand-painted shop sign: green board, mustard border, cream sign-writer lettering
+    g.fillStyle = '#1f2d28';
     g.fillRect(0, 0, W, H);
-    g.strokeStyle = '#ffd36b';
-    g.lineWidth = 10;
-    g.strokeRect(12, 12, W - 24, H - 24);
+    g.strokeStyle = '#f0b43c';
+    g.lineWidth = 12;
+    g.strokeRect(14, 14, W - 28, H - 28);
+    g.strokeStyle = 'rgba(251,244,228,0.55)';
+    g.lineWidth = 3;
+    g.strokeRect(30, 30, W - 60, H - 60);
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.font = '900 108px "Fredoka", "Baloo 2", "Trebuchet MS", sans-serif';
-    g.shadowColor = '#ff5fa2';
-    g.shadowBlur = 26;
-    g.fillStyle = '#fff4d6';
-    g.fillText(text, W / 2, sub ? H / 2 - 22 : H / 2);
+    g.font = '400 96px "Shrikhand", "Cooper Black", Georgia, serif';
+    g.fillStyle = '#241a14';
+    g.fillText(text, W / 2 + 5, (sub ? H / 2 - 24 : H / 2) + 5);
+    g.fillStyle = '#fbf4e4';
+    g.fillText(text, W / 2, sub ? H / 2 - 24 : H / 2);
     if (sub) {
-      g.shadowBlur = 12;
-      g.shadowColor = '#5ff2ff';
-      g.font = '700 46px "Fredoka", "Trebuchet MS", sans-serif';
-      g.fillStyle = '#a8f6ff';
-      g.fillText(sub, W / 2, H / 2 + 68);
+      g.font = '700 38px "Courier Prime", "Courier New", monospace';
+      g.fillStyle = '#f0b43c';
+      g.fillText(sub.toUpperCase(), W / 2, H / 2 + 66);
     }
     return toTexture(c, false);
   });
@@ -336,7 +335,7 @@ export function openSignTexture() {
     g.fillRect(0, 0, 256, 128);
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.font = '900 72px "Fredoka", "Trebuchet MS", sans-serif';
+    g.font = '700 70px "Archivo", "Arial Narrow", sans-serif';
     g.shadowColor = '#ff2d55';
     g.shadowBlur = 24;
     g.fillStyle = '#ff8fa8';

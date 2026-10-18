@@ -21,10 +21,10 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   height: 128px;
   margin: -64px 0 0 -64px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.16));
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 6px 18px rgba(10, 6, 30, 0.35);
-  opacity: 0.55;
+  background: rgba(31, 45, 40, 0.35);
+  border: 2.5px solid rgba(36, 26, 20, 0.85);
+  box-shadow: inset 0 0 0 2px rgba(251, 244, 228, 0.35);
+  opacity: 0.6;
   transition: opacity 0.2s;
 }
 .stick-base.on { opacity: 1; }
@@ -36,9 +36,9 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   height: 58px;
   margin: -29px 0 0 -29px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ffb347, #ff6f61);
-  border: 2px solid rgba(255, 255, 255, 0.7);
-  box-shadow: 0 4px 12px rgba(255, 95, 109, 0.5);
+  background: var(--paper);
+  border: 2.5px solid var(--ink);
+  box-shadow: 0 3px 0 var(--ink);
 }
 
 .tbtns {
@@ -53,89 +53,102 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   position: absolute;
   pointer-events: auto;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.45);
-  color: #fff;
+  border: 2.5px solid var(--ink);
+  color: var(--paper);
   font-family: var(--font);
-  font-weight: 600;
+  font-weight: 800;
+  font-stretch: 85%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  box-shadow: 0 8px 18px rgba(10, 6, 30, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 0 var(--ink);
   user-select: none;
   -webkit-user-select: none;
-  transition: transform 0.08s ease, filter 0.15s, opacity 0.15s;
+  transition: transform 0.06s ease, box-shadow 0.06s ease, opacity 0.15s;
   overflow: hidden;
 }
-.tbtn i { font-style: normal; font-size: 26px; line-height: 1; }
-.tbtn span { font-size: 11.5px; line-height: 1.05; max-width: 92%; text-align: center; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
-.tbtn.down { transform: scale(0.9); filter: brightness(1.2); }
-.tbtn.idle { opacity: 0.6; }
-.tbtn.pick { right: 0; bottom: 0; width: 108px; height: 108px; background: linear-gradient(135deg, #ffb347, #ff6f61 60%, #ff4f8b); }
-.tbtn.work { right: 118px; bottom: 6px; width: 92px; height: 92px; background: linear-gradient(135deg, #5ee07a, #2fb7a0); }
-.tbtn.dash { right: 18px; bottom: 120px; width: 72px; height: 72px; background: linear-gradient(135deg, #5ec8ff, #4a69bd); }
-.tbtn.dash i { font-size: 22px; }
+.tbtn i { display: grid; place-items: center; font-style: normal; }
+.tbtn i .ic { width: 28px; height: 28px; stroke-width: 2.4; }
+.tbtn span { font-size: 11.5px; line-height: 1.05; max-width: 90%; text-align: center; letter-spacing: 0.02em; }
+.tbtn.down { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.tbtn.idle { opacity: 0.62; }
+.tbtn.pick { right: 0; bottom: 0; width: 108px; height: 108px; background: var(--tomato); }
+.tbtn.work { right: 118px; bottom: 6px; width: 92px; height: 92px; background: var(--basil); }
+.tbtn.dash { right: 18px; bottom: 120px; width: 72px; height: 72px; background: var(--mustard); color: var(--ink); }
+.tbtn.dash i .ic { width: 24px; height: 24px; }
 .tbtn.dash .cd {
   position: absolute;
   inset: 0;
-  background: conic-gradient(rgba(10, 6, 30, 0.55) calc(var(--cd, 0) * 360deg), transparent 0);
+  background: conic-gradient(rgba(36, 26, 20, 0.5) calc(var(--cd, 0) * 360deg), transparent 0);
   pointer-events: none;
 }
 .tbtn.dash:not(.cooling) .cd { display: none; }
 
 /* While touch controls are up, keep prompts & hints clear of the thumbs */
-body.touch-play #prompt { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-width: calc(100vw - 560px); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+body.touch-play #prompt { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-width: max(120px, calc(100vw - 560px)); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 body.touch-play #prompt kbd { display: none; }
-body.touch-play #hint { bottom: auto; top: calc(178px + env(safe-area-inset-top, 0px)); max-width: min(520px, 60vw); font-size: 14px; padding: 8px 14px; }
-body.touch-play .dash-ring { display: none; }
+/* the joystick owns the bottom-left corner, so tutorial notes move up under the stats */
+body.touch-play #hint { bottom: auto; top: calc(246px + env(safe-area-inset-top, 0px)); max-width: min(340px, 36vw); font-size: 14px; padding: 8px 12px 6px; }
+body.touch .dash-ring { display: none; }
 
 /* ---------------------------------------------------------------- build toolbar */
 #build-tools {
   position: fixed;
-  left: 50%;
-  top: calc(56px + env(safe-area-inset-top, 0px));
-  transform: translateX(-50%);
+  left: 16px;
+  right: 16px;
+  top: calc(60px + env(safe-area-inset-top, 0px));
   z-index: 26;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   justify-content: center;
-  max-width: calc(100vw - 32px);
+  pointer-events: none;
 }
 #build-tools button {
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  background: var(--glass-strong);
-  color: var(--text);
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: var(--edge);
+  background: var(--paper);
+  color: var(--ink);
   font-size: 14px;
-  font-weight: 600;
-  padding: 8px 14px;
-  border-radius: 12px;
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  font-weight: 700;
+  min-height: 40px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  box-shadow: var(--lift);
 }
-#build-tools button.ok { background: linear-gradient(135deg, #5ee07a, #2fb7a0); }
-#build-tools button.bad { background: linear-gradient(135deg, #ff7a7a, #e0455f); }
-#build-tools button:disabled { opacity: 0.45; }
+#build-tools button .ic { width: 18px; height: 18px; }
+#build-tools button.ok { background: var(--basil); color: var(--paper); }
+#build-tools button.bad { background: var(--tomato); color: var(--paper); }
+#build-tools button:disabled { opacity: 0.5; }
+/* while the dock is folded for placing, the toolbar sits just above it instead of over the kitchen */
+body.dock-peek #build-tools { top: auto; bottom: calc(112px + env(safe-area-inset-bottom, 0px)); }
 
 /* ---------------------------------------------------------------- misc screens */
 #rotate-hint {
   position: fixed;
   left: 50%;
-  top: calc(12px + env(safe-area-inset-top, 0px));
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
   z-index: 45;
-  border-radius: 99px;
-  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 6px;
+  padding: 9px 16px;
   font-size: 14px;
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
 }
 
 .fatal-card { max-width: min(460px, calc(100vw - 32px)); }
-.fatal-text { color: var(--muted); font-size: 16px; line-height: 1.5; margin: 0; }
-.fatal { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; background: #10162e; color: #fffaf2; font: 600 18px/1.5 var(--font); z-index: 200; }
+.fatal-text { color: var(--chalk-dim); font-size: 16px; line-height: 1.5; margin: 0; }
+.fatal { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; background: var(--board); color: var(--chalk); font: 600 18px/1.5 var(--font); z-index: 200; }
 
 /* ---------------------------------------------------------------- safe areas */
 #hud {
@@ -149,74 +162,105 @@ body.touch-play .dash-ring { display: none; }
 /* ---------------------------------------------------------------- small / short screens (phones) */
 @media (max-height: 520px), (max-width: 640px) {
   .hud-left { width: 146px; gap: 5px; }
-  .hud-box { padding: 5px 8px; border-radius: 11px; gap: 5px; }
+  .hud-box { padding: 5px 8px; gap: 5px; }
   .hud-box b { font-size: 15px; }
-  .hud-box .ico { font-size: 15px; }
-  .hud-day-row { gap: 5px; white-space: nowrap; }
-  .hud-day-row b { font-size: 14px; }
+  .hud-box .ic { width: 16px; height: 16px; }
+  .cash-box b { font-size: 16px; }
+  .hud-day-row { gap: 5px; }
+  .hud-day-row b { font-size: 13px; }
   #hud-clock { font-size: 12px; }
   .stars { font-size: 13px; }
   .stars-box #hud-stars b { font-size: 13px; }
-  .stars-box small, .amb-box { display: none; }
-  .icon-btn { width: 36px; height: 36px; font-size: 16px; border-radius: 10px; }
-  .dash-ring { width: 36px; height: 36px; }
-  .dash-ring span { width: 30px; height: 30px; font-size: 15px; }
-  .ticket { width: 84px; padding: 5px 5px 7px; }
+  .stars-box small { display: none; }
+  .icon-btn { width: 40px; height: 40px; }
+  .icon-btn .ic { width: 19px; height: 19px; }
+  .dash-ring { width: 40px; height: 40px; }
+  .dash-ring span { width: 28px; height: 28px; }
+  .ticket { width: 84px; padding: 9px 5px 7px; }
   .t-dish { height: 42px; }
   .t-dish img { width: 46px; height: 46px; }
-  .t-name { font-size: 10.5px; }
+  .t-name { font-size: 9.5px; }
   .t-parts { display: none; }
-  #toasts { top: calc(118px + env(safe-area-inset-top, 0px)); }
-  .toast { font-size: 13.5px; padding: 8px 14px; }
+  .t-crown { top: 18px; }
+  #toasts { top: calc(60px + env(safe-area-inset-top, 0px)); width: min(230px, 32vw); }
+  .toast { font-size: 12px; line-height: 1.3; padding: 5px 9px; gap: 6px; }
+  .toast .ic { width: 15px; height: 15px; }
   #countdown span { font-size: 96px; }
+  #countdown span.go { font-size: 76px; }
   .banner b { font-size: 52px; }
-  .banner small { font-size: 18px; }
+  .banner small { font-size: 15px; }
   .bubble { width: 42px; height: 42px; }
-  .bubble img { width: 30px; height: 30px; }
-  #night-dock { padding: 8px 10px 10px; border-radius: 18px; }
+  .bubble img { width: 28px; height: 28px; }
+  #night-dock { padding: 8px 10px 10px; }
   .dock-top { flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
   .dock-tabs { flex-wrap: wrap; }
-  .tab { padding: 6px 10px; font-size: 13px; }
+  .tab { min-height: 40px; padding: 6px 10px; font-size: 13px; }
   .open-btn { padding: 8px 12px; font-size: 14px; margin-left: auto; }
-  .dock-panel { max-height: 40vh; }
+  .dock-panel { height: 40vh; }
+  .chip { min-height: 36px; padding: 6px 11px; }
   .card { width: 96px; padding: 6px; }
   .card img { width: 58px; height: 58px; }
   .card .c-name { font-size: 12px; }
   .card.staff, .card.hire { width: 150px; }
-  .cards.upgrades .card { width: 170px; }
-  .cuisines { grid-template-columns: 1fr; }
-  #build-help { font-size: 12px; padding: 6px 12px; white-space: normal; text-align: center; width: max-content; max-width: calc(100vw - 32px); }
-  .title-card { padding: 20px 20px 16px; border-radius: 22px; max-height: calc(100vh - 24px); overflow: auto; }
+  .pl-row .mini-btn { min-height: 40px; }
+  .pricelist { grid-template-columns: minmax(0, 1fr); }
+  .cuisines { grid-template-columns: minmax(0, 1fr); }
+  #build-help { font-size: 12px; padding: 6px 12px; white-space: normal; text-align: center; width: max-content; max-width: calc(100vw - 340px); }
+  .title-card { padding: 20px 20px 16px; max-height: calc(100vh - 24px); overflow: auto; }
+  .logo h1 { font-size: 38px; }
   .tagline { margin: 10px 0 14px; font-size: 14px; }
+  .hours { margin-top: 10px; }
   .title-buttons { gap: 8px; }
   .title-buttons .big-btn { padding: 10px; font-size: 16px; }
+  .swatch { width: 32px; height: 32px; }
   .modal { padding: 18px 18px; }
+  .settings input[type=range] { height: 32px; }
+  .hint-skip { padding: 8px 0; }
   .tbtn.pick { width: 92px; height: 92px; }
   .tbtn.work { width: 78px; height: 78px; right: 100px; }
   .tbtn.dash { width: 62px; height: 62px; bottom: 102px; }
   .tbtns { width: 200px; height: 170px; }
 }
 
+/* Short landscape phones: the prompt sits between the joystick and the buttons */
+@media (max-height: 520px) {
+  body.touch-play #prompt { max-width: calc(100vw - 440px); }
+  body.touch-play #hint { top: calc(132px + env(safe-area-inset-top, 0px)); max-width: min(250px, 30vw); font-size: 12px; line-height: 1.32; padding: 7px 10px 5px; }
+  body.touch-play #hint .hint-skip { padding: 4px 0; font-size: 11.5px; }
+}
+
+/* Portrait phones: tickets get their own row under the stats so the menu buttons stay on screen */
+@media (max-width: 640px) and (orientation: portrait) {
+  #hud { flex-wrap: wrap; row-gap: 8px; }
+  #tickets { order: 3; flex: 1 0 100%; min-width: 0; }
+  .hud-right { margin-left: auto; }
+  #toasts { top: auto; bottom: calc(214px + env(safe-area-inset-bottom, 0px)); right: 16px; width: min(300px, calc(100vw - 32px)); }
+  .toast span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.touch-play #hint { top: calc(252px + env(safe-area-inset-top, 0px)); bottom: auto; left: 16px; right: 16px; max-width: none; width: auto; font-size: 13px; padding: 7px 10px 5px; }
+  body.touch-play #prompt { bottom: calc(200px + env(safe-area-inset-bottom, 0px)); max-width: calc(100vw - 32px); }
+  #build-help { top: calc(144px + env(safe-area-inset-top, 0px)); max-width: calc(100vw - 32px); }
+  #build-tools { top: calc(196px + env(safe-area-inset-top, 0px)); }
+}
+
 /* Modal actions stay reachable when a modal scrolls (short phone screens) */
 .modal .m-actions {
   position: sticky;
-  bottom: -26px;
-  margin-bottom: -26px;
-  padding: 12px 0 26px;
-  background: linear-gradient(to bottom, transparent, var(--glass-strong) 35%);
+  bottom: -24px;
+  margin-bottom: -24px;
+  padding: 12px 0 24px;
+  background: linear-gradient(to bottom, rgba(251, 244, 228, 0), var(--paper) 35%);
 }
+.receipt-paper .m-actions { bottom: -22px; margin-bottom: -22px; padding-bottom: 22px; }
 @media (max-height: 520px) {
   .modal { padding: 14px 18px; max-height: calc(100vh - 16px); }
   .modal .m-actions { bottom: -14px; margin-bottom: -14px; padding: 8px 0 14px; }
-  .modal h2 { font-size: 20px; margin-bottom: 4px; }
-  .grade { width: 48px; height: 48px; font-size: 30px; border-radius: 12px; }
-  .sum-stats { margin: 10px 0 8px; gap: 6px; }
-  .sum-stats div { padding: 4px 2px; }
-  .sum-stats b { font-size: 17px; }
-  .sum-money { padding: 6px 12px; }
-  .sum-line { font-size: 13px; padding: 2px 0; }
-  .sum-line.total { font-size: 15px; margin-top: 4px; padding-top: 4px; }
-  .critic-line, .unlock { margin-top: 6px; font-size: 13px; }
+  .modal h2 { font-size: 22px; margin-bottom: 4px; }
+  .receipt-paper { max-height: calc(100vh - 34px); padding: 12px 18px 14px; font-size: 13.5px; line-height: 1.35; }
+  .receipt-paper .m-actions { bottom: -14px; margin-bottom: -14px; padding-bottom: 14px; }
+  .r-rule { margin: 7px 0; }
+  .r-head .r-name { font-size: 20px; }
+  .stamp { width: 56px; height: 56px; font-size: 28px; }
+  .stamp small { bottom: 6px; font-size: 7px; }
   .help-grid ul { font-size: 13px; }
   .settings { gap: 8px; margin: 8px 0 4px; }
 }
@@ -228,8 +272,22 @@ body.touch-play .dash-ring { display: none; }
   #night-dock .chips { margin-bottom: 6px; }
   #night-dock .chip, #night-dock .card { flex: none; }
   #night-dock .cards .card-label { width: auto; flex: none; align-self: center; writing-mode: vertical-rl; transform: rotate(180deg); margin: 0; font-size: 11px; }
-  #night-dock .dock-panel { max-height: 38vh; }
+  #night-dock .dock-panel { height: 40vh; }
+  body.dock-peek #build-tools { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  #night-dock { border-width: 5px; }
   #night-dock .card .c-desc { display: none; }
-  #night-dock .cards.upgrades .card { width: 156px; }
+  #night-dock .card { width: 88px; padding: 5px; gap: 1px; }
+  #night-dock .card img { width: 46px; height: 46px; }
+  #night-dock .card.staff, #night-dock .card.hire { width: 150px; }
+  #night-dock .chip { min-height: 34px; padding: 5px 10px; font-size: 13px; }
+  #night-dock .chips { margin-bottom: 5px; }
+  .modal.receipt { width: min(680px, 94vw); }
+  .r-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  .r-cols .r-mid { display: none; }
+  .pricelist { grid-template-columns: minmax(0, 1fr); }
+  .pl-txt small:not(.pl-now) { display: none; }
   .expand-tip { margin-top: 4px; font-size: 12px; }
 }
+
+/* Mouse and keyboard players place with clicks and R; the on-screen toolbar is for touch only */
+body:not(.touch) #build-tools { display: none !important; }

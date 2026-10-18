@@ -59,9 +59,9 @@ export function loadGame() {
 export function loadSettings() {
   try {
     const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
-    return { color: '#e74c3c', muted: false, volume: { master: 0.8, sfx: 0.9, music: 0.55 }, ...s };
+    return { color: '#c8442b', muted: false, volume: { master: 0.8, sfx: 0.9, music: 0.55 }, ...s };
   } catch {
-    return { color: '#e74c3c', muted: false, volume: { master: 0.8, sfx: 0.9, music: 0.55 } };
+    return { color: '#c8442b', muted: false, volume: { master: 0.8, sfx: 0.9, music: 0.55 } };
   }
 }
 

@@ -1,6 +1,6 @@
 // Particle engine: soft GPU point sprites (steam, smoke, fire, foam, dust, sparks),
 // physical instanced chunks (veggie crumbs, confetti, coins) and DOM floaters
-// (cash numbers, star ratings and emoji bubbles anchored in world space).
+// (cash numbers, star ratings and reaction bubbles anchored in world space).
 
 import * as THREE from '../vendor/three-0.169.0.module.min.js';
 import { rand, clamp, TAU } from './utils.js';
@@ -233,7 +233,7 @@ class ChunkPool {
   }
 }
 
-// World-anchored DOM text (cash, stars, emoji). Crisp at any zoom and emoji-friendly.
+// World-anchored DOM text (cash, stars, reactions). Crisp at any zoom.
 class FloaterLayer {
   constructor(container, project) {
     this.container = container;
@@ -498,8 +498,9 @@ export class Particles {
     const full = clamp(Math.round(stars), 1, 5);
     this.floaters.spawn(x, y, z, '★'.repeat(full) + '<span class="dim">' + '★'.repeat(5 - full) + '</span>', 'f-stars', { vy: 1.0, life: 2.0 });
   }
-  emoji(x, y, z, e, big = false) {
-    this.floaters.spawn(x, y, z, e, big ? 'f-emoji big' : 'f-emoji', { vy: 0.9, life: 1.6, wobble: 4 });
+  // Comic speech-bubble reaction above a character (mood: good | love | meh | bad)
+  emote(x, y, z, html, mood = 'good', big = false) {
+    this.floaters.spawn(x, y, z, html, `f-emote m-${mood}${big ? ' big' : ''}`, { vy: 0.9, life: 1.6, wobble: 4 });
   }
   label(x, y, z, text, cls = 'f-info') {
     this.floaters.spawn(x, y, z, text, cls, { vy: 0.8, life: 1.8 });

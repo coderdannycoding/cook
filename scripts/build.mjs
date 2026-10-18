@@ -50,7 +50,8 @@ async function main() {
     const ext = extname(file);
     if (ext === '.js' && file.includes(`${join(OUT, 'src')}`)) {
       const code = await readFile(file, 'utf8');
-      for (const m of code.matchAll(/\bfrom\s*['"]([^'"]+)['"]/g)) {
+      // `import x from '...'`, `export ... from '...'` and side-effect `import '...'`
+      for (const m of code.matchAll(/(?:\bfrom|\bimport)\s*['"]([^'"]+)['"]/g)) {
         if (!m[1].startsWith('.')) problems.push(`${relative(OUT, file)} → bare import "${m[1]}" (browsers can't resolve it without an import map)`);
         else await check(file, m[1]);
       }

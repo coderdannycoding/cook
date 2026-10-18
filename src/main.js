@@ -107,16 +107,17 @@ class Game {
 
   // ======================================================================= boot
   async boot() {
-    this.ui.setLoading(0.05, 'Firing up the stoves…');
+    this.ui.setLoading(0.05, 'Lighting the stoves');
     // Signage & UI are painted onto canvases, so wait (briefly) for the web font first.
     try {
-      await Promise.race([document.fonts?.load('700 64px Fredoka') ?? Promise.resolve(), new Promise((r) => setTimeout(r, 2500))]);
+      const fonts = document.fonts ? Promise.all(['400 64px Shrikhand', '700 16px Archivo', '700 16px "Courier Prime"'].map((f) => document.fonts.load(f))) : Promise.resolve();
+      await Promise.race([fonts, new Promise((r) => setTimeout(r, 2500))]);
     } catch {
       /* fall back to system fonts */
     }
     await nextFrame();
     await this.bakeThumbnails();
-    this.ui.setLoading(1, 'Ready!');
+    this.ui.setLoading(1, 'Ready');
     // Title backdrop: the saved restaurant (or the starter one)
     const save = loadGame();
     this.state = save || newGameState();
@@ -198,7 +199,7 @@ class Game {
 
   spawnPlayer() {
     if (this.player) this.player.dispose();
-    this.player = new Player(this, this.settings.color || '#e74c3c');
+    this.player = new Player(this, this.settings.color || '#c8442b');
     const spot = this.freeTileNear(PLAYER_SPAWN.x, PLAYER_SPAWN.z);
     if (spot) this.player.setPos(spot.x + 0.5, spot.z + 0.5);
     this.player.targetFacing = this.player.facing = Math.PI * 0.75;
@@ -284,7 +285,7 @@ class Game {
     for (const id of CUISINE_ORDER) {
       const C = CUISINES[id];
       if (!s.cuisines[id] && before < C.stars && s.rating >= C.stars) {
-        this.ui.toast(`⭐ ${C.stars.toFixed(1)} stars! ${C.icon} ${C.name} can be unlocked tonight!`, 'gold');
+        this.ui.toast(`${C.stars.toFixed(1)} stars. You can unlock ${C.name} tonight.`, 'gold', 'star');
         this.audio.fanfare();
         this.particles.confetti(this.player.pos.x, 2, this.player.pos.z, 40);
       }
@@ -341,12 +342,12 @@ class Game {
     const lvl = s.upgrades[id] || 0;
     const next = U.levels[lvl];
     if (!next) return;
-    if (!this.spend(next.price)) { this.ui.toast('Not enough cash!', 'warn'); this.audio.error(); return; }
+    if (!this.spend(next.price)) { this.ui.toast('Not enough money for that', 'warn', 'coin'); this.audio.error(); return; }
     s.upgrades[id] = lvl + 1;
     this.audio.levelUp();
     this.particles.confetti(this.player.pos.x, 1.8, this.player.pos.z, 26);
     if (id === 'floor') this.expandFloor();
-    else this.ui.toast(`${U.icon} ${U.name} → ${U.fmt(next.value)}`, 'good');
+    else this.ui.toast(`${U.name}: ${U.fmt(next.value)}`, 'good', U.icon);
     this.save();
   }
 
@@ -357,7 +358,7 @@ class Game {
     this.updateAmbience(true);
     this.renderer.addShake(0.3);
     this.audio.thud();
-    this.ui.toast(`🏗️ The walls come down! Your floor is now ${w} × ${h}.`, 'gold');
+    this.ui.toast(`The walls are down. Your floor is now ${w} × ${h}.`, 'gold', 'floor');
   }
 
   buyTheme(spec) {
@@ -365,7 +366,7 @@ class Game {
     const s = this.state;
     const T = kind === 'floor' ? FLOOR_THEMES[id] : WALL_THEMES[id];
     if (!s.ownedThemes.includes(spec)) {
-      if (!this.spend(T.price)) { this.ui.toast('Not enough cash!', 'warn'); this.audio.error(); return; }
+      if (!this.spend(T.price)) { this.ui.toast('Not enough money for that', 'warn', 'coin'); this.audio.error(); return; }
       s.ownedThemes.push(spec);
       this.audio.levelUp();
     } else this.audio.click();
@@ -381,15 +382,15 @@ class Game {
     const s = this.state;
     const C = CUISINES[id];
     if (s.cuisines[id]) return;
-    if (s.rating < C.stars) { this.ui.toast(`Requires ${C.stars.toFixed(1)}★`, 'warn'); this.audio.error(); return; }
-    if (!this.spend(C.price)) { this.ui.toast('Not enough cash!', 'warn'); this.audio.error(); return; }
+    if (s.rating < C.stars) { this.ui.toast(`Needs a ${C.stars.toFixed(1)}★ rating`, 'warn', 'lock'); this.audio.error(); return; }
+    if (!this.spend(C.price)) { this.ui.toast('Not enough money for that', 'warn', 'coin'); this.audio.error(); return; }
     s.cuisines[id] = true;
     this.menuVer++;
     this.audio.fanfare();
     this.particles.confetti(this.player.pos.x, 2, this.player.pos.z, 50);
     const need = new Set();
     for (const d of C.dishes) for (const m of this.missingFor(d)) need.add(m);
-    this.ui.toast(`🎉 ${C.icon} ${C.name} unlocked!${need.size ? ` You'll need: ${[...need].join(', ')}` : ''}`, 'gold');
+    this.ui.toast(`${C.name} is on the menu.${need.size ? ` You'll need: ${[...need].join(', ')}.` : ''}`, 'gold', 'menu');
     this.save();
   }
 
@@ -456,11 +457,11 @@ class Game {
 
   openRestaurant() {
     const g = this.grid;
-    if (!g.stations('table').length) { this.ui.toast('⚠️ You need at least one table!', 'danger'); this.audio.error(); return; }
-    if (!g.stations('platerack').length && !g.stations('sink').length) { this.ui.toast('⚠️ You need a Plate Rack to store plates!', 'danger'); this.audio.error(); return; }
-    if (!this.availableDishes().length) { this.ui.toast('⚠️ Nothing on the menu can be cooked — check crates & stations in the Menu tab.', 'danger'); this.audio.error(); return; }
-    if (!g.stations('sink').length && !g.stations('autowasher').length) this.ui.toast('Heads up: no sink — you won\'t be able to wash plates!', 'warn');
-    if (!g.stations('extinguisher').length && !this.upg('fireproof')) this.ui.toast('Heads up: no extinguisher stand — fires will be hard to stop!', 'warn');
+    if (!g.stations('table').length) { this.ui.toast('Place at least one table before opening', 'danger', 'warn'); this.audio.error(); return; }
+    if (!g.stations('platerack').length && !g.stations('sink').length) { this.ui.toast('Place a plate rack so there are plates to serve on', 'danger', 'warn'); this.audio.error(); return; }
+    if (!this.availableDishes().length) { this.ui.toast('Nothing on the menu can be cooked. The Menu tab shows which crates and stations are missing.', 'danger', 'warn'); this.audio.error(); return; }
+    if (!g.stations('sink').length && !g.stations('autowasher').length) this.ui.toast('There’s no sink, so dirty plates can’t be washed', 'warn', 'sponge');
+    if (!g.stations('extinguisher').length && !this.upg('fireproof')) this.ui.toast('There’s no extinguisher stand, so fires will be hard to stop', 'warn', 'extinguisher');
     this.save();
     this.startDay();
   }
@@ -488,7 +489,7 @@ class Game {
     this.countStep = -1;
     this.renderer.openSignOn = false;
     this.audio.startMusic('day');
-    this.ui.banner(`Day ${this.state.day}`, this.state.day === 1 ? 'Grand opening!' : `${this.state.rating.toFixed(1)}★ · ${formatMoney(this.state.cash)}`);
+    this.ui.banner(`Day ${this.state.day}`, this.state.day === 1 ? 'Opening day' : `${this.state.rating.toFixed(1)}★ · ${formatMoney(this.state.cash)}`);
     if (this.state.day === 1) this.tutorial.start();
     this.setWakeLock(true);
   }
@@ -573,17 +574,18 @@ class Game {
     requestAnimationFrame(tick);
   }
 
-  // Drop render resolution / shadow quality if the machine can't keep up
+  // Drop render resolution / shadow quality as soon as the machine can't hold a smooth frame rate
   watchPerformance(rawDt) {
     const p = this.perf;
-    if (this.phase !== 'day' || this.paused || (this.renderer.quality ?? 2) === 0) return;
+    const playing = this.phase === 'day' || this.phase === 'countdown' || this.phase === 'night';
+    if (!playing || this.paused || document.hidden || (this.renderer.quality ?? 2) === 0) { p.t = 0; p.frames = 0; return; }
     p.t += rawDt;
     p.frames++;
-    if (p.t < 4) return;
+    if (p.t < 2.5) return;
     const fps = p.frames / p.t;
     p.t = 0;
     p.frames = 0;
-    if (fps < 40) {
+    if (fps < 48) {
       p.slow++;
       if (p.slow < 2) return;
       p.slow = 0;
@@ -644,12 +646,12 @@ class Game {
       }
       case 'countdown': {
         this.countdownT += dt;
-        const step = Math.floor(this.countdownT / 0.85);
+        const step = Math.floor(this.countdownT / 0.7);
         if (step !== this.countStep) {
           this.countStep = step;
           if (step >= 1 && step <= 3) { this.ui.countdown(String(4 - step)); this.audio.countdown(false); }
           if (step === 4) {
-            this.ui.countdown('OPEN!', true);
+            this.ui.countdown('Service!', true);
             this.audio.countdown(true);
             this.audio.bell();
             this.phase = 'day';
@@ -667,7 +669,7 @@ class Game {
           this.closingAnnounced = true;
           this.renderer.openSignOn = false;
           this.audio.doorClose();
-          this.ui.toast('🔔 Closing time! Finish serving the guests still inside.', 'info');
+          this.ui.toast('Closing time. Finish serving the guests still inside.', 'info', 'bell');
         }
         this.simulate(dt, true);
         if (this.clock >= DAY.closeHour && this.customers.isEmpty()) this.endDay();
@@ -686,13 +688,15 @@ class Game {
           this.camPan.x = clamp(this.camPan.x + (rx * mv.x + fx * mv.y) * dt * 8 + rx * gx + fx * gy, -W / 2, W / 2);
           this.camPan.z = clamp(this.camPan.z + (rz * mv.x + fz * mv.y) * dt * 8 + rz * gx + fz * gy, -H / 2, H / 2);
           this.build.update(dt);
+          this.build.updatePeek();
         }
-        // Keep the restaurant centred in the space above the night dock
-        const frac = this.phase === 'night' ? this.ui.dockFraction() : 0;
-        const view = (r.fitViewForRoom(W, H, 1.06) / (1 - frac * 0.8)) * this.userZoom;
-        const shift = ((frac / 2) * view) / Math.sin(CAMERA.elevation);
+        // Keep the restaurant centred in the space between the build help bar and the night dock
+        const fb = this.phase === 'night' ? this.ui.dockFraction() : 0;
+        const ft = this.phase === 'night' ? Math.min(0.2, 64 / Math.max(1, r.height)) : 0;
+        r.setView((r.fitViewForRoom(W, H, 1.06) / (1 - (fb + ft) * 0.85)) * this.userZoom);
+        const view = r.targetView; // the clamped size actually used, so the shift matches it
+        const shift = (((fb - ft) / 2) * view) / Math.sin(CAMERA.elevation);
         r.setCameraTarget(W / 2 + this.camPan.x + Math.sin(r.yaw) * shift, H / 2 + this.camPan.z + Math.cos(r.yaw) * shift);
-        r.setView(view);
         r.setTimeOfDay(22.6, dt);
         this.grid.update(dt, this.time);
         this.staff.update(dt, false);
@@ -721,16 +725,16 @@ class Game {
     if (open) {
       const rush = this.fire.count > 0 || (this.clock >= 18 && this.clock < 20);
       this.audio.startMusic(rush ? 'rush' : 'day');
-      for (const [hour, key, text] of [[11.75, 'lunch', '🍽️ Lunch rush! Customers are flooding in.'], [17.75, 'dinner', '🌆 Dinner rush! Keep those pans moving!']]) {
+      for (const [hour, key, text] of [[11.75, 'lunch', 'Lunch rush. More guests are on the way.'], [17.75, 'dinner', 'Dinner rush. The busiest two hours of the day.']]) {
         if (this.clock >= hour && !this.announced[key]) {
           this.announced[key] = true;
-          this.ui.toast(text, 'info');
+          this.ui.toast(text, 'info', 'bell');
           this.audio.bell();
         }
       }
       if (this.state.cash < 0 && !this.announced.debt) {
         this.announced.debt = true;
-        this.ui.toast("📉 You're in the red! Serve more dishes before buying anything else.", 'warn');
+        this.ui.toast('You’re in the red. Serve more dishes before buying anything else.', 'warn', 'trenddown');
       }
     }
 
@@ -746,13 +750,23 @@ class Game {
     for (const m of this.staff.members) m.updateVisual(dt);
     this.updateAmbience();
 
-    // Camera: fit the whole room when possible, otherwise follow the chef
-    const fit = r.fitViewForRoom(W, H, 1.08);
-    const view = Math.min(fit, CAMERA.dayView + 1) * this.userZoom;
-    r.setView(view);
+    // Camera: fit the whole room in the space below the order tickets when possible, otherwise
+    // follow the chef. Portrait screens get a taller view so the same floor width stays visible.
+    // (The zoom cap grows with the reserved strip, so the visible kitchen keeps the same scale and the
+    // camera stays still instead of chasing the chef.)
+    // On small screens the chef would get too small, so there the cap stays put and the camera follows.
+    // Upright phones also keep the strip behind the thumb controls clear.
+    const top = this.ui.hudFraction() * 0.85;
+    const bottom = this.input.touchMode && r.height > r.width ? Math.min(0.3, 200 / r.height) * 0.85 : 0;
+    const fit = r.fitViewForRoom(W, H, 1.08) / (1 - top - bottom);
+    const big = Math.min(r.width, r.height) >= 600;
+    const cap = ((CAMERA.dayView + 1) * (big ? 1 / (1 - top - bottom) : 1.1)) / Math.min(1, r.width / r.height);
+    r.setView(Math.min(fit, cap) * this.userZoom);
+    const view = r.targetView;
+    const follow = fit <= view * 1.02 ? 0.12 : 0.75;
+    const shift = (((bottom - top) / 2) * view) / Math.sin(CAMERA.elevation);
     const p = this.player.pos;
-    if (fit <= view * 1.02) r.setCameraTarget(W / 2 + (p.x - W / 2) * 0.12, H / 2 + (p.z - H / 2) * 0.12);
-    else r.setCameraTarget(W / 2 + (p.x - W / 2) * 0.75, H / 2 + (p.z - H / 2) * 0.75);
+    r.setCameraTarget(W / 2 + (p.x - W / 2) * follow + Math.sin(r.yaw) * shift, H / 2 + (p.z - H / 2) * follow + Math.cos(r.yaw) * shift);
 
     // Ambient audio loops
     let sizzle = 0, fry = 0, boil = 0;
@@ -815,7 +829,7 @@ function showFatal(title, detail) {
   const L = document.getElementById('loading');
   if (!L) return;
   L.classList.remove('fade');
-  L.innerHTML = `<div class="load-card fatal-card"><div class="load-logo">🍳</div><div class="load-title"></div><p class="fatal-text"></p></div>`;
+  L.innerHTML = '<div class="load-card fatal-card"><div class="load-title"></div><p class="fatal-text"></p></div>';
   L.querySelector('.load-title').textContent = title;
   L.querySelector('.fatal-text').textContent = detail;
 }
@@ -830,6 +844,7 @@ function hasWebGL2() {
 }
 
 function start() {
+  window.__bootOk?.();
   if (!hasWebGL2()) {
     showFatal('WebGL 2 is unavailable', 'This game needs WebGL 2. Try an up-to-date Chrome, Edge, Firefox or Safari, and make sure hardware acceleration is turned on.');
     return;

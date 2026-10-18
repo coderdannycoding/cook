@@ -20,10 +20,13 @@ const ESBUILD = 'esbuild@0.24.0';
 const CSS_FILES = ['styles/fonts.css', 'styles/main.css', 'styles/hud.css', 'styles/panels.css', 'styles/touch.css'];
 
 function bundleJs() {
-  const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-  const out = execFileSync(npx, ['--yes', ESBUILD, join(ROOT, 'src/main.js'), '--bundle', '--format=esm', '--minify', '--target=es2020', '--legal-comments=none', '--log-level=warning'], {
+  const win = process.platform === 'win32';
+  // Windows can only start npx.cmd through a shell (Node >= 18.20.2); quote the path in case it has spaces
+  const entry = win ? `"${join(ROOT, 'src/main.js')}"` : join(ROOT, 'src/main.js');
+  const out = execFileSync(win ? 'npx.cmd' : 'npx', ['--yes', ESBUILD, entry, '--bundle', '--format=esm', '--minify', '--target=es2020', '--legal-comments=eof', '--log-level=warning'], {
     cwd: ROOT,
     maxBuffer: 64 * 1024 * 1024,
+    shell: win,
   });
   // Never let the inline script close itself early.
   const js = out.toString('utf8').replace(/<\/script/gi, '<\\/script');
@@ -42,10 +45,12 @@ async function inlineCss() {
       if (/^(data:|https?:)/.test(ref)) continue;
       const data = await readFile(resolve(base, ref));
       const mime = ref.endsWith('.woff2') ? 'font/woff2' : ref.endsWith('.png') ? 'image/png' : 'application/octet-stream';
-      text = text.replace(m[0], `url(data:${mime};base64,${data.toString('base64')})`);
+      text = text.replace(m[0], () => `url(data:${mime};base64,${data.toString('base64')})`);
     }
     css += `\n/* ${f} */\n${text}`;
   }
+  // Fonts are inlined above, so carry their licence notice with them
+  css = `/* Fonts: Shrikhand, Archivo and Courier Prime, SIL Open Font License 1.1 (https://openfontlicense.org). */${css}`;
   return css.replace(/<\/style/gi, '<\\/style');
 }
 
@@ -53,6 +58,7 @@ async function main() {
   const html = await readFile(join(ROOT, 'index.html'), 'utf8');
   const head = html.slice(html.indexOf('<head>') + 6, html.indexOf('</head>'));
   const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('</body>'))
+    .replace(/\s*<script src="src\/boot-guard\.js"><\/script>/, '')
     .replace(/\s*<script type="module" src="src\/main\.js"><\/script>/, '');
   const metas = head.split('\n')
     .filter((l) => /<meta |<title>/.test(l) && !/charset|viewport/.test(l))
@@ -84,7 +90,7 @@ ${body}
   const ai = process.argv.indexOf('--artifact');
   if (ai > 0 && process.argv[ai + 1]) {
     const artifact = `<title>Pandemonium Bistro</title>
-<meta name="description" content="A frantic isometric kitchen-chaos restaurant tycoon. Cook, serve, build and expand.">
+<meta name="description" content="Run a small, chaotic restaurant: cook every order by hand during service, then rebuild the kitchen after closing.">
 <style>
 html, body { height: 100%; }
 ${css}

@@ -1,6 +1,7 @@
 // Customer flow: street arrivals, the queue outside, seating via A*, ordering with patience,
 // eating, paying & tipping, reviews, VIP food critics, and ambient passers-by.
 
+import { icon } from './icons.js';
 import { Customer, Character } from './entities.js';
 import { findPath } from './ai.js';
 import { DISHES, dishBasePatience } from './recipes.js';
@@ -130,7 +131,7 @@ export class CustomerManager {
     if (!g.availableDishes().length) {
       if (g.time - this.warnedMenu > 20) {
         this.warnedMenu = g.time;
-        g.ui.toast('⚠️ Nothing on your menu can be made! Check crates & stations.', 'danger');
+        g.ui.toast('Nothing on your menu can be made. Check your crates and stations.', 'danger', 'warn');
       }
       return;
     }
@@ -153,7 +154,7 @@ export class CustomerManager {
     this.groups.push(gr);
     if (critic) {
       g.audio.critic();
-      g.ui.toast('🧐 A VIP FOOD CRITIC is on the way! Impress them for a huge bonus!', 'gold');
+      g.ui.toast('A food critic is on the way. Serve them fast for a big bonus.', 'gold', 'crown');
       g.events.emit('critic');
     }
   }
@@ -212,11 +213,11 @@ export class CustomerManager {
       gr.queueT = 0;
       this.queue.push(gr);
       const c = gr.members[0];
-      this.game.particles.emoji(c.pos.x, 2.1, c.pos.z, '⏳');
+      this.game.particles.emote(c.pos.x, 2.1, c.pos.z, 'A queue?', 'meh');
     } else {
       this.game.today.turnedAway += gr.members.length;
       const c = gr.members[0];
-      this.game.particles.emoji(c.pos.x, 2.1, c.pos.z, '😞');
+      this.game.particles.emote(c.pos.x, 2.1, c.pos.z, 'Full again?', 'bad');
       this.leaveGroup(gr, 'full');
     }
   }
@@ -234,7 +235,7 @@ export class CustomerManager {
       });
       if (gr.queueT > gr.queueMax) {
         g.today.lost += gr.members.length;
-        for (const c of gr.members) g.particles.emoji(c.pos.x, 2.1, c.pos.z, '😤');
+        for (const c of gr.members) g.particles.emote(c.pos.x, 2.1, c.pos.z, '#@!', 'bad');
         for (let i = 0; i < gr.members.length; i++) g.applyReview(2, 0.012);
         this.leaveGroup(gr, 'impatient');
       }
@@ -268,7 +269,7 @@ export class CustomerManager {
     });
     if (!ok) {
       this.leaveGroup(gr, 'blocked');
-      g.ui.toast("⚠️ Customers couldn't reach a table — check your layout!", 'danger');
+      g.ui.toast('Guests can’t reach a table. Clear a path from the door.', 'danger', 'warn');
       return;
     }
     g.audio.bell();
@@ -315,9 +316,9 @@ export class CustomerManager {
         const drain = g.fire.count > 0 ? 1.5 : 1;
         const before = c.patience;
         c.patience -= (dt / c.patienceMax) * drain;
-        if (before > 0.5 && c.patience <= 0.5) g.particles.emoji(c.pos.x, 2.0, c.pos.z, '😐');
+        if (before > 0.5 && c.patience <= 0.5) g.particles.emote(c.pos.x, 2.0, c.pos.z, 'Hmm…', 'meh');
         if (before > 0.25 && c.patience <= 0.25) {
-          g.particles.emoji(c.pos.x, 2.0, c.pos.z, '😠');
+          g.particles.emote(c.pos.x, 2.0, c.pos.z, 'Hurry up!', 'bad');
           g.audio.angry();
         }
         c.setMood(c.patience > 0.5 ? 'smile' : c.patience > 0.25 ? 'open' : 'frown');
@@ -340,7 +341,7 @@ export class CustomerManager {
           c.state = 'done';
           c.ate = true;
           c.setMood('smile');
-          g.particles.emoji(c.pos.x, 2.0, c.pos.z, pick(['😋', '🤤', '👌', '💯']));
+          g.particles.emote(c.pos.x, 2.0, c.pos.z, pick(['Yum!', 'Mmm!', 'Tasty!', 'So good']), 'good');
         }
         break;
       }
@@ -385,7 +386,7 @@ export class CustomerManager {
     for (const ct of plate.contents) ct.hot = Math.max(ct.hot || 0, g.time + 6);
     g.orders.complete(c.ticket);
     g.today.served++;
-    g.particles.emoji(c.pos.x, 2.0, c.pos.z, score >= 4.5 ? '😍' : score >= 4 ? '😋' : '🙂', true);
+    g.particles.emote(c.pos.x, 2.0, c.pos.z, score >= 4.5 ? 'Wow!' : score >= 4 ? 'Ooh!' : 'Thanks', score >= 4.5 ? 'love' : score >= 4 ? 'good' : 'meh', true);
     g.particles.sparkle(c.pos.x, 1.2, c.pos.z);
     g.audio.happy();
     c.setMood('open');
@@ -434,13 +435,13 @@ export class CustomerManager {
       g.state.stats.criticsWowed++;
       g.particles.confetti(c.pos.x, 1.6, c.pos.z, 50);
       g.audio.fanfare();
-      g.ui.toast(`🌟 The critic RAVED! +$${bonus} bonus & a glowing review!`, 'gold');
+      g.ui.toast(`The critic loved it. +$${bonus} and a glowing review.`, 'gold', 'crown');
     } else if (served) {
       g.today.critic = 'meh';
-      g.ui.toast('🧐 The critic was... unimpressed. Faster service next time!', 'warn');
+      g.ui.toast('The critic was unimpressed. Faster service next time.', 'warn', 'crown');
     } else {
       g.today.critic = 'angry';
-      g.ui.toast('😤 The critic stormed out! That review is going to sting.', 'danger');
+      g.ui.toast('The critic walked out. That review is going to hurt.', 'danger', 'crown');
     }
   }
 
@@ -469,13 +470,13 @@ export class CustomerManager {
     gr.members.forEach((c, i) => {
       if (c.ticket && c.ticket.state === 'open') g.orders.fail(c.ticket);
       if (reason === 'angry' && (c.state === 'waiting' || c.state === 'seated')) {
-        g.particles.emoji(c.pos.x, 2.0, c.pos.z, '💢', true);
+        g.particles.emote(c.pos.x, 2.0, c.pos.z, '#@%!', 'bad', true);
         g.applyReview(1, c.critic ? 0.2 : 0.035);
         g.today.lost++;
         c.setMood('frown');
         if (c.critic) this.criticVerdict(c, false);
       } else if (reason === 'happy' || reason === 'closing') {
-        if (reason === 'happy' && Math.random() < 0.5) g.particles.emoji(c.pos.x, 2.0, c.pos.z, pick(['💖', '👋', '🥰']));
+        if (reason === 'happy' && Math.random() < 0.5) g.particles.emote(c.pos.x, 2.0, c.pos.z, pick([icon('heart'), 'Bye!', 'Thanks!']), 'love');
       }
       if (c.seat) {
         const pl = c.seat.plate;

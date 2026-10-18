@@ -21,11 +21,6 @@ export const INGREDIENTS = {
   berries:  { name: 'Berries',  cost: 3, chop: 1.4, chopTo: 'chopped', color: '#7b3fc4', cuisine: 'patisserie' },
 };
 
-export const ING_EMOJI = {
-  lettuce: '🥬', tomato: '🍅', bun: '🍞', meat: '🥩', cheese: '🧀', dough: '🫓', rice: '🍚', fish: '🐟',
-  nori: '🌿', noodles: '🍝', egg: '🥚', tortilla: '🫓', potato: '🥔', shrimp: '🦐', berries: '🫐',
-};
-
 // Specific display names for item keys (id:state)
 const NAME_OVERRIDES = {
   'meat:chopped': 'Raw Patty', 'meat:cooked': 'Seared Patty', 'meat:burnt': 'Charred Patty',
@@ -58,10 +53,10 @@ export const COOK_RULES = {
 };
 
 export const COOKER_INFO = {
-  stove: { name: 'Stove', verb: 'Sear', icon: '🍳' },
-  pot: { name: 'Stock Pot', verb: 'Boil', icon: '♨️' },
-  fryer: { name: 'Deep Fryer', verb: 'Fry', icon: '🫧' },
-  oven: { name: 'Pizza Oven', verb: 'Bake', icon: '🔥' },
+  stove: { name: 'Stove', verb: 'Sear', icon: 'pan' },
+  pot: { name: 'Stock Pot', verb: 'Boil', icon: 'pot' },
+  fryer: { name: 'Deep Fryer', verb: 'Fry', icon: 'fryer' },
+  oven: { name: 'Pizza Oven', verb: 'Bake', icon: 'oven' },
 };
 
 export const TOPPINGS = ['tomato', 'cheese', 'meat', 'berries'];
@@ -69,31 +64,31 @@ export const MAX_TOPPINGS = 3;
 export const MAX_PLATE_ITEMS = 5;
 
 export const DISHES = {
-  salad:        { name: 'Garden Salad',    cuisine: 'diner', price: 10, emoji: '🥗', parts: ['lettuce:chopped', 'tomato:chopped'] },
-  burger:       { name: 'Classic Burger',  cuisine: 'diner', price: 14, emoji: '🍔', parts: ['bun:raw', 'meat:cooked'] },
-  cheeseburger: { name: 'Cheeseburger',    cuisine: 'diner', price: 19, emoji: '🍔', parts: ['bun:raw', 'meat:cooked', 'cheese:chopped'] },
-  deluxe:       { name: 'Deluxe Burger',   cuisine: 'diner', price: 24, emoji: '🍔', parts: ['bun:raw', 'meat:cooked', 'lettuce:chopped', 'tomato:chopped'] },
-  margherita:   { name: 'Margherita',      cuisine: 'pizzeria', price: 26, emoji: '🍕', parts: ['dough:baked+cheese+tomato'] },
-  meatlovers:   { name: 'Meat Lovers',     cuisine: 'pizzeria', price: 34, emoji: '🍕', parts: ['dough:baked+cheese+meat+tomato'] },
-  nigiri:       { name: 'Salmon Nigiri',   cuisine: 'japanese', price: 20, emoji: '🍣', parts: ['rice:cooked', 'fish:chopped'] },
-  maki:         { name: 'Maki Roll',       cuisine: 'japanese', price: 27, emoji: '🍙', parts: ['nori:raw', 'rice:cooked', 'fish:chopped'] },
-  ramen:        { name: 'Tonkotsu Ramen',  cuisine: 'japanese', price: 32, emoji: '🍜', parts: ['noodles:boiled', 'egg:boiled', 'meat:cooked'] },
-  taco:         { name: 'Street Taco',     cuisine: 'taqueria', price: 20, emoji: '🌮', parts: ['tortilla:raw', 'meat:cooked', 'tomato:chopped'] },
-  burrito:      { name: 'Mega Burrito',    cuisine: 'taqueria', price: 29, emoji: '🌯', parts: ['tortilla:raw', 'rice:cooked', 'meat:cooked', 'cheese:chopped'] },
-  fries:        { name: 'Golden Fries',    cuisine: 'fryshack', price: 12, emoji: '🍟', parts: ['potato:fried'] },
-  fishchips:    { name: 'Fish & Chips',    cuisine: 'fryshack', price: 27, emoji: '🐟', parts: ['fish:fried', 'potato:fried'] },
-  tempura:      { name: 'Shrimp Tempura',  cuisine: 'fryshack', price: 30, emoji: '🍤', parts: ['shrimp:fried', 'rice:cooked'] },
-  berrytart:    { name: 'Berry Tart',      cuisine: 'patisserie', price: 30, emoji: '🥧', parts: ['dough:baked+berries'] },
-  cheesecake:   { name: 'Berry Cheesecake', cuisine: 'patisserie', price: 38, emoji: '🍰', parts: ['dough:baked+berries+cheese'] },
+  salad:        { name: 'Garden Salad',    cuisine: 'diner', price: 10, parts: ['lettuce:chopped', 'tomato:chopped'] },
+  burger:       { name: 'Classic Burger',  cuisine: 'diner', price: 14, parts: ['bun:raw', 'meat:cooked'] },
+  cheeseburger: { name: 'Cheeseburger',    cuisine: 'diner', price: 19, parts: ['bun:raw', 'meat:cooked', 'cheese:chopped'] },
+  deluxe:       { name: 'Deluxe Burger',   cuisine: 'diner', price: 24, parts: ['bun:raw', 'meat:cooked', 'lettuce:chopped', 'tomato:chopped'] },
+  margherita:   { name: 'Margherita',      cuisine: 'pizzeria', price: 26, parts: ['dough:baked+cheese+tomato'] },
+  meatlovers:   { name: 'Meat Lovers',     cuisine: 'pizzeria', price: 34, parts: ['dough:baked+cheese+meat+tomato'] },
+  nigiri:       { name: 'Salmon Nigiri',   cuisine: 'japanese', price: 20, parts: ['rice:cooked', 'fish:chopped'] },
+  maki:         { name: 'Maki Roll',       cuisine: 'japanese', price: 27, parts: ['nori:raw', 'rice:cooked', 'fish:chopped'] },
+  ramen:        { name: 'Tonkotsu Ramen',  cuisine: 'japanese', price: 32, parts: ['noodles:boiled', 'egg:boiled', 'meat:cooked'] },
+  taco:         { name: 'Street Taco',     cuisine: 'taqueria', price: 20, parts: ['tortilla:raw', 'meat:cooked', 'tomato:chopped'] },
+  burrito:      { name: 'Mega Burrito',    cuisine: 'taqueria', price: 29, parts: ['tortilla:raw', 'rice:cooked', 'meat:cooked', 'cheese:chopped'] },
+  fries:        { name: 'Golden Fries',    cuisine: 'fryshack', price: 12, parts: ['potato:fried'] },
+  fishchips:    { name: 'Fish & Chips',    cuisine: 'fryshack', price: 27, parts: ['fish:fried', 'potato:fried'] },
+  tempura:      { name: 'Shrimp Tempura',  cuisine: 'fryshack', price: 30, parts: ['shrimp:fried', 'rice:cooked'] },
+  berrytart:    { name: 'Berry Tart',      cuisine: 'patisserie', price: 30, parts: ['dough:baked+berries'] },
+  cheesecake:   { name: 'Berry Cheesecake', cuisine: 'patisserie', price: 38, parts: ['dough:baked+berries+cheese'] },
 };
 
 export const CUISINES = {
-  diner:      { name: 'American Diner',    icon: '🍔', stars: 1.0, price: 0,   color: '#ff7a45', dishes: ['salad', 'burger', 'cheeseburger', 'deluxe'], blurb: 'Crisp salads & sizzling burgers. Sear patties on the stove!' },
-  pizzeria:   { name: 'Italian Pizzeria',  icon: '🍕', stars: 2.0, price: 250, color: '#e74c3c', dishes: ['margherita', 'meatlovers'], blurb: 'Knead dough, pile on toppings, bake in a Pizza Oven.' },
-  japanese:   { name: 'Japanese Izakaya',  icon: '🍣', stars: 2.5, price: 400, color: '#ff8c69', dishes: ['nigiri', 'maki', 'ramen'], blurb: 'Steam rice & noodles in a Stock Pot, slice fresh salmon.' },
-  taqueria:   { name: 'Taqueria',          icon: '🌮', stars: 3.0, price: 500, color: '#f5b041', dishes: ['taco', 'burrito'], blurb: 'Warm tortillas loaded with seared meat & fresh salsa.' },
-  fryshack:   { name: 'Seaside Fry Shack', icon: '🍟', stars: 3.5, price: 650, color: '#f7dc6f', dishes: ['fries', 'fishchips', 'tempura'], blurb: 'Everything is better battered. Needs a Deep Fryer.' },
-  patisserie: { name: 'Patisserie',        icon: '🥧', stars: 4.0, price: 900, color: '#a569bd', dishes: ['berrytart', 'cheesecake'], blurb: 'Decadent oven-baked desserts with berry compote.' },
+  diner:      { name: 'American Diner',    stars: 1.0, price: 0,   color: '#ff7a45', dishes: ['salad', 'burger', 'cheeseburger', 'deluxe'], blurb: 'Salads and burgers. Patties get seared on the stove.' },
+  pizzeria:   { name: 'Italian Pizzeria',  stars: 2.0, price: 250, color: '#e74c3c', dishes: ['margherita', 'meatlovers'], blurb: 'Knead the dough, add toppings, bake it in a pizza oven.' },
+  japanese:   { name: 'Japanese Izakaya',  stars: 2.5, price: 400, color: '#ff8c69', dishes: ['nigiri', 'maki', 'ramen'], blurb: 'Boil rice and noodles in a stock pot and slice fresh salmon.' },
+  taqueria:   { name: 'Taqueria',          stars: 3.0, price: 500, color: '#f5b041', dishes: ['taco', 'burrito'], blurb: 'Warm tortillas filled with seared meat and fresh tomato.' },
+  fryshack:   { name: 'Seaside Fry Shack', stars: 3.5, price: 650, color: '#f7dc6f', dishes: ['fries', 'fishchips', 'tempura'], blurb: 'Fries, fish and shrimp tempura. Needs a deep fryer.' },
+  patisserie: { name: 'Patisserie',        stars: 4.0, price: 900, color: '#a569bd', dishes: ['berrytart', 'cheesecake'], blurb: 'Oven-baked tarts and cheesecake with fresh berries.' },
 };
 
 export const CUISINE_ORDER = ['diner', 'pizzeria', 'japanese', 'taqueria', 'fryshack', 'patisserie'];
@@ -325,11 +320,11 @@ export function ticketParts(dishId) {
     const c = chainFor(part);
     if (c.toppings.length) {
       out.push({ key: `${c.ing}:base`, badge: COOKER_INFO[c.cooker]?.icon || '' });
-      for (const t of c.toppings) out.push({ key: `${t}:chopped`, badge: '🔪' });
+      for (const t of c.toppings) out.push({ key: `${t}:chopped`, badge: 'knife' });
     } else {
       let badge = '';
       if (c.cooker) badge = COOKER_INFO[c.cooker].icon;
-      else if (c.chop) badge = '🔪';
+      else if (c.chop) badge = 'knife';
       out.push({ key: part, badge });
     }
   }

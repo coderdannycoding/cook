@@ -1,8 +1,8 @@
-# 🍳 Pandemonium Bistro
+# Pandemonium Bistro
 
-A frantic isometric **kitchen-chaos restaurant tycoon** that runs in the browser.
-Cook with your hands like *Overcooked!*, design an efficient kitchen like *PlateUp!*,
-and grow a restaurant empire like *Restaurant Tycoon 3*.
+An isometric restaurant game that runs in the browser. During service you cook every order by
+hand, in the spirit of *Overcooked!*. After closing you rearrange the kitchen like in *PlateUp!*
+and grow the business like in *Restaurant Tycoon 3*.
 
 Built with **Three.js** (vendored, no bundler needed) and the **Web Audio API**. Every model,
 texture, particle and sound is generated procedurally at runtime, with no asset files.
@@ -34,13 +34,15 @@ back on, add the sources from
 [Vercel's toolbar CSP docs](https://vercel.com/docs/vercel-toolbar/managing-toolbar) to the
 `Content-Security-Policy` header in `vercel.json`.
 
-The same `public/` folder works on any static host. Netlify, Cloudflare Pages and GitHub Pages
-all take build command `npm run build` and publish directory `public`.
+The same `public/` folder works on any static host. Netlify and Cloudflare Pages take build
+command `npm run build` and output directory `public`. GitHub Pages has no build step: either
+publish the branch root as it is (every path is relative, so the unbuilt source runs fine), or add
+an Actions workflow that runs `npm run build` and uploads `public/`.
 
 ### Single-file build (itch.io, offline)
 
 ```bash
-npm run build:single    # → dist/pandemonium-bistro.html, everything inlined (~860 KB)
+npm run build:single    # → dist/pandemonium-bistro.html, everything inlined (about 1 MB)
 ```
 
 This bundles the JS with esbuild (fetched on demand through `npx`) and inlines all CSS and
@@ -57,6 +59,9 @@ ES modules need to be served over HTTP (opening `index.html` from disk won't wor
 npm start               # zero-dependency static server → http://localhost:8080
 npm run preview         # production build in public/, served with the same headers as Vercel
 ```
+
+To try it on your phone, start the server with `HOST=0.0.0.0 npm start` and open your computer's
+local IP address on port 8080 from the phone (same Wi-Fi network).
 
 Requires Node 18 or newer. Any browser with WebGL 2 works on desktop or mobile: Chrome, Edge,
 Firefox, and Safari 15 or later. Gamepads also work.
@@ -78,17 +83,17 @@ Firefox, and Safari 15 or later. Gamepads also work.
 | Action | Touch |
 | --- | --- |
 | Move | virtual joystick (left thumb, anywhere on the lower left) |
-| Grab / drop / serve | ✋ button (its label shows what it will do) |
-| Chop · wash · spray | 🔪 button (tap once and it keeps working while you stand still) |
-| Dash | 💨 button |
+| Grab / drop / serve | **Grab** button (its label shows what it will do) |
+| Chop · wash · spray | **Use** button (tap once and it keeps working while you stand still) |
+| Dash | **Dash** button |
 | Camera (night) | drag to pan · pinch to zoom |
-| Build mode | tap a card, tap the floor to preview, tap again or press ✓ to place · tap a placed item to move it · the toolbar rotates, sells and cancels |
+| Build mode | tap a card, tap the floor to preview, tap again or press **Place here** · tap a placed item to move it · the toolbar rotates, sells and cancels |
 
 ## How to play
 
-**☀️ Day shift (4 minutes, 10 AM to 10 PM).** Customers walk in from the street, take a seat and
-order. Tickets across the top show each dish, its ingredients and the steps (🔪 chop, 🍳 sear,
-♨️ boil, 🫧 fry, 🔥 bake), plus a patience bar that runs from green through yellow to pulsing red.
+**Service (4 minutes, 10 AM to 10 PM).** Guests walk in from the street, take a seat and order.
+The order slips along the top show each dish, its ingredients and how to prepare each one (chop,
+sear, boil, fry or bake), plus a patience bar that runs from green through yellow to red.
 
 1. Grab ingredients from crates. Each one costs a little money.
 2. Chop or knead on cutting boards, then cook on the right station. Food left on the heat
@@ -97,10 +102,10 @@ order. Tickets across the top show each dish, its ingredients and the steps (�
 3. Take a clean plate, scoop each prepared part onto it, carry it to the table and press `E`.
 4. Guests eat, pay and tip based on speed and ambience. Clear their dirty plates, wash them in
    the sink, and walk past tables to pocket the cash.
-5. 👑 **Food critics** have a gold aura and little patience. Wow them for a large cash bonus and
-   a big rating boost.
+5. **Food critics** wear a gold crown and have little patience. Serve them quickly for a large cash
+   bonus and a big rating boost.
 
-**🌙 Night phase.** Review the day's profit and loss, then use the dock:
+**After closing.** The day's receipt shows what you earned and spent. Then use the board at the bottom:
 
 - **Build:** buy, place, rotate, move and sell stations, tables, décor and automation on the grid.
   Placement is validated so a layout can never wall off a station, seat or the door.
@@ -115,16 +120,17 @@ order. Tickets across the top show each dish, its ingredients and the steps (�
   Fry Shack → Patisserie), then toggle dishes on or off. A dish only appears on the menu if
   your layout has every crate and station it needs.
 
-Décor raises **✨ Ambience**, which gives more patience and bigger tips. Mood lamps calm nearby
+Décor raises **ambience**, which gives more patience and bigger tips. Mood lamps calm nearby
 guests, and booths make guests more patient still. Progress autosaves to `localStorage` every night.
 
 ## Architecture
 
 ```
 index.html            HTML shell (loads src/main.js as an ES module; no build step needed to run it)
-styles/               main.css (base, title, modals) · hud.css (HUD, tickets, overlays) · panels.css (night dock)
-                      touch.css (touch controls, phone layout, safe areas) · fonts.css (self-hosted Fredoka)
-vendor/               three-0.169.0.module.min.js · fonts/ (Fredoka, SIL OFL)
+styles/               main.css (design tokens, buttons, title, modals) · hud.css (stats, order slips, overlays)
+                      panels.css (night board, till receipt) · touch.css (touch controls, phone layouts, safe areas)
+                      fonts.css (self-hosted Shrikhand, Archivo, Courier Prime)
+vendor/               three-0.169.0.module.min.js · fonts/ (SIL Open Font License)
 scripts/              build.mjs (static build → public/) · build-single.mjs (one-file build → dist/)
 vercel.json           Vercel build settings, security headers and caching
 serve.mjs             Local static server that applies the same headers as vercel.json
@@ -148,6 +154,8 @@ src/
   orders.js           Order tickets
   build.js            Night build mode (ghost previews, validation, move, sell)
   ui.js               HUD, tickets, world-anchored bubbles & progress bars, prompts, toasts, dock panels, modals
+  icons.js            The interface's single SVG icon set (no emoji, so it looks the same on every device)
+  boot-guard.js       Tiny classic script that shows an error if a game file fails to download
   tutorial.js         Day-one guided tutorial with a 3D pointer
   input.js            Keyboard, mouse, touch (pointer events: taps, drags, pinches) & gamepad
   touch.js            On-screen joystick and action buttons for touch devices
@@ -156,5 +164,5 @@ src/
 
 Debugging hook: `window.__game` exposes the running game instance in the browser console.
 
-Three.js is MIT-licensed (see `vendor/THREE-LICENSE`). The Fredoka font is licensed under the
-SIL Open Font License (see `vendor/fonts/OFL.txt`).
+Three.js is MIT-licensed (see `vendor/THREE-LICENSE`). The Shrikhand, Archivo and Courier Prime
+fonts are licensed under the SIL Open Font License (see `vendor/fonts/OFL.txt`).

@@ -32,6 +32,7 @@ export class Input {
     } catch {
       this.touchMode = false;
     }
+    document.body.classList.toggle('touch', this.touchMode);
 
     window.addEventListener('keydown', (e) => {
       if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
@@ -57,6 +58,7 @@ export class Input {
   setTouchMode(on) {
     if (this.touchMode === on) return;
     this.touchMode = on;
+    document.body.classList.toggle('touch', on);
     if (this.onTouchMode) this.onTouchMode(on);
   }
 

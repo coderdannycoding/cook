@@ -245,7 +245,7 @@ class Brain {
     this.s.vel.set(0, 0, 0);
     if (failed) {
       this.failCool = 0.6;
-      this.s.status = '❓';
+      this.s.status = 'question';
     } else this.s.status = '';
   }
 
@@ -360,7 +360,7 @@ class Brain {
     };
     const cands = this.stations((st) => this.free(st) && ia.canTransfer(st, it) && pref(st) < 50 && !(st.kind === 'cooker'));
     if (!cands.length) {
-      s.status = '🤔';
+      s.status = 'dots';
       yield* this.pause(1.2);
       return;
     }
@@ -388,7 +388,7 @@ class Brain {
   *fightFire(src) {
     this.taskName = 'fire';
     const s = this.s;
-    s.status = '🧯';
+    s.status = 'extinguisher';
     yield* this.walkTo(src);
     if (!this.act(src) || !s.held || s.held.kind !== 'tool') fail('no extinguisher');
     let guard = 0;
@@ -414,7 +414,7 @@ class Brain {
   idle(dt) {
     const s = this.s;
     this.idleT += dt;
-    if (this.idleT > 2.5) s.status = '💤';
+    if (this.idleT > 2.5) s.status = 'zzz';
     this.wanderT -= dt;
     if (s.path && s.pathI < s.path.length) {
       s.followPath(dt, s.speed * 0.5);
@@ -473,7 +473,7 @@ export class WaiterBrain extends Brain {
     this.claim(pass);
     cust.claimedBy = s;
     this.claims.push(cust);
-    s.status = '🍽️';
+    s.status = 'cloche';
     yield* this.walkTo(pass);
     if (!pass.item || matchDish(pass.item) !== cust.order || cust.state !== 'waiting') fail('changed');
     if (!this.act(pass)) fail('take');
@@ -488,7 +488,7 @@ export class WaiterBrain extends Brain {
   *clearTable(table) {
     this.taskName = 'clearTable';
     this.claim(table);
-    this.s.status = '🧹';
+    this.s.status = 'broom';
     yield* this.walkTo(table);
     if (!this.act(table)) fail('nothing');
     this.release(table);
@@ -503,7 +503,7 @@ export class WaiterBrain extends Brain {
   *collect(table) {
     this.taskName = 'collect';
     this.claim(table);
-    this.s.status = '💵';
+    this.s.status = 'coin';
     yield* this.walkTo(table);
     table.collectCash();
   }
@@ -537,7 +537,7 @@ export class DishwasherBrain extends Brain {
     this.taskName = 'wash';
     const s = this.s;
     this.claim(sink);
-    s.status = '🧽';
+    s.status = 'sponge';
     yield* this.walkTo(sink);
     while (sink.dirty > 0) {
       const dt = (yield) || 0.016;
@@ -559,7 +559,7 @@ export class DishwasherBrain extends Brain {
     this.taskName = 'restock';
     const s = this.s;
     this.claim(src);
-    s.status = '🍽️';
+    s.status = 'cloche';
     yield* this.walkTo(src);
     if (src.clean <= 0) fail('gone');
     s.held = src.take(s, true);
@@ -574,7 +574,7 @@ export class DishwasherBrain extends Brain {
   *clearTable(table) {
     this.taskName = 'clearTable';
     this.claim(table);
-    this.s.status = '🧹';
+    this.s.status = 'broom';
     yield* this.walkTo(table);
     if (!this.act(table)) fail('nothing');
     this.release(table);
@@ -681,7 +681,7 @@ export class ChefBrain extends Brain {
   *binStale(st) {
     this.taskName = 'cleanup';
     this.claim(st);
-    this.s.status = '🗑️';
+    this.s.status = 'trash';
     yield* this.walkTo(st);
     if (!st.item || !this.act(st)) fail('stale gone');
     this.release(st);
@@ -762,7 +762,7 @@ export class ChefBrain extends Brain {
     const board = this.nearest(boards);
     if (!board) fail('no board');
     this.claim(board);
-    s.status = '🔪';
+    s.status = 'knife';
     yield* this.walkTo(board);
     if (!this.act(board)) fail('board put');
     if (board.auto) {
@@ -784,7 +784,7 @@ export class ChefBrain extends Brain {
     const s = this.s;
     const c = chainFor(key);
     this.target = key;
-    s.status = c.cooker ? '🍳' : '🔪';
+    s.status = c.cooker ? 'pan' : 'knife';
     yield* this.obtain(key);
     if (c.chop && chopInfo(s.held)) yield* this.chopHeld();
     if (c.toppings.length && s.held && s.held.state === 'base') {
@@ -811,7 +811,7 @@ export class ChefBrain extends Brain {
       const ck = this.nearest(cookers);
       if (!ck) fail('no cooker');
       this.claim(ck);
-      s.status = '🍳';
+      s.status = 'pan';
       yield* this.walkTo(ck);
       if (!this.act(ck)) fail('cook put');
       // keep the reservation while it cooks — we'll be back
@@ -836,7 +836,7 @@ export class ChefBrain extends Brain {
     ck.reservedBy = s;
     this.tending.add(ck);
     this.claims.push(ck);
-    s.status = '⏲️';
+    s.status = 'timer';
     yield* this.walkTo(ck);
     let wait = 0;
     while (ck.item && ck.item.state !== 'burnt' && !isCookOutput(ck.cookType, ck.item)) {
@@ -898,7 +898,7 @@ export class ChefBrain extends Brain {
     this.claims.push(cust);
     for (const st of sources) this.claim(st);
     this.claim(pass);
-    s.status = '🍽️';
+    s.status = 'cloche';
     yield* this.walkTo(plateSrc);
     if (!this.act(plateSrc)) fail('no plate');
     for (const st of sources) {

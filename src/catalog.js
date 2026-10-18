@@ -4,13 +4,13 @@ import { SURFACE_Y, FLOOR_LEVELS } from './config.js';
 import { INGREDIENTS } from './recipes.js';
 
 export const CATEGORIES = [
-  { id: 'supplies', name: 'Supplies', icon: '📦' },
-  { id: 'prep', name: 'Prep', icon: '🔪' },
-  { id: 'cooking', name: 'Cooking', icon: '🍳' },
-  { id: 'dining', name: 'Dining', icon: '🍽️' },
-  { id: 'decor', name: 'Decor', icon: '🪴' },
-  { id: 'auto', name: 'Automation', icon: '⚙️' },
-  { id: 'style', name: 'Style', icon: '🎨' },
+  { id: 'supplies', name: 'Supplies', icon: 'crate' },
+  { id: 'prep', name: 'Prep', icon: 'knife' },
+  { id: 'cooking', name: 'Cooking', icon: 'pan' },
+  { id: 'dining', name: 'Dining', icon: 'cloche' },
+  { id: 'decor', name: 'Decor', icon: 'plant' },
+  { id: 'auto', name: 'Automation', icon: 'conveyor' },
+  { id: 'style', name: 'Style', icon: 'roller' },
 ];
 
 export const CATALOG = {};
@@ -41,7 +41,7 @@ add('pass', { name: 'Serving Pass', cat: 'prep', price: 45, station: 'pass', des
 add('extinguisher', { name: 'Extinguisher Stand', cat: 'prep', price: 40, station: 'extinguisher', flammable: false, desc: 'Grab the extinguisher and hold F to blast fires.' });
 
 // --- Cooking --------------------------------------------------------------
-add('stove', { name: 'Stove', cat: 'cooking', price: 90, station: 'cooker', cook: 'stove', desc: 'Sears patties. Watch out — food burns if left too long!' });
+add('stove', { name: 'Stove', cat: 'cooking', price: 90, station: 'cooker', cook: 'stove', desc: 'Sears patties and meat. Food left on it too long burns.' });
 add('pot', { name: 'Stock Pot', cat: 'cooking', price: 100, station: 'cooker', cook: 'pot', desc: 'Boils rice, noodles & eggs.' });
 add('oven', { name: 'Pizza Oven', cat: 'cooking', price: 180, station: 'cooker', cook: 'oven', desc: 'Bakes topped pizza bases & tarts.' });
 add('fryer', { name: 'Deep Fryer', cat: 'cooking', price: 160, station: 'cooker', cook: 'fryer', desc: 'Fries potatoes, fish & shrimp to golden perfection.' });
@@ -129,24 +129,24 @@ export const PLAYER_SPAWN = { x: 3.5, z: 1.6 };
 // ---------------------------------------------------------------------------
 // Upgrades. `value` is the effect at that level; `base` is the effect at level 0.
 export const UPGRADES = {
-  dash:      { name: 'Turbo Sneakers', icon: '👟', desc: 'Dash recharges faster.', base: 1.1, levels: [{ price: 120, value: 0.8 }, { price: 260, value: 0.55 }, { price: 480, value: 0.35 }], fmt: (v) => `${v}s dash cooldown` },
-  speed:     { name: 'Comfy Clogs', icon: '🥿', desc: 'Walk faster around the kitchen.', base: 1, levels: [{ price: 180, value: 1.1 }, { price: 380, value: 1.2 }], fmt: (v) => `${Math.round(v * 100)}% move speed` },
-  knives:    { name: 'Sharpened Knives', icon: '🔪', desc: 'Chop and knead faster (you & staff).', base: 1, levels: [{ price: 150, value: 1.35 }, { price: 320, value: 1.7 }, { price: 600, value: 2.1 }], fmt: (v) => `${Math.round(v * 100)}% chop speed` },
-  burners:   { name: 'High-Speed Burners', icon: '♨️', desc: 'Every cooker cooks faster.', base: 1, levels: [{ price: 220, value: 1.25 }, { price: 480, value: 1.5 }], fmt: (v) => `${Math.round(v * 100)}% cook speed` },
-  timer:     { name: 'Smart Timers', icon: '⏲️', desc: 'Finished food takes longer to burn.', base: 1, levels: [{ price: 140, value: 1.45 }, { price: 300, value: 2 }], fmt: (v) => `${Math.round(v * 100)}% burn window` },
-  fireproof: { name: 'Fireproof Stoves', icon: '🧯', desc: 'Burnt food never ignites. Peace of mind!', base: 0, levels: [{ price: 520, value: 1 }], fmt: (v) => (v ? 'No more fires' : 'Fires possible') },
-  plates:    { name: 'More Plates', icon: '🍽️', desc: '+2 plates in circulation.', base: 5, levels: [{ price: 60, value: 7 }, { price: 120, value: 9 }, { price: 200, value: 11 }, { price: 320, value: 13 }], fmt: (v) => `${v} plates` },
-  capacity:  { name: 'Marketing Campaign', icon: '📣', desc: 'More customer groups at once.', base: 3, levels: [{ price: 150, value: 4 }, { price: 350, value: 5 }, { price: 650, value: 6 }, { price: 1000, value: 8 }], fmt: (v) => `${v} groups at once` },
-  patience:  { name: 'Free Breadsticks', icon: '🥖', desc: 'Customers wait longer for food.', base: 1, levels: [{ price: 160, value: 1.15 }, { price: 360, value: 1.3 }], fmt: (v) => `${Math.round(v * 100)}% patience` },
-  floor:     { name: 'Restaurant Expansion', icon: '🏗️', desc: 'Knock down walls for more floor space.', base: 0, levels: [{ price: 600, value: 1 }, { price: 1300, value: 2 }, { price: 2400, value: 3 }], fmt: (v) => `${FLOOR_LEVELS[v].w} × ${FLOOR_LEVELS[v].h} floor` },
+  dash:      { name: 'Running Shoes', icon: 'wind', desc: 'Your dash recharges faster.', base: 1.1, levels: [{ price: 120, value: 0.8 }, { price: 260, value: 0.55 }, { price: 480, value: 0.35 }], fmt: (v) => `${v}s dash cooldown` },
+  speed:     { name: 'Kitchen Clogs', icon: 'shoe', desc: 'You walk faster.', base: 1, levels: [{ price: 180, value: 1.1 }, { price: 380, value: 1.2 }], fmt: (v) => `${Math.round(v * 100)}% move speed` },
+  knives:    { name: 'Whetstone', icon: 'knife', desc: 'You and your staff chop and knead faster.', base: 1, levels: [{ price: 150, value: 1.35 }, { price: 320, value: 1.7 }, { price: 600, value: 2.1 }], fmt: (v) => `${Math.round(v * 100)}% chop speed` },
+  burners:   { name: 'Bigger Burners', icon: 'fire', desc: 'Every stove, pot, fryer and oven cooks faster.', base: 1, levels: [{ price: 220, value: 1.25 }, { price: 480, value: 1.5 }], fmt: (v) => `${Math.round(v * 100)}% cook speed` },
+  timer:     { name: 'Egg Timers', icon: 'timer', desc: 'Finished food takes longer to burn.', base: 1, levels: [{ price: 140, value: 1.45 }, { price: 300, value: 2 }], fmt: (v) => `${Math.round(v * 100)}% burn window` },
+  fireproof: { name: 'Flame-Guard Stoves', icon: 'extinguisher', desc: 'Burnt food never catches fire.', base: 0, levels: [{ price: 520, value: 1 }], fmt: (v) => (v ? 'No more fires' : 'Fires possible') },
+  plates:    { name: 'Extra Plates', icon: 'plate', desc: 'Two more plates in circulation.', base: 5, levels: [{ price: 60, value: 7 }, { price: 120, value: 9 }, { price: 200, value: 11 }, { price: 320, value: 13 }], fmt: (v) => `${v} plates` },
+  capacity:  { name: 'Flyers Around Town', icon: 'megaphone', desc: 'More groups of guests at once.', base: 3, levels: [{ price: 150, value: 4 }, { price: 350, value: 5 }, { price: 650, value: 6 }, { price: 1000, value: 8 }], fmt: (v) => `${v} groups at once` },
+  patience:  { name: 'Free Bread Basket', icon: 'bread', desc: 'Guests wait longer for their food.', base: 1, levels: [{ price: 160, value: 1.15 }, { price: 360, value: 1.3 }], fmt: (v) => `${Math.round(v * 100)}% patience` },
+  floor:     { name: 'Knock Through a Wall', icon: 'floor', desc: 'More floor space.', base: 0, levels: [{ price: 600, value: 1 }, { price: 1300, value: 2 }, { price: 2400, value: 3 }], fmt: (v) => `${FLOOR_LEVELS[v].w} × ${FLOOR_LEVELS[v].h} floor` },
 };
 
 // ---------------------------------------------------------------------------
 // Staff
 export const STAFF_TYPES = {
-  chef:   { name: 'Sous-Chef', icon: '🧑‍🍳', hire: 250, wage: 30, desc: 'Fetches, chops & cooks ingredients for open orders. Rescues food before it burns. Lv3 plates complete dishes onto the Pass.' },
-  waiter: { name: 'Waiter', icon: '🤵', hire: 180, wage: 22, desc: 'Delivers finished dishes from the Serving Pass, clears tables and collects cash.' },
-  dish:   { name: 'Dishwasher', icon: '🧽', hire: 130, wage: 16, desc: 'Scrubs dirty plates at the sink and restocks the plate rack.' },
+  chef:   { name: 'Sous-Chef', hire: 250, wage: 30, desc: 'Fetches, chops and cooks ingredients for open orders, and pulls food off the heat before it burns. At level 3 they plate whole dishes onto the serving pass.' },
+  waiter: { name: 'Waiter', hire: 180, wage: 22, desc: 'Carries finished dishes from the serving pass, clears tables and collects payment.' },
+  dish:   { name: 'Dishwasher', hire: 130, wage: 16, desc: 'Washes dirty plates at the sink and refills the plate rack.' },
 };
 export const STAFF_LEVELS = [
   { speed: 3.0, work: 0.8, label: 'Trainee' },

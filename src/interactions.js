@@ -108,17 +108,17 @@ export class Interactions {
   pickDrop(actor, st) {
     const held = actor.held;
     if (!st) return { ok: false };
-    if (st.fire > 0) return { ok: false, msg: "It's on fire!" };
+    if (st.fire > 0) return { ok: false, msg: "It's on fire" };
 
     if (st.kind === 'table') {
       if (held && held.kind === 'plate' && !held.dirty) {
-        if (!held.contents.length) return { ok: false, msg: 'That plate is empty!' };
+        if (!held.contents.length) return { ok: false, msg: 'That plate is empty' };
         if (st.canAccept(held)) {
           st.put(held, actor);
           actor.held = null;
           return { ok: true, kind: 'serve' };
         }
-        return { ok: false, msg: matchDish(held) ? 'Nobody here ordered that!' : "That's not a finished dish yet" };
+        return { ok: false, msg: matchDish(held) ? 'Nobody at this table ordered that' : "That's not a finished dish yet" };
       }
       if (!held || (held.kind === 'plate' && held.dirty)) {
         if (st.canTake()) {
@@ -167,7 +167,7 @@ export class Interactions {
     const held = actor.held;
     if (held && held.kind === 'tool') out.f = 'Spray';
     if (!st) return out;
-    if (st.fire > 0) { out.warn = 'On fire!'; return out; }
+    if (st.fire > 0) { out.warn = 'On fire'; return out; }
     if (st.kind === 'table') {
       if (held && held.kind === 'plate' && !held.dirty && held.contents.length) {
         out.e = st.canAccept(held) ? `Serve ${itemLabel(held)}` : null;
@@ -236,8 +236,8 @@ export class Interactions {
     if (st.kind === 'trash') return held.kind === 'plate' ? 'Wash dirty plates in the sink' : "Can't bin that";
     if (st.kind === 'sink' || st.kind === 'autowasher') return held.kind === 'plate' && held.dirty ? 'Washer is full' : 'Only dirty plates go here';
     if (st.kind === 'platerack') return 'Only clean, empty plates';
-    if (st.item && st.item.kind === 'plate' && held.kind === 'ing') return held.state === 'raw' && chopInfo(held) ? 'Chop it first!' : "That doesn't go on a plate";
-    if (st.item && held.kind === 'plate' && st.item.kind === 'ing') return st.item.state === 'raw' && chopInfo(st.item) ? 'Chop it first!' : 'Plate is full or that doesn\'t fit';
+    if (st.item && st.item.kind === 'plate' && held.kind === 'ing') return held.state === 'raw' && chopInfo(held) ? 'Chop it first' : "That doesn't go on a plate";
+    if (st.item && held.kind === 'plate' && st.item.kind === 'ing') return st.item.state === 'raw' && chopInfo(st.item) ? 'Chop it first' : 'Plate is full or that doesn\'t fit';
     if (st.item) return 'Something is already here';
     return "Can't put that here";
   }

@@ -12,14 +12,14 @@ import {
 } from './models.js';
 
 const SKY_KEYS = [
-  { h: 0, sky: '#10162e', sun: '#8fa6ff', sunI: 0.35, hemiSky: '#38457a', hemiGround: '#1d1a24', hemiI: 0.55, fill: 0.9, lamps: 1 },
+  { h: 0, sky: '#111c24', sun: '#9fb4d8', sunI: 0.35, hemiSky: '#3b5262', hemiGround: '#1c1a18', hemiI: 0.55, fill: 0.9, lamps: 1 },
   { h: 8, sky: '#ffcfa8', sun: '#ffd2a0', sunI: 1.9, hemiSky: '#ffe2c4', hemiGround: '#6b5a48', hemiI: 0.9, fill: 0.15, lamps: 0.2 },
   { h: 10, sky: '#bfe4ff', sun: '#fff1dc', sunI: 2.5, hemiSky: '#d8eeff', hemiGround: '#7a6650', hemiI: 1.0, fill: 0.05, lamps: 0 },
   { h: 13, sky: '#a9dcff', sun: '#fffaf0', sunI: 2.8, hemiSky: '#dff1ff', hemiGround: '#7a6650', hemiI: 1.05, fill: 0.0, lamps: 0 },
   { h: 17, sky: '#bcd8f5', sun: '#ffe6c0', sunI: 2.4, hemiSky: '#ffe8d0', hemiGround: '#7a6050', hemiI: 0.95, fill: 0.05, lamps: 0 },
   { h: 19.3, sky: '#ffad80', sun: '#ff9a55', sunI: 1.8, hemiSky: '#ffbf98', hemiGround: '#6b4a48', hemiI: 0.85, fill: 0.25, lamps: 0.4 },
-  { h: 20.6, sky: '#6c5aa8', sun: '#c08aff', sunI: 0.9, hemiSky: '#8a7cc8', hemiGround: '#3a2f48', hemiI: 0.7, fill: 0.6, lamps: 0.9 },
-  { h: 21.6, sky: '#1d2348', sun: '#8fa6ff', sunI: 0.45, hemiSky: '#46529a', hemiGround: '#221d2c', hemiI: 0.6, fill: 0.85, lamps: 1 },
+  { h: 20.6, sky: '#55647e', sun: '#ff9e7a', sunI: 0.9, hemiSky: '#7d8aa6', hemiGround: '#3a3330', hemiI: 0.7, fill: 0.6, lamps: 0.9 },
+  { h: 21.6, sky: '#1b2936', sun: '#9fb4d8', sunI: 0.45, hemiSky: '#45606e', hemiGround: '#201d1a', hemiI: 0.6, fill: 0.85, lamps: 1 },
   { h: 24, sky: '#10162e', sun: '#8fa6ff', sunI: 0.35, hemiSky: '#38457a', hemiGround: '#1d1a24', hemiI: 0.55, fill: 0.9, lamps: 1 },
 ];
 
@@ -46,7 +46,11 @@ export class Renderer {
     this.canvas = canvas;
     this.overlay = overlay;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    this.maxPixelRatio = Math.min(window.devicePixelRatio || 1, 1.75);
+    // Phones and tablets have high-DPI screens but modest GPUs: start them at a lighter resolution
+    let coarse = false;
+    try { coarse = window.matchMedia('(pointer: coarse)').matches; } catch { coarse = false; }
+    this.mobile = coarse && Math.min(window.innerWidth, window.innerHeight) < 900;
+    this.maxPixelRatio = Math.min(window.devicePixelRatio || 1, this.mobile ? 1.5 : 1.75);
     this.renderer.setPixelRatio(this.maxPixelRatio);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -117,7 +121,7 @@ export class Renderer {
 
     this.sun = new THREE.DirectionalLight('#fff6e8', 2.6);
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(2048, 2048);
+    this.sun.shadow.mapSize.set(this.mobile ? 1024 : 2048, this.mobile ? 1024 : 2048);
     this.sun.shadow.bias = -0.0004;
     this.sun.shadow.normalBias = 0.025;
     this.sun.shadow.radius = 3;
@@ -384,7 +388,7 @@ export class Renderer {
     }
     g.add(mergeStatic(awning));
     // Sign
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshStandardMaterial({ map: signTexture(name, 'est. today'), emissive: '#ffffff', emissiveMap: signTexture(name, 'est. today'), emissiveIntensity: 0.35, roughness: 0.6 }));
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshStandardMaterial({ map: signTexture(name, 'open 10 am to 10 pm'), emissive: '#ffffff', emissiveMap: signTexture(name, 'open 10 am to 10 pm'), emissiveIntensity: 0.35, roughness: 0.6 }));
     sign.position.set(doorX + 0.5, 3.15, H + 0.18);
     sign.userData.ownGeo = true;
     g.add(sign);
@@ -594,11 +598,25 @@ export class Renderer {
   // ---------------------------------------------------------------- camera
   setCameraTarget(x, z) { this.camTarget.set(x, 0, z); }
   snapCamera() { this.camSmooth.copy(this.camTarget); this.viewSize = this.targetView; this._updateProjection(); }
-  setView(v) { this.targetView = clamp(v, CAMERA.minView, CAMERA.maxView); }
-  addShake(a) { this.shake = Math.min(0.6, this.shake + a); }
+  // Portrait screens are narrow, so allow a taller view to show the same width of floor
+  setView(v) { this.targetView = clamp(v, CAMERA.minView, CAMERA.maxView / Math.min(1, this.width / this.height)); }
+  addShake(a) {
+    if (this.reducedMotion === undefined) {
+      try { this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { this.reducedMotion = false; }
+    }
+    if (!this.reducedMotion) this.shake = Math.min(0.6, this.shake + a);
+  }
 
   // View size needed to fit the whole room on screen
   fitViewForRoom(W, H, margin = 1.15) {
+    const key = `${W}|${H}|${margin}|${this.yaw.toFixed(3)}|${this.width}|${this.height}`;
+    if (this._fitKey === key) return this._fitVal;
+    this._fitKey = key;
+    this._fitVal = this._fitView(W, H, margin);
+    return this._fitVal;
+  }
+
+  _fitView(W, H, margin) {
     const corners = [];
     for (const [x, z] of [[0, 0], [W, 0], [0, H], [W, H]]) for (const y of [0, WALL_HEIGHT]) corners.push(new THREE.Vector3(x, y, z));
     const dir = this._camDir();
