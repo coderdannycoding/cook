@@ -8,8 +8,8 @@ export const DAY = {
   length: 240,            // real seconds from opening to closing time
   openHour: 10,
   closeHour: 22,
-  lastSeatingHour: 21,
-  forceLeaveHour: 22.6,   // stragglers are shooed out at this point
+  lastSeatingHour: 20.5,  // late guests still get ~45 s before closing
+  forceLeaveHour: 22.9,   // stragglers are shooed out at this point
 };
 
 export const FLOOR_LEVELS = [
@@ -35,8 +35,8 @@ export const PLAYER = {
 };
 
 export const COOK = {
-  burnWindow: 7,        // seconds a finished dish survives on the heat before burning
-  igniteDelay: 2.6,     // seconds a burnt item smoulders before fire breaks out
+  burnWindow: 9,        // seconds a finished dish survives on the heat before burning
+  igniteDelay: 4,       // seconds a burnt item smoulders before fire breaks out
   spreadInterval: 5.5,  // seconds between fire spread attempts
   fireGrowth: 0.4,
   extinguishRate: 1.7,

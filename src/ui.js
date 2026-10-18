@@ -715,7 +715,7 @@ export class UI {
     const w = window.innerWidth, h = window.innerHeight;
     const c = this._hudFrac;
     if (c && c.w === w && c.h === h) return c.v;
-    const px = w <= 640 && h > w ? 250 : h <= 520 || w <= 640 ? 118 : 196;
+    const px = w <= 640 && h > w ? 268 : h <= 520 || w <= 640 ? 124 : 204;
     const v = Math.min(0.42, px / Math.max(1, h));
     this._hudFrac = { w, h, v };
     return v;
@@ -726,6 +726,8 @@ export class UI {
     this._peek = on;
     this.e.dock.classList.toggle('peek', on);
     document.body.classList.toggle('dock-peek', on);
+    // the placing toolbar sits just above the folded dock, however tall its tab row wrapped
+    if (on) document.body.style.setProperty('--dock-h', `${Math.round(this.e.dock.getBoundingClientRect().height + 12)}px`);
     this._dockFrac.t = -1;
   }
 

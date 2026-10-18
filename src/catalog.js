@@ -144,16 +144,16 @@ export const UPGRADES = {
 // ---------------------------------------------------------------------------
 // Staff
 export const STAFF_TYPES = {
-  chef:   { name: 'Sous-Chef', hire: 250, wage: 30, desc: 'Fetches, chops and cooks ingredients for open orders, and pulls food off the heat before it burns. At level 3 they plate whole dishes onto the serving pass.' },
-  waiter: { name: 'Waiter', hire: 180, wage: 22, desc: 'Carries finished dishes from the serving pass, clears tables and collects payment.' },
-  dish:   { name: 'Dishwasher', hire: 130, wage: 16, desc: 'Washes dirty plates at the sink and refills the plate rack.' },
+  chef:   { name: 'Sous-Chef', hire: 150, wage: 20, desc: 'Fetches, chops and cooks ingredients for open orders, and pulls food off the heat before it burns. At level 3 they plate whole dishes onto the serving pass.' },
+  waiter: { name: 'Waiter', hire: 90, wage: 12, desc: 'Carries finished dishes from the serving pass, clears tables and collects payment.' },
+  dish:   { name: 'Dishwasher', hire: 60, wage: 8, desc: 'Washes dirty plates at the sink and refills the plate rack.' },
 };
 export const STAFF_LEVELS = [
   { speed: 3.0, work: 0.8, label: 'Trainee' },
   { speed: 3.6, work: 1.1, label: 'Pro' },
   { speed: 4.3, work: 1.45, label: 'Master' },
 ];
-export const STAFF_UPGRADE_COST = [0, 220, 450];
+export const STAFF_UPGRADE_COST = [0, 300, 600];
 export const MAX_STAFF = 6;
 
 // ---------------------------------------------------------------------------

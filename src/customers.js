@@ -9,6 +9,17 @@ import { randomCustomerLook } from './models.js';
 import { rand, pick, weightedPick, clamp } from './utils.js';
 import { DAY } from './config.js';
 
+// How far one review pulls the star rating toward its score (Game.applyReview blends by this weight).
+// Small weights make the rating a long-run average, so stars are earned over days rather than one rush.
+const REVIEW_WEIGHT = {
+  served: 0.012,      // a normal guest who got their food
+  critic: 0.06,       // a food critic who got their food
+  angry: 0.018,       // walked out waiting for food (scores 1)
+  angryCritic: 0.08,  // critic walked out (scores 1)
+  queue: 0.006,       // gave up in the queue outside (scores 2)
+  closing: 0.006,     // still unfed when shooed out at closing (scores 2)
+};
+
 export class CustomerManager {
   constructor(game) {
     this.game = game;
@@ -45,7 +56,7 @@ export class CustomerManager {
     this.spawnT = g.state.day === 1 ? 4 : 2.5;
     this.forced = g.state.day === 1 && !g.state.settings.tutorialDone ? ['salad', 'salad'] : [];
     this.criticSpawned = false;
-    this.criticTime = g.state.day >= 2 && g.state.rating >= 1.6 && Math.random() < 0.65 ? rand(11.5, 18.5) : null;
+    this.criticTime = g.state.day >= 2 && g.state.rating >= 1.6 && Math.random() < 0.5 ? rand(11.5, 18.5) : null;
     this.warnedMenu = 0;
   }
 
@@ -79,8 +90,10 @@ export class CustomerManager {
       if (seating) {
         this.spawnT -= dt;
         if (this.spawnT <= 0) {
-          this.spawnT = this.spawnInterval() * rand(0.75, 1.25);
-          if (this.presentGroups < g.upg('capacity')) this.spawnGroup(false);
+          if (this.presentGroups < g.upg('capacity')) {
+            this.spawnT = this.spawnInterval() * rand(0.75, 1.25);
+            this.spawnGroup(false);
+          } else this.spawnT = rand(2, 4); // full house: the next group turns up soon after a table frees
         }
         if (this.criticTime !== null && !this.criticSpawned && g.clock >= this.criticTime) {
           this.criticSpawned = true;
@@ -236,7 +249,7 @@ export class CustomerManager {
       if (gr.queueT > gr.queueMax) {
         g.today.lost += gr.members.length;
         for (const c of gr.members) g.particles.emote(c.pos.x, 2.1, c.pos.z, '#@!', 'bad');
-        for (let i = 0; i < gr.members.length; i++) g.applyReview(2, 0.012);
+        for (let i = 0; i < gr.members.length; i++) g.applyReview(2, REVIEW_WEIGHT.queue);
         this.leaveGroup(gr, 'impatient');
       }
     });
@@ -376,8 +389,8 @@ export class CustomerManager {
     const g = this.game;
     if (c.state !== 'waiting') return;
     const used = 1 - c.patience;
-    let score = used < 0.3 ? 5 : used < 0.55 ? 4 : used < 0.8 ? 3 : 2;
-    if (score < 5 && g.ambience > 0.55) score += 0.5;
+    let score = used < 0.4 ? 5 : used < 0.65 ? 4 : used < 0.85 ? 3 : 2;
+    score = Math.min(5, score + Math.max(0, g.ambience - 0.3) * 1.5); // a nicer room softens every review
     c.review = score;
     c.state = 'eating';
     c.eatProgress = 0;
@@ -404,7 +417,7 @@ export class CustomerManager {
         if (forced && c.order) {
           // Kicked out at closing time without their food
           g.today.lost++;
-          g.applyReview(2, 0.02);
+          g.applyReview(2, REVIEW_WEIGHT.closing);
         }
         continue;
       }
@@ -415,7 +428,7 @@ export class CustomerManager {
       g.today.revenue += price;
       g.today.tips += tip;
       g.particles.starsText(c.pos.x, 2.25, c.pos.z, c.review);
-      g.applyReview(c.review, c.critic ? 0.15 : 0.025);
+      g.applyReview(c.review, c.critic ? REVIEW_WEIGHT.critic : REVIEW_WEIGHT.served);
       if (c.critic) this.criticVerdict(c, true);
     }
     if (total > 0 && gr.table) {
@@ -428,7 +441,7 @@ export class CustomerManager {
   criticVerdict(c, served) {
     const g = this.game;
     if (served && c.review >= 4) {
-      const bonus = 100 + 25 * g.state.day;
+      const bonus = 50 + 10 * g.state.day;
       g.addCash(bonus, c.pos.x, 2.4, c.pos.z);
       g.today.criticBonus += bonus;
       g.today.critic = 'wowed';
@@ -460,7 +473,7 @@ export class CustomerManager {
       for (const c of gr.members) {
         if (!c.order || !(c.ate || c.state === 'eating' || c.state === 'done')) continue;
         paid += DISHES[c.order].price;
-        g.applyReview(c.review, c.critic ? 0.15 : 0.025);
+        g.applyReview(c.review, c.critic ? REVIEW_WEIGHT.critic : REVIEW_WEIGHT.served);
       }
       if (paid) {
         gr.table.cash += paid;
@@ -471,7 +484,7 @@ export class CustomerManager {
       if (c.ticket && c.ticket.state === 'open') g.orders.fail(c.ticket);
       if (reason === 'angry' && (c.state === 'waiting' || c.state === 'seated')) {
         g.particles.emote(c.pos.x, 2.0, c.pos.z, '#@%!', 'bad', true);
-        g.applyReview(1, c.critic ? 0.2 : 0.035);
+        g.applyReview(1, c.critic ? REVIEW_WEIGHT.angryCritic : REVIEW_WEIGHT.angry);
         g.today.lost++;
         c.setMood('frown');
         if (c.critic) this.criticVerdict(c, false);

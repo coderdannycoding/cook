@@ -84,11 +84,11 @@ export const DISHES = {
 
 export const CUISINES = {
   diner:      { name: 'American Diner',    stars: 1.0, price: 0,   color: '#ff7a45', dishes: ['salad', 'burger', 'cheeseburger', 'deluxe'], blurb: 'Salads and burgers. Patties get seared on the stove.' },
-  pizzeria:   { name: 'Italian Pizzeria',  stars: 2.0, price: 250, color: '#e74c3c', dishes: ['margherita', 'meatlovers'], blurb: 'Knead the dough, add toppings, bake it in a pizza oven.' },
-  japanese:   { name: 'Japanese Izakaya',  stars: 2.5, price: 400, color: '#ff8c69', dishes: ['nigiri', 'maki', 'ramen'], blurb: 'Boil rice and noodles in a stock pot and slice fresh salmon.' },
-  taqueria:   { name: 'Taqueria',          stars: 3.0, price: 500, color: '#f5b041', dishes: ['taco', 'burrito'], blurb: 'Warm tortillas filled with seared meat and fresh tomato.' },
-  fryshack:   { name: 'Seaside Fry Shack', stars: 3.5, price: 650, color: '#f7dc6f', dishes: ['fries', 'fishchips', 'tempura'], blurb: 'Fries, fish and shrimp tempura. Needs a deep fryer.' },
-  patisserie: { name: 'Patisserie',        stars: 4.0, price: 900, color: '#a569bd', dishes: ['berrytart', 'cheesecake'], blurb: 'Oven-baked tarts and cheesecake with fresh berries.' },
+  pizzeria:   { name: 'Italian Pizzeria',  stars: 2.0, price: 200, color: '#e74c3c', dishes: ['margherita', 'meatlovers'], blurb: 'Knead the dough, add toppings, bake it in a pizza oven.' },
+  japanese:   { name: 'Japanese Izakaya',  stars: 2.5, price: 300, color: '#ff8c69', dishes: ['nigiri', 'maki', 'ramen'], blurb: 'Boil rice and noodles in a stock pot and slice fresh salmon.' },
+  taqueria:   { name: 'Taqueria',          stars: 3.0, price: 350, color: '#f5b041', dishes: ['taco', 'burrito'], blurb: 'Warm tortillas filled with seared meat and fresh tomato.' },
+  fryshack:   { name: 'Seaside Fry Shack', stars: 3.5, price: 450, color: '#f7dc6f', dishes: ['fries', 'fishchips', 'tempura'], blurb: 'Fries, fish and shrimp tempura. Needs a deep fryer.' },
+  patisserie: { name: 'Patisserie',        stars: 4.0, price: 600, color: '#a569bd', dishes: ['berrytart', 'cheesecake'], blurb: 'Oven-baked tarts and cheesecake with fresh berries.' },
 };
 
 export const CUISINE_ORDER = ['diner', 'pizzeria', 'japanese', 'taqueria', 'fryshack', 'patisserie'];
@@ -310,7 +310,7 @@ export function dishComplexity(dishId) {
 
 export function dishBasePatience(dishId) {
   const c = dishComplexity(dishId);
-  return 30 + c.steps * 7 + c.cookers * 7;
+  return 36 + c.steps * 8 + c.cookers * 8;
 }
 
 // Ticket breakdown: list of { key, badge } for the components a player must prepare.

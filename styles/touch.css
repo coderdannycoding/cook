@@ -130,7 +130,7 @@ body.touch .dash-ring { display: none; }
 #build-tools button.bad { background: linear-gradient(var(--berry), var(--berry-2)); color: #fff; text-shadow: var(--ol-sm); }
 #build-tools button:disabled { opacity: 0.5; }
 /* while the dock is folded for placing, the toolbar sits just above it instead of over the kitchen */
-body.dock-peek #build-tools { top: auto; bottom: calc(112px + env(safe-area-inset-bottom, 0px)); }
+body.dock-peek #build-tools { top: auto; bottom: calc(var(--dock-h, 100px) + 14px + env(safe-area-inset-bottom, 0px)); }
 
 /* ---------------------------------------------------------------- misc screens */
 #rotate-hint {
@@ -247,12 +247,12 @@ body.dock-peek #build-tools { top: auto; bottom: calc(112px + env(safe-area-inse
 
 /* Portrait phones: tickets get their own row under the stats so the menu buttons stay on screen */
 @media (max-width: 640px) and (orientation: portrait) {
-  #hud { flex-wrap: wrap; row-gap: 8px; }
+  #hud { flex-wrap: wrap; row-gap: 16px; }
   #tickets { order: 3; flex: 1 0 100%; min-width: 0; }
   .hud-right { margin-left: auto; }
   #toasts { top: auto; bottom: calc(214px + env(safe-area-inset-bottom, 0px)); right: 16px; width: min(300px, calc(100vw - 32px)); }
   .toast span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  body.touch-play #hint { top: calc(252px + env(safe-area-inset-top, 0px)); bottom: auto; left: 16px; right: 16px; max-width: none; width: auto; font-size: 13px; padding: 7px 10px 5px; }
+  body.touch-play #hint { top: calc(274px + env(safe-area-inset-top, 0px)); bottom: auto; left: 16px; right: 16px; max-width: none; width: auto; font-size: 13px; padding: 7px 10px 5px; }
   body.touch-play #prompt { bottom: calc(200px + env(safe-area-inset-bottom, 0px)); max-width: calc(100vw - 32px); }
   #build-help { top: calc(144px + env(safe-area-inset-top, 0px)); max-width: calc(100vw - 32px); }
   #build-tools { top: calc(196px + env(safe-area-inset-top, 0px)); }
@@ -288,7 +288,6 @@ body.dock-peek #build-tools { top: auto; bottom: calc(112px + env(safe-area-inse
   #night-dock .chip, #night-dock .card { flex: none; }
   #night-dock .cards .card-label { width: auto; flex: none; align-self: center; writing-mode: vertical-rl; transform: rotate(180deg); margin: 0; font-size: 11px; }
   #night-dock .dock-panel { height: 40vh; }
-  body.dock-peek #build-tools { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
   #night-dock { border-width: 5px; }
   #night-dock .card .c-desc { display: none; }
   #night-dock .card { width: 88px; padding: 5px; gap: 1px; }

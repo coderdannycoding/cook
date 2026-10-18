@@ -45,6 +45,7 @@ export class BuildMode {
     this.makeGhost(CATALOG[type]);
     // Touch screens have no hover: the preview sits in the middle of the room until the first tap
     this.aimed = !this.game.input.touchMode;
+    this.pending = null;
   }
 
   cancel() {
@@ -143,6 +144,7 @@ export class BuildMode {
     }
     const placing = this.selectedType || this.moving;
     if (placing) {
+      const shown = this.pending; // where the preview stood last frame, before this tap moved it
       if (tap) this.aimed = true;
       if (!this.aimed) {
         // follows the room centre while the camera settles (the dock folds away on phones)
@@ -169,9 +171,11 @@ export class BuildMode {
       const how = input.touchMode ? '<b>Tap again</b> to place' : '<b>Click</b> place · <kbd>R</kbd> rotate · <b>Right-click</b> cancel';
       this.help(`${this.moving ? 'Moving' : 'Placing'} <b>${def.name}</b>${this.moving ? '' : ` (${formatMoney(def.price)})`}${reason ? `: <span class="bad">${reason}</span>` : ''} · ${how}`);
       if (tap) {
-        // A tap on the ghost confirms; a tap elsewhere just moves the preview there (touch).
+        // A click places right away (the preview already follows the mouse). A touch tap on the
+        // preview places it; a tap anywhere else only moves the preview there.
         const t = this.footprintAt(def, tap.x, tap.y);
-        if (t && t.x === x && t.z === z) this.tryCommit();
+        const target = tap.touch ? shown : this.pending;
+        if (t && target && t.x === target.x && t.z === target.z && target.def === def) this.tryCommit();
       }
       if (input.mouse.clicked[2]) {
         this.cancel();
@@ -216,6 +220,7 @@ export class BuildMode {
 
   startMove(o) {
     this.aimed = true; // the preview starts where the item was tapped or clicked
+    this.pending = null;
     this.moving = o;
     this.rot = o.rot;
     o.mesh.visible = false;

@@ -2,6 +2,7 @@
 
 import * as THREE from '../vendor/three-0.169.0.module.min.js';
 import { rand, randInt } from './utils.js';
+import { gradeCanvas } from './look.js';
 
 const cache = new Map();
 let maxAniso = 4;
@@ -11,7 +12,8 @@ function makeCanvas(w, h) {
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
-  return [c, c.getContext('2d')];
+  // Painted once then read back (noise, grading): keep the canvas CPU-side
+  return [c, c.getContext('2d', { willReadFrequently: true })];
 }
 
 function toTexture(canvas, repeat = true) {
@@ -132,6 +134,8 @@ export function floorTexture(theme) {
       g.strokeRect(S / 2 + 1.5, S / 2 + 1.5, S / 2 - 3, S / 2 - 3);
       noise(g, S, S, 8);
     }
+    // Environment surfaces sit a step softer than the props & characters on top of them
+    gradeCanvas(g, S, S, 0.84, 1.03);
     return toTexture(c);
   });
 }
@@ -217,6 +221,7 @@ export function wallTexture(theme) {
       g.fillRect(0, H - 22, W, 22);
       noise(g, W, H, 8);
     }
+    gradeCanvas(g, W, H, 0.86, 1.02);
     return toTexture(c);
   });
 }
@@ -299,31 +304,62 @@ export function beltTexture() {
   });
 }
 
+const SIGN_FONT = '"Lilita One", "Arial Rounded MT Bold", sans-serif';
+
+function roundRect(g, x, y, w, h, r) {
+  g.beginPath();
+  g.moveTo(x + r, y);
+  g.arcTo(x + w, y, x + w, y + h, r);
+  g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r);
+  g.arcTo(x, y, x + w, y, r);
+  g.closePath();
+}
+
+// Chunky outlined lettering (dark ink outline + drop shadow + bright fill), fitted to maxW
+function inkText(g, text, x, y, size, maxW, fill, ink, outline) {
+  let px = size;
+  g.font = `400 ${px}px ${SIGN_FONT}`;
+  const w = g.measureText(text).width;
+  if (w > maxW) { px = Math.floor((px * maxW) / w); g.font = `400 ${px}px ${SIGN_FONT}`; }
+  g.lineJoin = 'round';
+  g.lineWidth = outline;
+  g.strokeStyle = ink;
+  g.fillStyle = ink;
+  const d = Math.max(3, px * 0.07);
+  g.strokeText(text, x, y + d);
+  g.fillText(text, x, y + d);
+  g.strokeText(text, x, y);
+  g.fillStyle = fill;
+  g.fillText(text, x, y);
+}
+
 export function signTexture(text, sub = '') {
   return cached(`sign:${text}:${sub}`, () => {
     const W = 1024, H = 256;
     const [c, g] = makeCanvas(W, H);
-    // A hand-painted shop sign: green board, mustard border, cream sign-writer lettering
-    g.fillStyle = '#1f2d28';
+    // A bright game-style shop sign: ink-outlined board, sunny trim, cream lettering
+    const ink = '#1d1a2f';
+    g.fillStyle = ink;
     g.fillRect(0, 0, W, H);
-    g.strokeStyle = '#f0b43c';
-    g.lineWidth = 12;
-    g.strokeRect(14, 14, W - 28, H - 28);
-    g.strokeStyle = 'rgba(251,244,228,0.55)';
-    g.lineWidth = 3;
-    g.strokeRect(30, 30, W - 60, H - 60);
+    roundRect(g, 14, 14, W - 28, H - 28, 34);
+    const grd = g.createLinearGradient(0, 14, 0, H - 14);
+    grd.addColorStop(0, '#e2483a');
+    grd.addColorStop(1, '#b82f2c');
+    g.fillStyle = grd;
+    g.fill();
+    g.lineWidth = 10;
+    g.strokeStyle = '#ffc93c';
+    roundRect(g, 32, 32, W - 64, H - 64, 22);
+    g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.12)';
+    roundRect(g, 44, 44, W - 88, (H - 88) * 0.42, 16);
+    g.fill();
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.font = '400 96px "Shrikhand", "Cooper Black", Georgia, serif';
-    g.fillStyle = '#241a14';
-    g.fillText(text, W / 2 + 5, (sub ? H / 2 - 24 : H / 2) + 5);
-    g.fillStyle = '#fbf4e4';
-    g.fillText(text, W / 2, sub ? H / 2 - 24 : H / 2);
-    if (sub) {
-      g.font = '700 38px "Courier Prime", "Courier New", monospace';
-      g.fillStyle = '#f0b43c';
-      g.fillText(sub.toUpperCase(), W / 2, H / 2 + 66);
-    }
+    const ty = sub ? H / 2 - 22 : H / 2 - 4;
+    inkText(g, text, W / 2, ty, 124, W - 150, '#fff4d6', ink, 16);
+    if (sub) inkText(g, sub.toUpperCase(), W / 2, H / 2 + 70, 40, W - 260, '#ffc93c', ink, 9);
     return toTexture(c, false);
   });
 }
@@ -331,14 +367,22 @@ export function signTexture(text, sub = '') {
 export function openSignTexture() {
   return cached('opensign', () => {
     const [c, g] = makeCanvas(256, 128);
-    g.fillStyle = '#1a1020';
+    g.fillStyle = '#1d1a2f';
     g.fillRect(0, 0, 256, 128);
+    g.strokeStyle = '#ff5e8a';
+    g.lineWidth = 5;
+    g.shadowColor = '#ff2d6f';
+    g.shadowBlur = 14;
+    roundRect(g, 10, 10, 236, 108, 18);
+    g.stroke();
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.font = '700 70px "Archivo", "Arial Narrow", sans-serif';
-    g.shadowColor = '#ff2d55';
-    g.shadowBlur = 24;
-    g.fillStyle = '#ff8fa8';
+    g.font = `400 74px ${SIGN_FONT}`;
+    g.shadowBlur = 22;
+    g.fillStyle = '#ffb3c8';
+    g.fillText('OPEN', 128, 68);
+    g.shadowBlur = 0;
+    g.fillStyle = '#fff0f5';
     g.fillText('OPEN', 128, 66);
     return toTexture(c, false);
   });
@@ -348,11 +392,24 @@ export function grassTexture() {
   return cached('grass', () => {
     const S = 256;
     const [c, g] = makeCanvas(S, S);
-    g.fillStyle = '#7fb85a';
+    g.fillStyle = '#80ad58';
     g.fillRect(0, 0, S, S);
-    for (let i = 0; i < 1400; i++) {
-      g.fillStyle = Math.random() < 0.5 ? 'rgba(60,110,40,0.25)' : 'rgba(170,220,120,0.22)';
-      g.fillRect(rand(0, S), rand(0, S), 2, rand(3, 7));
+    // soft mottling, then little blade strokes (light tips, dark roots) — reads as lawn, not felt
+    for (let i = 0; i < 60; i++) {
+      g.fillStyle = Math.random() < 0.5 ? 'rgba(120,180,80,0.18)' : 'rgba(100,160,70,0.16)';
+      g.beginPath();
+      g.arc(rand(0, S), rand(0, S), rand(8, 26), 0, Math.PI * 2);
+      g.fill();
+    }
+    g.lineCap = 'round';
+    for (let i = 0; i < 900; i++) {
+      const x = rand(0, S), y = rand(0, S), h = rand(3, 7), lean = rand(-2, 2);
+      g.strokeStyle = Math.random() < 0.55 ? 'rgba(70,128,48,0.28)' : 'rgba(186,228,128,0.3)';
+      g.lineWidth = 1.6;
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x + lean, y - h);
+      g.stroke();
     }
     return toTexture(c);
   });
@@ -362,15 +419,23 @@ export function sidewalkTexture() {
   return cached('sidewalk', () => {
     const S = 256;
     const [c, g] = makeCanvas(S, S);
-    g.fillStyle = '#c9c4bb';
+    // Warm pale paving with soft bevelled joints
+    g.fillStyle = '#ddd5c7';
     g.fillRect(0, 0, S, S);
-    g.strokeStyle = 'rgba(80,70,60,0.35)';
+    const tones = ['#e2dacc', '#d9d0c1', '#ded6c9', '#d5ccbd'];
+    for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) {
+      g.fillStyle = tones[i * 2 + j];
+      g.fillRect(i * S / 2 + 3, j * S / 2 + 3, S / 2 - 6, S / 2 - 6);
+      g.fillStyle = 'rgba(255,255,255,0.18)';
+      g.fillRect(i * S / 2 + 4, j * S / 2 + 4, S / 2 - 8, 4);
+    }
+    g.strokeStyle = 'rgba(110,96,80,0.28)';
     g.lineWidth = 3;
     g.strokeRect(0, 0, S / 2, S / 2);
     g.strokeRect(S / 2, 0, S / 2, S / 2);
     g.strokeRect(0, S / 2, S / 2, S / 2);
     g.strokeRect(S / 2, S / 2, S / 2, S / 2);
-    noise(g, S, S, 20);
+    noise(g, S, S, 10);
     return toTexture(c);
   });
 }
@@ -379,12 +444,12 @@ export function roadTexture() {
   return cached('road', () => {
     const W = 256, H = 512;
     const [c, g] = makeCanvas(W, H);
-    g.fillStyle = '#44464d';
+    g.fillStyle = '#5b5e68';
     g.fillRect(0, 0, W, H);
-    noise(g, W, H, 26);
-    g.fillStyle = '#f2d14b';
+    noise(g, W, H, 14);
+    g.fillStyle = '#f0cf5a';
     g.fillRect(0, H / 2 - 5, W * 0.55, 10);
-    g.fillStyle = 'rgba(255,255,255,0.8)';
+    g.fillStyle = 'rgba(255,255,255,0.7)';
     g.fillRect(0, 24, W, 6);
     g.fillRect(0, H - 30, W, 6);
     return toTexture(c);

@@ -6,6 +6,7 @@ import { SURFACE_Y } from './config.js';
 import { itemKey, DISHES, itemFromKey, makePlate } from './recipes.js';
 import { ginghamTexture, rugTexture, beltTexture, counterTopTexture } from './textures.js';
 import { pick, TAU } from './utils.js';
+import { LOOK, gradeColor, addRim, outlineMaterial, makeBlobShadow, buildGardenTree } from './look.js';
 
 const S = SURFACE_Y;
 
@@ -13,12 +14,15 @@ const S = SURFACE_Y;
 // Material & geometry caches
 
 const matCache = new Map();
+// kind: 'prop' (default: appliances, furniture, food) and 'char' get the hit-game grade — a little
+// extra chroma plus a warm sky rim so they pop — while 'env' keeps the authored colour, no rim.
 export function mat(color, o = {}) {
-  const key = `${color}|${o.r ?? ''}|${o.m ?? ''}|${o.e ?? ''}|${o.ei ?? ''}|${o.op ?? ''}|${o.flat ? 1 : 0}|${o.mapKey ?? ''}|${o.side ?? ''}`;
+  const kind = o.kind ?? 'prop';
+  const key = `${color}|${o.r ?? ''}|${o.m ?? ''}|${o.e ?? ''}|${o.ei ?? ''}|${o.op ?? ''}|${o.flat ? 1 : 0}|${o.mapKey ?? ''}|${o.side ?? ''}|${kind}`;
   let m = matCache.get(key);
   if (!m) {
     m = new THREE.MeshStandardMaterial({
-      color,
+      color: kind === 'env' ? color : gradeColor(color, kind === 'char' ? 1.12 : 1.1),
       roughness: o.r ?? 0.72,
       metalness: o.m ?? 0,
       emissive: o.e ?? '#000000',
@@ -32,6 +36,7 @@ export function mat(color, o = {}) {
       m.depthWrite = o.op > 0.7;
     }
     if (o.side) m.side = o.side;
+    if (kind !== 'env') addRim(m, kind === 'char' ? LOOK.rimChar : LOOK.rimProp);
     matCache.set(key, m);
   }
   return m;
@@ -40,10 +45,11 @@ export function mat(color, o = {}) {
 // Unique material (for per-object animated emissive etc.)
 export function umat(color, o = {}) {
   const m = new THREE.MeshStandardMaterial({
-    color, roughness: o.r ?? 0.6, metalness: o.m ?? 0, emissive: o.e ?? '#000000', emissiveIntensity: o.ei ?? 1,
+    color: gradeColor(color, 1.1), roughness: o.r ?? 0.6, metalness: o.m ?? 0, emissive: o.e ?? '#000000', emissiveIntensity: o.ei ?? 1,
   });
   m.userData.unique = true;
   if (o.op !== undefined) { m.transparent = true; m.opacity = o.op; m.depthWrite = false; }
+  addRim(m, LOOK.rimProp);
   return m;
 }
 
@@ -142,24 +148,33 @@ function isDynamic(o, root) {
   return false;
 }
 
-function mergeGeometries(geos, withUv) {
+function mergeGeometries(geos, withUv, colors = null) {
   let count = 0;
   for (const g of geos) count += g.attributes.position.count;
   const pos = new Float32Array(count * 3);
   const nor = new Float32Array(count * 3);
   const uv = withUv ? new Float32Array(count * 2) : null;
+  const col = colors ? new Float32Array(count * 3) : null;
   let o = 0;
-  for (const g of geos) {
+  geos.forEach((g, gi) => {
     const n = g.attributes.position.count;
     pos.set(g.attributes.position.array, o * 3);
     nor.set(g.attributes.normal.array, o * 3);
     if (uv && g.attributes.uv) uv.set(g.attributes.uv.array, o * 2);
+    if (col) {
+      // either a flat colour baked from the source material, or the geometry's own vertex colours
+      const c = colors[gi];
+      if (c) for (let k = o * 3, e = (o + n) * 3; k < e; k += 3) { col[k] = c.r; col[k + 1] = c.g; col[k + 2] = c.b; }
+      else if (g.attributes.color) col.set(g.attributes.color.array, o * 3);
+      else col.fill(1, o * 3, (o + n) * 3);
+    }
     o += n;
-  }
+  });
   const out = new THREE.BufferGeometry();
   out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   if (uv) out.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  if (col) out.setAttribute('color', new THREE.BufferAttribute(col, 3));
   out.computeBoundingSphere();
   out.userData.merged = true;
   return out;
@@ -175,7 +190,28 @@ export function disposeObject(root) {
   });
 }
 
-export function mergeStatic(root) {
+// Plain opaque colours collapse into a handful of shared vertex-coloured materials (grouped by
+// finish: matte / glossy / two metals, flat or smooth, one or two sided), so a whole appliance or
+// character body is usually a single draw call.
+const vcMats = new Map();
+function vcMaterial(src, kind) {
+  const metal = src.metalness >= 0.65 ? 0.75 : src.metalness >= 0.3 ? 0.45 : 0;
+  const rough = metal ? (src.roughness < 0.36 ? 0.3 : 0.42) : src.roughness < 0.45 ? 0.35 : 0.72;
+  const key = `${kind}|${metal}|${rough}|${src.flatShading ? 1 : 0}|${src.side}`;
+  let m = vcMats.get(key);
+  if (!m) {
+    m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: rough, metalness: metal, flatShading: src.flatShading, side: src.side });
+    if (kind !== 'env') addRim(m, kind === 'char' ? LOOK.rimChar : LOOK.rimProp);
+    vcMats.set(key, m);
+  }
+  return m;
+}
+function canVertexColor(m) {
+  if (!m.isMeshStandardMaterial || m.map || m.transparent || m.userData.unique || m.vertexColors) return false;
+  return m.emissiveIntensity === 0 || m.emissive.r + m.emissive.g + m.emissive.b === 0;
+}
+
+export function mergeStatic(root, kind = 'prop') {
   root.updateMatrixWorld(true);
   const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
   const buckets = new Map();
@@ -183,18 +219,22 @@ export function mergeStatic(root) {
   const m4 = new THREE.Matrix4();
   root.traverse((o) => {
     if (!o.isMesh || o === root || isDynamic(o, root) || o.userData.noMerge) return;
-    if (o.material.transparent) return;
+    if (Array.isArray(o.material) || o.material.transparent) return;
     let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
     m4.multiplyMatrices(inv, o.matrixWorld);
     g.applyMatrix4(m4);
-    const key = `${o.material.uuid}|${o.castShadow}`;
-    if (!buckets.has(key)) buckets.set(key, { material: o.material, cast: o.castShadow, geos: [] });
-    buckets.get(key).geos.push(g);
+    const vc = canVertexColor(o.material);
+    const material = vc ? vcMaterial(o.material, kind) : o.material;
+    const key = `${material.uuid}|${o.castShadow}`;
+    if (!buckets.has(key)) buckets.set(key, { material, cast: o.castShadow, geos: [], colors: material.vertexColors ? [] : null });
+    const b = buckets.get(key);
+    b.geos.push(g);
+    if (b.colors) b.colors.push(vc ? o.material.color : null);
     remove.push(o);
   });
   for (const o of remove) o.parent.remove(o);
   for (const b of buckets.values()) {
-    const merged = mergeGeometries(b.geos, !!b.material.map);
+    const merged = mergeGeometries(b.geos, !!b.material.map, b.colors);
     for (const g of b.geos) g.dispose();
     const m = new THREE.Mesh(merged, b.material);
     m.castShadow = b.cast;
@@ -666,12 +706,14 @@ BUILDERS.plant = () => {
   r.add(mesh(cyl(0.26, 0.2, 0.42, 16), mat('#c96a43', { r: 0.8 }), 0, 0.21, 0));
   r.add(rotated(mesh(torus(0.26, 0.035, 6, 18), mat('#b65b38'), 0, 0.42, 0), 'x', Math.PI / 2));
   r.add(mesh(cyl(0.24, 0.24, 0.03, 16), mat('#4a3020'), 0, 0.42, 0));
-  const leaf = mat('#4c9a4a', { flat: true, r: 0.7 });
-  const leaf2 = mat('#6dbb5a', { flat: true, r: 0.7 });
-  r.add(mesh(ico(0.3, 1), leaf, 0, 0.75, 0));
-  r.add(mesh(ico(0.22, 1), leaf2, 0.15, 0.95, 0.08));
-  r.add(mesh(ico(0.2, 1), leaf2, -0.14, 0.9, -0.1));
-  r.add(mesh(ico(0.16, 1), leaf, 0.02, 1.1, -0.04));
+  const leaf = mat('#3f8f45', { r: 0.8 });
+  const leaf2 = mat('#62b452', { r: 0.8 });
+  const leaf3 = mat('#8fd060', { r: 0.8 });
+  r.add(mesh(ico(0.3, 2), leaf, 0, 0.72, 0));
+  r.add(mesh(ico(0.22, 1), leaf2, 0.15, 0.92, 0.08));
+  r.add(mesh(ico(0.2, 1), leaf2, -0.14, 0.88, -0.1));
+  r.add(mesh(ico(0.17, 1), leaf3, 0.02, 1.08, 0.02));
+  r.add(mesh(ico(0.12, 1), leaf3, 0.12, 0.8, 0.22));
   const root = finish(r, [0, 1.2, 0]);
   return root;
 };
@@ -1521,15 +1563,28 @@ export function playerLook(color = '#e74c3c') {
   return { skin: '#ffd9b8', shirt: '#fbfbf8', apron: color, hair: '#4a2f1e', hairStyle: 'short', hat: 'chef', scarf: color, scale: 1.0, buttons: true };
 }
 
+// Outline hulls only need the silhouette, so rounded parts use a coarser copy of their geometry
+function hullGeometry(geo) {
+  const p = geo.parameters;
+  if (geo.type === 'SphereGeometry') {
+    return sph(p.radius, Math.max(10, Math.round(p.widthSegments * 0.6)), Math.max(6, Math.round(p.heightSegments * 0.6)), p.phiStart, p.phiLength, p.thetaStart, p.thetaLength);
+  }
+  if (geo.type === 'CapsuleGeometry') return G(`caphull${p.radius},${p.length}`, () => new THREE.CapsuleGeometry(p.radius, p.length, 3, 10));
+  return geo;
+}
+
 export function buildCharacter(look) {
   const root = new THREE.Group();
   const pivot = new THREE.Group();
   root.add(pivot);
-  const skinM = mat(look.skin, { r: 0.6 });
-  const shirtM = mat(look.shirt, { r: 0.75 });
+  const ch = { kind: 'char' };
+  const skinM = mat(look.skin, { r: 0.6, ...ch });
+  const shirtM = mat(look.shirt, { r: 0.75, ...ch });
+  // Silhouette parts get an ink outline (inverted hull), merged into one extra draw call per group
+  const OL = (m) => { m.userData.outline = true; return m; };
 
   // Feet
-  const footM = mat('#2e2a2a', { r: 0.7 });
+  const footM = mat('#3a302c', { r: 0.7, ...ch });
   const footL = mesh(sph(0.1, 12, 8), footM, -0.11, 0.06, 0.02);
   footL.scale.set(1, 0.6, 1.35);
   const footR = mesh(sph(0.1, 12, 8), footM, 0.11, 0.06, 0.02);
@@ -1537,26 +1592,26 @@ export function buildCharacter(look) {
   root.add(footL, footR);
 
   // Torso
-  const torso = mesh(capsule(0.25, 0.26), shirtM, 0, 0.47, 0);
+  const torso = OL(mesh(capsule(0.25, 0.26), shirtM, 0, 0.47, 0));
   pivot.add(torso);
   if (look.apron) {
-    const ap = mesh(rbox(0.36, 0.42, 0.06, 0.03), mat(look.apron, { r: 0.8 }), 0, 0.38, 0.21);
+    const ap = OL(mesh(rbox(0.36, 0.42, 0.06, 0.03), mat(look.apron, { r: 0.8, ...ch }), 0, 0.38, 0.21));
     ap.rotation.x = -0.12;
     pivot.add(ap);
-    pivot.add(mesh(box(0.02, 0.24, 0.02), mat(look.apron), -0.14, 0.66, 0.17));
-    pivot.add(mesh(box(0.02, 0.24, 0.02), mat(look.apron), 0.14, 0.66, 0.17));
+    pivot.add(mesh(box(0.02, 0.24, 0.02), mat(look.apron, ch), -0.14, 0.66, 0.17));
+    pivot.add(mesh(box(0.02, 0.24, 0.02), mat(look.apron, ch), 0.14, 0.66, 0.17));
   }
   if (look.vest) {
-    const v = mesh(capsule(0.255, 0.18), mat(look.vest === '#f2f2f2' ? '#2c2f4a' : look.vest, { r: 0.7 }), 0, 0.5, -0.005);
+    const v = OL(mesh(capsule(0.255, 0.18), mat(look.vest === '#f2f2f2' ? '#2c2f4a' : look.vest, { r: 0.7, ...ch }), 0, 0.5, -0.005));
     v.scale.set(1.0, 1, 0.98);
     pivot.add(v);
-    pivot.add(mesh(box(0.14, 0.3, 0.05), mat(look.vest === '#f2f2f2' ? '#f2f2f2' : '#ffffff'), 0, 0.58, 0.225));
+    pivot.add(mesh(box(0.14, 0.3, 0.05), mat(look.vest === '#f2f2f2' ? '#f2f2f2' : '#ffffff', ch), 0, 0.58, 0.225));
   }
   if (look.buttons) {
-    for (let i = 0; i < 2; i++) for (const x of [-0.07, 0.07]) pivot.add(mesh(sph(0.018, 6, 4), mat('#c9c9c2'), x, 0.68 - i * 0.07, 0.235, false));
+    for (let i = 0; i < 2; i++) for (const x of [-0.07, 0.07]) pivot.add(mesh(sph(0.018, 6, 4), mat('#c9c9c2', ch), x, 0.68 - i * 0.07, 0.235, false));
   }
   if (look.bowtie) {
-    const bt = mat(look.bowtie);
+    const bt = mat(look.bowtie, ch);
     const l = mesh(cone(0.05, 0.08, 4), bt, -0.04, 0.78, 0.235);
     l.rotation.z = Math.PI / 2;
     const r2 = mesh(cone(0.05, 0.08, 4), bt, 0.04, 0.78, 0.235);
@@ -1564,19 +1619,19 @@ export function buildCharacter(look) {
     pivot.add(l, r2, mesh(sph(0.025, 6, 4), bt, 0, 0.78, 0.24));
   }
   if (look.scarf) {
-    const sc = mesh(torus(0.19, 0.045, 8, 18), mat(look.scarf, { r: 0.8 }), 0, 0.8, 0.02);
+    const sc = OL(mesh(torus(0.19, 0.045, 8, 18), mat(look.scarf, { r: 0.8, ...ch }), 0, 0.8, 0.02));
     sc.rotation.x = Math.PI / 2;
     pivot.add(sc);
-    pivot.add(mesh(cone(0.06, 0.12, 4), mat(look.scarf), 0, 0.72, 0.21));
+    pivot.add(mesh(cone(0.06, 0.12, 4), mat(look.scarf, ch), 0, 0.72, 0.21));
   }
 
   // Head
   const head = new THREE.Group();
   head.position.set(0, 1.06, 0);
   pivot.add(head);
-  head.add(mesh(sph(0.27, 22, 16), skinM, 0, 0, 0));
-  const eyeM = mat('#1b1b22', { r: 0.3 });
-  const hiM = mat('#ffffff', { e: '#ffffff', ei: 0.4 });
+  head.add(OL(mesh(sph(0.27, 18, 12), skinM, 0, 0, 0)));
+  const eyeM = mat('#1b1b22', { r: 0.3, ...ch });
+  const hiM = mat('#ffffff', { r: 0.3, ...ch });
   const eyes = new THREE.Group();
   for (const x of [-0.095, 0.095]) {
     const e = mesh(sph(0.043, 10, 8), eyeM, x, 0.03, 0.225, false);
@@ -1585,14 +1640,14 @@ export function buildCharacter(look) {
     eyes.add(mesh(sph(0.014, 6, 4), hiM, x + 0.014, 0.05, 0.255, false));
   }
   head.add(eyes);
-  const cheekM = mat('#ff9aa2', { r: 0.8 });
+  const cheekM = mat('#ff9aa2', { r: 0.8, ...ch });
   for (const x of [-0.16, 0.16]) {
     const c = mesh(sph(0.04, 8, 6), cheekM, x, -0.04, 0.2, false);
     c.scale.set(1, 0.6, 0.4);
     head.add(c);
   }
-  head.add(mesh(sph(0.032, 8, 6), mat(look.skin, { r: 0.5 }), 0, -0.005, 0.27, false));
-  const mouthM = mat('#5a2020', { r: 0.6 });
+  head.add(mesh(sph(0.032, 8, 6), mat(look.skin, { r: 0.5, ...ch }), 0, -0.005, 0.27, false));
+  const mouthM = mat('#5a2020', { r: 0.6, ...ch });
   const smile = mesh(torus(0.045, 0.012, 6, 12, Math.PI), mouthM, 0, -0.07, 0.245, false);
   smile.rotation.z = Math.PI;
   const frown = mesh(torus(0.04, 0.012, 6, 12, Math.PI), mouthM, 0, -0.1, 0.245, false);
@@ -1602,24 +1657,24 @@ export function buildCharacter(look) {
   open.visible = false;
   head.add(smile, frown, open);
   if (look.glasses) {
-    const gm = mat('#222', { r: 0.3 });
+    const gm = mat('#222', { r: 0.3, ...ch });
     for (const x of [-0.095, 0.095]) head.add(mesh(torus(0.06, 0.012, 6, 14), gm, x, 0.03, 0.25, false));
     head.add(mesh(box(0.07, 0.012, 0.012), gm, 0, 0.04, 0.26, false));
   }
   if (look.monocle) {
-    head.add(mesh(torus(0.065, 0.012, 6, 16), mat('#d4af37', { m: 0.9, r: 0.2 }), 0.095, 0.03, 0.255, false));
+    head.add(mesh(torus(0.065, 0.012, 6, 16), mat('#d4af37', { m: 0.9, r: 0.2, ...ch }), 0.095, 0.03, 0.255, false));
   }
 
   // Hair
-  const hairM = mat(look.hair, { r: 0.8 });
+  const hairM = mat(look.hair, { r: 0.8, ...ch });
   const hs = look.hairStyle;
   if (hs && hs !== 'bald' && look.hat !== 'chef' && look.hat !== 'bandana' && look.hat !== 'fedora') {
-    const cap = mesh(sph(0.285, 20, 12, 0, TAU, 0, hs === 'bob' ? 1.75 : 1.25), hairM, 0, 0.0, -0.02);
+    const cap = OL(mesh(sph(0.285, 20, 12, 0, TAU, 0, hs === 'bob' ? 1.75 : 1.25), hairM, 0, 0.0, -0.02));
     cap.rotation.x = -0.25;
     head.add(cap);
-    if (hs === 'bun') head.add(mesh(sph(0.11, 12, 8), hairM, 0, 0.24, -0.16));
+    if (hs === 'bun') head.add(OL(mesh(sph(0.11, 12, 8), hairM, 0, 0.24, -0.16)));
     if (hs === 'pony') {
-      const p = mesh(sph(0.1, 10, 8), hairM, 0, 0.0, -0.3);
+      const p = OL(mesh(sph(0.1, 10, 8), hairM, 0, 0.0, -0.3));
       p.scale.set(0.8, 1.6, 0.8);
       head.add(p);
     }
@@ -1628,60 +1683,60 @@ export function buildCharacter(look) {
       s.rotation.z = -(i - 2) * 0.35;
       head.add(s);
     }
-    if (hs === 'curly') for (let i = 0; i < 7; i++) head.add(mesh(sph(0.09, 8, 6), hairM, Math.cos(i * 0.9) * 0.2, 0.17 + Math.sin(i * 1.7) * 0.04, Math.sin(i * 0.9) * 0.2 - 0.04));
+    if (hs === 'curly') for (let i = 0; i < 7; i++) head.add(OL(mesh(sph(0.09, 8, 6), hairM, Math.cos(i * 0.9) * 0.2, 0.17 + Math.sin(i * 1.7) * 0.04, Math.sin(i * 0.9) * 0.2 - 0.04)));
   } else if (look.hat === 'chef' || look.hat === 'bandana') {
-    head.add(mesh(sph(0.28, 18, 10, 0, TAU, 0, 1.0), hairM, 0, -0.02, -0.03));
+    head.add(OL(mesh(sph(0.28, 18, 10, 0, TAU, 0, 1.0), hairM, 0, -0.02, -0.03)));
   }
 
   // Hats
   let hat = null;
   if (look.hat === 'chef') {
     hat = new THREE.Group();
-    const w = mat('#ffffff', { r: 0.85 });
-    hat.add(mesh(cyl(0.2, 0.2, 0.14, 18), w, 0, 0.07, 0));
-    const puff = mesh(sph(0.24, 16, 12), w, 0, 0.25, 0);
+    const w = mat('#ffffff', { r: 0.85, ...ch });
+    hat.add(OL(mesh(cyl(0.2, 0.2, 0.14, 18), w, 0, 0.07, 0)));
+    const puff = OL(mesh(sph(0.24, 16, 12), w, 0, 0.25, 0));
     puff.scale.set(1, 0.75, 1);
     hat.add(puff);
-    for (let i = 0; i < 4; i++) hat.add(mesh(sph(0.12, 10, 8), w, Math.cos(i * 1.57) * 0.13, 0.3, Math.sin(i * 1.57) * 0.13));
+    for (let i = 0; i < 4; i++) hat.add(OL(mesh(sph(0.12, 10, 8), w, Math.cos(i * 1.57) * 0.13, 0.3, Math.sin(i * 1.57) * 0.13)));
     hat.position.set(0, 0.17, -0.01);
     hat.scale.setScalar(look.hatScale ?? 1);
     head.add(hat);
   } else if (look.hat === 'cap') {
     hat = new THREE.Group();
-    const cm = mat(look.hatColor, { r: 0.7 });
-    hat.add(mesh(sph(0.29, 16, 10, 0, TAU, 0, Math.PI / 2), cm, 0, 0, 0));
+    const cm = mat(look.hatColor, { r: 0.7, ...ch });
+    hat.add(OL(mesh(sph(0.29, 16, 10, 0, TAU, 0, Math.PI / 2), cm, 0, 0, 0)));
     const brim = mesh(cyl(0.16, 0.16, 0.02, 14, false, -Math.PI / 2, Math.PI), cm, 0, 0.01, 0.2);
     hat.add(brim);
     hat.position.y = 0.06;
     head.add(hat);
   } else if (look.hat === 'beanie') {
     hat = new THREE.Group();
-    hat.add(mesh(sph(0.295, 16, 10, 0, TAU, 0, Math.PI / 2), mat(look.hatColor, { r: 0.9 }), 0, 0, 0));
-    hat.add(mesh(sph(0.07, 8, 6), mat('#ffffff'), 0, 0.3, 0));
+    hat.add(OL(mesh(sph(0.295, 16, 10, 0, TAU, 0, Math.PI / 2), mat(look.hatColor, { r: 0.9, ...ch }), 0, 0, 0)));
+    hat.add(OL(mesh(sph(0.07, 8, 6), mat('#ffffff', ch), 0, 0.3, 0)));
     hat.position.y = 0.04;
     head.add(hat);
   } else if (look.hat === 'beret') {
-    hat = mesh(sph(0.27, 16, 8), mat(look.hatColor, { r: 0.9 }), 0.05, 0.2, -0.02);
+    hat = OL(mesh(sph(0.27, 16, 8), mat(look.hatColor, { r: 0.9, ...ch }), 0.05, 0.2, -0.02));
     hat.scale.set(1.1, 0.3, 1.1);
     hat.rotation.z = -0.25;
     head.add(hat);
   } else if (look.hat === 'fedora') {
     hat = new THREE.Group();
-    const fm = mat(look.hatColor, { r: 0.7 });
+    const fm = mat(look.hatColor, { r: 0.7, ...ch });
     hat.add(mesh(cyl(0.4, 0.4, 0.025, 22), fm, 0, 0, 0));
-    hat.add(mesh(cyl(0.2, 0.23, 0.22, 18), fm, 0, 0.11, 0));
-    hat.add(mesh(cyl(0.232, 0.232, 0.05, 18), mat('#b8860b'), 0, 0.04, 0));
+    hat.add(OL(mesh(cyl(0.2, 0.23, 0.22, 18), fm, 0, 0.11, 0)));
+    hat.add(mesh(cyl(0.232, 0.232, 0.05, 18), mat('#b8860b', ch), 0, 0.04, 0));
     hat.position.y = 0.2;
     hat.rotation.z = -0.08;
     head.add(hat);
   } else if (look.hat === 'bandana') {
-    hat = mesh(sph(0.29, 16, 10, 0, TAU, 0, 1.25), mat(look.hatColor, { r: 0.8 }), 0, 0.01, -0.02);
+    hat = OL(mesh(sph(0.29, 16, 10, 0, TAU, 0, 1.25), mat(look.hatColor, { r: 0.8, ...ch }), 0, 0.01, -0.02));
     hat.rotation.x = -0.15;
     head.add(hat);
   }
 
   // Hands
-  const handM = mat(look.gloves || look.skin, { r: 0.6 });
+  const handM = mat(look.gloves || look.skin, { r: 0.6, ...ch });
   const handL = mesh(sph(0.085, 12, 8), handM, -0.33, 0.5, 0.05);
   const handR = mesh(sph(0.085, 12, 8), handM, 0.33, 0.5, 0.05);
   root.add(handL, handR);
@@ -1690,15 +1745,32 @@ export function buildCharacter(look) {
   held.position.set(0, 0.6, 0.4);
   root.add(held);
 
+  // Soft contact shadow under the feet so characters read as grounded
+  root.add(makeBlobShadow(0.95));
+
   root.scale.setScalar(look.scale || 1);
+  // Outline twins share the body geometry; hands get their own (they animate separately)
+  const twins = [];
+  root.traverse((o) => { if (o.isMesh && o.userData.outline) twins.push(o); });
+  for (const o of twins) {
+    const t = new THREE.Mesh(hullGeometry(o.geometry), outlineMaterial);
+    t.position.copy(o.position);
+    t.quaternion.copy(o.quaternion);
+    t.scale.copy(o.scale);
+    o.parent.add(t);
+  }
+  for (const h of [handL, handR]) h.add(new THREE.Mesh(hullGeometry(h.geometry), outlineMaterial));
   // Collapse static body parts into a few meshes (animated parts stay separate)
   head.userData.dynamic = true;
   for (const m of [smile, frown, open]) m.userData.dynamic = true;
   eyes.userData.dynamic = true;
-  mergeStatic(pivot);
-  mergeStatic(head);
-  mergeStatic(eyes);
-  root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  mergeStatic(pivot, 'char');
+  mergeStatic(head, 'char');
+  mergeStatic(eyes, 'char');
+  // Body parts cast shadows; outlines, the contact blob and tiny face details don't
+  root.traverse((o) => { if (o.isMesh) o.castShadow = o.material !== outlineMaterial && !o.material.transparent; });
+  eyes.traverse((o) => { o.castShadow = false; });
+  for (const m of [smile, frown, open]) m.castShadow = false;
   return { root, pivot, head, eyes, handL, handR, footL, footR, held, hat, mouths: { smile, frown, open } };
 }
 
@@ -1713,25 +1785,19 @@ export const envMats = {
 
 export function buildStreetLamp() {
   const r = new THREE.Group();
-  const iron = mat('#2f3d3a', { r: 0.5, m: 0.5 });
+  const iron = mat('#33433f', { r: 0.5, m: 0.5, kind: 'env' });
   r.add(mesh(cyl(0.12, 0.16, 0.2, 10), iron, 0, 0.1, 0));
   r.add(mesh(cyl(0.05, 0.06, 2.6, 8), iron, 0, 1.4, 0));
   r.add(mesh(cyl(0.18, 0.08, 0.16, 8), iron, 0, 2.75, 0));
   r.add(mesh(sph(0.14, 12, 8), envMats.lampBulb, 0, 2.62, 0, false));
   r.add(mesh(cone(0.24, 0.18, 8), iron, 0, 2.9, 0));
-  return mergeStatic(r);
+  return mergeStatic(r, 'env');
 }
 
+// Lush rounded stylised tree (one vertex-coloured mesh). The street scenery batches many of
+// these together via look.buildGarden; this stand-alone version is kept for other callers.
 export function buildTree(seed = 1) {
-  const r = new THREE.Group();
-  const rnd = seeded(seed);
-  r.add(mesh(cyl(0.1, 0.14, 1.3, 7), mat('#7a5232', { flat: true }), 0, 0.65, 0));
-  const greens = ['#4f9a4a', '#5fae52', '#3f8a43'];
-  for (let i = 0; i < 4; i++) {
-    r.add(mesh(ico(0.55 + rnd() * 0.25, 1), mat(greens[i % 3], { flat: true, r: 0.8 }), (rnd() - 0.5) * 0.6, 1.6 + rnd() * 0.6, (rnd() - 0.5) * 0.6));
-  }
-  r.add(mesh(cyl(0.45, 0.45, 0.06, 10), mat('#5b4030'), 0, 0.03, 0));
-  return mergeStatic(r);
+  return buildGardenTree(seed);
 }
 
 export function buildCar(color) {
@@ -1751,20 +1817,20 @@ export function buildCar(color) {
   r.add(mesh(box(0.05, 0.12, 0.2), envMats.headlight, 1.0, 0.5, 0.3, false));
   r.add(mesh(box(0.05, 0.1, 0.18), mat('#ff3b3b', { e: '#ff0000', ei: 0.6 }), -1.0, 0.5, -0.3, false));
   r.add(mesh(box(0.05, 0.1, 0.18), mat('#ff3b3b', { e: '#ff0000', ei: 0.6 }), -1.0, 0.5, 0.3, false));
-  return mergeStatic(r);
+  return mergeStatic(r, 'env');
 }
 
 export function buildBench() {
   const r = new THREE.Group();
-  const w = mat('#a0612f');
-  const iron = mat('#2f3d3a', { m: 0.5, r: 0.5 });
+  const w = mat('#b07445', { kind: 'env' });
+  const iron = mat('#33433f', { m: 0.5, r: 0.5, kind: 'env' });
   for (let i = 0; i < 3; i++) r.add(mesh(box(1.4, 0.05, 0.12), w, 0, 0.45, -0.14 + i * 0.14));
   for (let i = 0; i < 2; i++) r.add(mesh(box(1.4, 0.12, 0.04), w, 0, 0.62 + i * 0.16, -0.24));
   for (const x of [-0.6, 0.6]) {
     r.add(mesh(box(0.06, 0.45, 0.4), iron, x, 0.225, -0.02));
     r.add(mesh(box(0.06, 0.4, 0.06), iron, x, 0.7, -0.24));
   }
-  return mergeStatic(r);
+  return mergeStatic(r, 'env');
 }
 
 export function buildPointer() {
