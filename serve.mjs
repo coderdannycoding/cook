@@ -1,7 +1,7 @@
 // Zero-dependency static server for local play & testing.
 //   node serve.mjs              → serves the source tree   (http://localhost:8080)
 //   node serve.mjs --dir public → serves the production build (run `npm run build` first)
-//   HOST=0.0.0.0 node serve.mjs → also reachable from other devices on your network (phone testing)
+//   node serve.mjs --lan        → also reachable from other devices on your network (phone testing)
 // It applies the same response headers as vercel.json (CSP, caching...) so what works here works in production.
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
@@ -12,7 +12,7 @@ const HERE = resolve(fileURLToPath(new URL('.', import.meta.url)));
 const dirArg = process.argv.indexOf('--dir');
 const ROOT = resolve(HERE, dirArg > 0 ? process.argv[dirArg + 1] : '.');
 const PORT = Number(process.env.PORT) || 8080;
-const HOST = process.env.HOST || '127.0.0.1';
+const HOST = process.argv.includes('--lan') ? '0.0.0.0' : '127.0.0.1';
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',

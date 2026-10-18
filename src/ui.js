@@ -497,8 +497,9 @@ export class UI {
     const tabs = [['build', 'hammer', 'Build'], ['staff', 'people', 'Staff'], ['upgrades', 'chevrons', 'Upgrades'], ['menu', 'menu', 'Menu']];
     const wages = g.staff.totalWages();
     // Re-rendering after a purchase must not throw the player back to the top or start of a list
-    const keep = this.dockTab === this._dockTabShown ? [...D.querySelectorAll('.dock-panel, .dock-panel .cards, .dock-panel .chips')].map((n) => [n.scrollTop, n.scrollLeft]) : [];
-    this._dockTabShown = this.dockTab;
+    const view = `${this.dockTab}|${this.buildCat}`;
+    const keep = view === this._dockViewShown ? [...D.querySelectorAll('.dock-panel, .dock-panel .cards, .dock-panel .chips')].map((n) => [n.scrollTop, n.scrollLeft]) : [];
+    this._dockViewShown = view;
     D.innerHTML = `
       <div class="dock-top">
         <div class="dock-tabs">${tabs.map(([id, ic, n]) => `<button class="tab ${this.dockTab === id ? 'on' : ''}" data-tab="${id}">${icon(ic)}${n}</button>`).join('')}</div>

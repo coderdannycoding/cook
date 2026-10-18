@@ -760,7 +760,8 @@ class Game {
     const bottom = this.input.touchMode && r.height > r.width ? Math.min(0.3, 200 / r.height) * 0.85 : 0;
     const fit = r.fitViewForRoom(W, H, 1.08) / (1 - top - bottom);
     const big = Math.min(r.width, r.height) >= 600;
-    const cap = ((CAMERA.dayView + 1) * (big ? 1 / (1 - top - bottom) : 1.1)) / Math.min(1, r.width / r.height);
+    const aspect = r.width > 0 && r.height > 0 ? r.width / r.height : 1;
+    const cap = ((CAMERA.dayView + 1) * (big ? 1 / (1 - top - bottom) : 1.1)) / Math.min(1, aspect);
     r.setView(Math.min(fit, cap) * this.userZoom);
     const view = r.targetView;
     const follow = fit <= view * 1.02 ? 0.12 : 0.75;

@@ -61,7 +61,7 @@ async function main() {
     .replace(/\s*<script src="src\/boot-guard\.js"><\/script>/, '')
     .replace(/\s*<script type="module" src="src\/main\.js"><\/script>/, '');
   const metas = head.split('\n')
-    .filter((l) => /<meta |<title>/.test(l) && !/charset|viewport/.test(l))
+    .filter((l) => /<meta |<title>|rel="icon"/.test(l) && !/charset|viewport/.test(l))
     .map((l) => l.trim())
     .join('\n');
   const [js, css] = [bundleJs(), await inlineCss()];
@@ -72,7 +72,6 @@ async function main() {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 ${metas}
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍳</text></svg>">
 <style>${css}</style>
 </head>
 <body>

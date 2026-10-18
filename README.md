@@ -60,7 +60,7 @@ npm start               # zero-dependency static server → http://localhost:808
 npm run preview         # production build in public/, served with the same headers as Vercel
 ```
 
-To try it on your phone, start the server with `HOST=0.0.0.0 npm start` and open your computer's
+To try it on your phone, start the server with `npm start -- --lan` and open your computer's
 local IP address on port 8080 from the phone (same Wi-Fi network).
 
 Requires Node 18 or newer. Any browser with WebGL 2 works on desktop or mobile: Chrome, Edge,

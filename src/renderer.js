@@ -599,7 +599,11 @@ export class Renderer {
   setCameraTarget(x, z) { this.camTarget.set(x, 0, z); }
   snapCamera() { this.camSmooth.copy(this.camTarget); this.viewSize = this.targetView; this._updateProjection(); }
   // Portrait screens are narrow, so allow a taller view to show the same width of floor
-  setView(v) { this.targetView = clamp(v, CAMERA.minView, CAMERA.maxView / Math.min(1, this.width / this.height)); }
+  setView(v) {
+    const aspect = this.width > 0 && this.height > 0 ? this.width / this.height : 1;
+    if (!Number.isFinite(v)) v = CAMERA.dayView;
+    this.targetView = clamp(v, CAMERA.minView, CAMERA.maxView / Math.min(1, aspect));
+  }
   addShake(a) {
     if (this.reducedMotion === undefined) {
       try { this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { this.reducedMotion = false; }
