@@ -353,36 +353,55 @@ export class Player extends Character {
     }
   }
 
+  // What the chef will interact with. Counters sit on a grid, so the aim snaps to the nearest of the
+  // four grid directions (keeping the previous one until you steer clearly past the diagonal); a
+  // diagonal approach into a corner then still picks the crate you're in front of rather than the
+  // board beside it. Among stations in that direction the closest wins, the current target is
+  // sticky so the choice doesn't flicker, and stations that can use what you're holding get a nudge.
   findTarget() {
     const grid = this.game.grid;
-    const fx = Math.sin(this.facing), fz = Math.cos(this.facing);
-    const px = this.pos.x + fx * PLAYER.reach, pz = this.pos.z + fz * PLAYER.reach;
-    const tx = Math.floor(px), tz = Math.floor(pz);
-    let st = grid.stationAt(tx, tz);
-    if (st && st.kind !== 'grabber') {
-      this.targetCell = { x: tx, z: tz };
-      return st;
+    const raw = this.targetFacing;
+    let snap = Math.round(raw / (Math.PI / 2)) * (Math.PI / 2);
+    if (this.aimSnap !== undefined) {
+      const off = Math.atan2(Math.sin(raw - this.aimSnap), Math.cos(raw - this.aimSnap));
+      if (Math.abs(off) < Math.PI / 4 + 0.2) snap = this.aimSnap;
     }
-    let best = null, bestScore = Infinity, bestCell = null;
+    this.aimSnap = snap;
+    const fx = Math.sin(snap), fz = Math.cos(snap);
     const ptx = this.tileX, ptz = this.tileZ;
+    let best = null, bestScore = Infinity, bestCell = null;
+    const acts = new Map();
     for (let dx = -1; dx <= 1; dx++) {
       for (let dz = -1; dz <= 1; dz++) {
         const x = ptx + dx, z = ptz + dz;
         const s = grid.stationAt(x, z);
         if (!s || s.kind === 'grabber') continue;
+        // nearest point of this tile to the chef
         const cx = clamp(this.pos.x, x, x + 1), cz = clamp(this.pos.z, z, z + 1);
         const d = Math.hypot(cx - this.pos.x, cz - this.pos.z);
-        if (d > 0.7) continue;
+        if (d > 0.85) continue;
         const vx = x + 0.5 - this.pos.x, vz = z + 0.5 - this.pos.z;
         const vl = Math.hypot(vx, vz) || 1;
         const dot = (vx * fx + vz * fz) / vl;
-        if (dot < 0.35) continue;
-        const score = d - dot * 0.6;
+        if (dot < 0.3) continue;
+        let score = d + 0.55 * (1 - dot);
+        if (s === this.target) score -= 0.12;
+        if (!acts.has(s)) acts.set(s, this.wouldAct(s));
+        if (acts.get(s)) score -= 0.06;
         if (score < bestScore) { bestScore = score; best = s; bestCell = { x, z }; }
       }
     }
     this.targetCell = bestCell;
     return best;
+  }
+
+  wouldAct(st) {
+    try {
+      const d = this.game.interact.describe(this, st);
+      return !!(d && (d.e || d.f));
+    } catch {
+      return false;
+    }
   }
 }
 
