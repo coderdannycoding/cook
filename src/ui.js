@@ -1,5 +1,5 @@
 // HTML/CSS interface: HUD, order tickets, world-anchored bubbles & progress bars, action prompts,
-// toasts, the night-time Build/Staff/Upgrades/Menu dock, and all modal screens (title, receipt,
+// toasts, the night-time Build/Staff/Upgrades/Menu dock, and all modal screens (title, results,
 // pause, help). Styling lives in styles/*.css; icons come from icons.js.
 
 import { DISHES, CUISINES, CUISINE_ORDER, ticketParts, itemLabel } from './recipes.js';
@@ -8,7 +8,7 @@ import {
 } from './catalog.js';
 import { formatMoney, formatClock, clamp } from './utils.js';
 import { DAY } from './config.js';
-import { icon, hasIcon } from './icons.js';
+import { icon, hasIcon, badge } from './icons.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 function el(html) {
@@ -59,6 +59,7 @@ export class UI {
       buildTools: $('#build-tools'), rotateHint: $('#rotate-hint'), fullscreen: $('#btn-fullscreen'),
     };
     for (const n of document.querySelectorAll('[data-icon]')) n.innerHTML = icon(n.dataset.icon);
+    for (const n of document.querySelectorAll('[data-badge]')) n.innerHTML = badge(n.dataset.badge);
     this.rotateDismissed = false;
     this.rotateTimer = 0;
     this.ticketEls = new Map();
@@ -134,18 +135,16 @@ export class UI {
     const save = g.peekSave();
     const T = this.e.title;
     T.classList.remove('hidden');
-    // apron fabrics: tomato cotton, denim, sage, mustard, plum, charcoal
-    const colors = ['#c8442b', '#34506e', '#3f7a4f', '#d39b2c', '#6a3b55', '#3b3734'];
+    const colors = ['#f2493d', '#2f8cf0', '#2fbf5f', '#ffbb1f', '#9b5cf6', '#ff6fae'];
     const cur = g.settings.color || colors[0];
     T.innerHTML = `
       <div class="title-card">
-        <div class="logo"><h1>Pandemonium<span>Bistro</span></h1></div>
-        <div class="hours">Open daily · 10 AM to 10 PM</div>
-        <p class="tagline">Cook every order by hand while the dining room fills up. After closing, rearrange the kitchen, hire help and put new dishes on the menu.</p>
+        <div class="logo">${badge('logo', 'logo-mark')}<h1 aria-label="Sizzle Shack"><span data-t="Sizzle">Sizzle</span><span data-t="Shack">Shack</span></h1></div>
+        <p class="tagline">Chop, cook and serve against the clock, then grow your tiny shack into the busiest restaurant in town.</p>
         <div class="title-buttons">
           ${save ? `<button class="big-btn primary" data-act="continue">Continue <small>Day ${save.day} · ${formatMoney(save.cash)} · ${save.rating.toFixed(1)}★</small></button>` : ''}
-          <button class="big-btn ${save ? '' : 'primary'}" data-act="new">New restaurant</button>
-          <button class="big-btn ghost" data-act="help">How to play</button>
+          <button class="big-btn ${save ? 'gold' : 'primary'}" data-act="new">${save ? 'New game' : 'Play'}</button>
+          <button class="big-btn" data-act="help">How to play</button>
         </div>
         <div class="apron">
           <span>Apron</span>
@@ -199,16 +198,16 @@ export class UI {
     const h = this.h;
     this.cashShown += (s.cash - this.cashShown) * Math.min(1, dt * 8);
     if (Math.abs(s.cash - this.cashShown) < 0.5) this.cashShown = s.cash;
-    setText(h.cash, formatMoney(this.cashShown));
+    setText(h.cash, formatMoney(this.cashShown).replace('$', ''));
     setText(h.day, `Day ${g.phase === 'summary' ? s.day - 1 : s.day}`);
     const night = g.phase === 'night' || g.phase === 'summary';
     setText(h.clock, night ? 'Closed' : formatClock(Math.min(g.clock, DAY.closeHour + 0.99)));
     const prog = clamp((g.clock - DAY.openHour) / (DAY.closeHour - DAY.openHour), 0, 1);
     setStyle(h.fill, 'width', `${night ? 100 : Math.round(prog * 200) / 2}%`);
-    setHTML(h.sun, icon(night ? 'moon' : g.clock >= 17.5 ? 'sunset' : 'sun'));
+    setHTML(h.sun, badge(night ? 'moon' : g.clock >= 17.5 ? 'sunset' : 'sun'));
     setHTML(h.stars, `${starsHTML(Math.round(s.rating * 100) / 100)}<b>${s.rating.toFixed(2)}</b>`);
     const next = CUISINE_ORDER.map((id) => CUISINES[id]).find((c) => c.stars > s.rating);
-    setText(h.next, next ? `${next.name} at ${next.stars.toFixed(1)}★` : 'Every cuisine unlocked');
+    setText(h.next, next ? `${next.name.replace(/^(American|Italian|Japanese|Seaside) /, '')} at ${next.stars.toFixed(1)}★` : 'Every cuisine unlocked');
     const dash = g.player ? clamp(1 - g.player.dashCD / g.upg('dash'), 0, 1) : 1;
     setVar(h.dash, '--p', String(Math.round(dash * 40) / 40));
     toggle(h.dash, 'ready', dash >= 1);
@@ -238,12 +237,12 @@ export class UI {
     const tilt = (((t.id * 37) % 7) - 3) * 0.7;
     const node = el(`
       <div class="ticket ${t.critic ? 'critic' : ''}" style="--tilt:${tilt}deg">
-        ${t.critic ? '<div class="t-crown">CRITIC</div>' : ''}
+        ${t.critic ? `<div class="t-crown">${icon('crown')}Critic</div>` : ''}
+        <div class="t-bar"><div class="t-fill"></div></div>
         <div class="t-head"><span class="t-table">T${t.table}</span><span class="t-price">$${d.price}</span></div>
         <div class="t-dish"><img src="${this.thumb(`dish:${t.dish}`)}" alt=""></div>
         <div class="t-name">${esc(d.name)}</div>
         <div class="t-parts">${parts.map((p) => `<div class="t-part"><img src="${this.thumb(`item:${p.key}`)}" alt="">${p.badge ? `<span class="badge">${icon(p.badge)}</span>` : ''}</div>`).join('')}</div>
-        <div class="t-bar"><div class="t-fill"></div></div>
       </div>`);
     this.e.tickets.appendChild(node);
     this.ticketEls.set(t.id, node);
@@ -456,7 +455,7 @@ export class UI {
     html = this.touchify(html);
     if (H.dataset.h !== html) {
       H.dataset.h = html;
-      H.innerHTML = `${html}<button class="hint-skip" data-act="skip-tut">Skip the tutorial</button>`;
+      H.innerHTML = `<span class="hint-chef">${badge('chef')}</span>${html}<button class="hint-skip" data-act="skip-tut">Skip the tutorial</button>`;
       H.classList.remove('pop');
       void H.offsetWidth;
       H.classList.add('pop');
@@ -537,7 +536,7 @@ export class UI {
         return `<button class="card style ${on ? 'selected' : ''}" data-theme="${kind}:${id}">
           <div class="swatch-img ${tall ? 'tall' : ''}" style="background-image:url(${this.thumb(`${kind}:${id}`)})"></div>
           <div class="c-name">${t.name}</div>
-          <div class="c-meta">${on ? `${icon('check')}In use` : owned ? 'Owned' : `<b>${formatMoney(t.price)}</b>`}${decor(t.decor)}</div>
+          <div class="c-meta">${on ? `${icon('check')}In use` : owned ? 'Owned' : `<b>${badge('coin')}${t.price}</b>`}${decor(t.decor)}</div>
         </button>`;
       };
       const fl = Object.entries(FLOOR_THEMES).map(([id, t]) => theme('floor', id, t, false)).join('');
@@ -552,8 +551,8 @@ export class UI {
         return `<button class="card ${locked ? 'locked' : ''} ${!afford ? 'poor' : ''} ${sel ? 'selected' : ''}" data-buy="${d.id}" title="${esc(d.desc)}">
           <img src="${this.thumb(`cat:${d.id}`)}" alt="">
           <div class="c-name">${esc(d.name)}</div>
-          <div class="c-meta"><b>${formatMoney(d.price)}</b>${decor(d.decor)}${count ? `<span>×${count}</span>` : ''}</div>
-          ${locked ? `<div class="lock">${icon('lock')}${esc(CUISINES[d.req].name)}</div>` : ''}
+          <div class="c-meta"><b>${badge('coin')}${d.price}</b>${decor(d.decor)}${count ? `<span>×${count}</span>` : ''}</div>
+          ${locked ? `<div class="lock">${badge('lock')}${esc(CUISINES[d.req].name)}</div>` : ''}
         </button>`;
       }).join('');
     }
@@ -587,7 +586,7 @@ export class UI {
         <div class="portrait role-${role}">${icon(ROLE_ICON[role])}</div>
         <div class="c-name">Hire a ${T.name.toLowerCase()}</div>
         <div class="c-meta">${ROLE_BLURB[role]}</div>
-        <div class="c-meta"><b>${formatMoney(T.hire)}</b> + ${formatMoney(T.wage)}/day</div>
+        <div class="c-meta"><b>${badge('coin')}${T.hire}</b> + ${formatMoney(T.wage)}/day</div>
         <div class="c-desc">${esc(T.desc)}</div>
       </button>`).join('');
     return `<div class="card-label">Your team, ${roster.length} of ${MAX_STAFF}</div>
@@ -607,7 +606,7 @@ export class UI {
         <span class="pl-ic">${icon(U.icon)}</span>
         <div class="pl-txt"><b>${esc(U.name)}</b><small>${esc(U.desc)}</small><small class="pl-now">Now: ${esc(U.fmt(cur))}</small></div>
         <span class="pips" title="Level ${lvl} of ${U.levels.length}">${U.levels.map((_, i) => `<i class="${i < lvl ? 'on' : ''}"></i>`).join('')}</span>
-        ${next ? `<button class="mini-btn ${s.cash < next.price ? 'poor' : ''}" data-upg="${id}" title="Upgrade to ${esc(U.fmt(next.value))}"><span>${esc(U.fmt(next.value))}</span><b>${formatMoney(next.price)}</b></button>` : '<span class="maxed">Sold out</span>'}
+        ${next ? `<button class="mini-btn ${s.cash < next.price ? 'poor' : ''}" data-upg="${id}" title="Upgrade to ${esc(U.fmt(next.value))}"><span>${esc(U.fmt(next.value))}</span><b>${badge('coin')}${next.price}</b></button>` : '<span class="maxed">MAX</span>'}
       </div>`;
     }).join('')}</div>`;
   }
@@ -632,9 +631,9 @@ export class UI {
       }).join('');
       let action = '';
       if (owned) action = `<span class="owned">${icon('check')}On the menu</span>`;
-      else if (!starOk) action = `<span class="locked-txt">${icon('lock')}Needs ${C.stars.toFixed(1)}★</span>`;
-      else action = `<button class="mini-btn ${s.cash < C.price ? 'poor' : ''}" data-cuisine="${cid}">Unlock for ${formatMoney(C.price)}</button>`;
-      return `<div class="cuisine ${!starOk && !owned ? 'locked' : ''}">
+      else if (!starOk) action = `<span class="locked-txt">${badge('lock')}${C.stars.toFixed(1)}★</span>`;
+      else action = `<button class="mini-btn ${s.cash < C.price ? 'poor' : ''}" data-cuisine="${cid}">Unlock ${badge('coin')}${C.price}</button>`;
+      return `<div class="cuisine ${!starOk && !owned ? 'locked' : ''}" style="--cu:${C.color}">
         <div class="cu-head"><img class="cu-icon" src="${this.thumb(`dish:${C.dishes[0]}`)}" alt=""><div><div class="c-name">${esc(C.name)}</div><div class="c-desc">${esc(C.blurb)}</div></div>${action}</div>
         <div class="dishes">${dishes}</div>
       </div>`;
@@ -736,8 +735,7 @@ export class UI {
 
   // ------------------------------------------------------------- modals
   modal(html, cls = '') {
-    const inner = cls.includes('receipt') ? `<div class="receipt-paper">${html}</div>` : html;
-    const wrap = el(`<div class="modal-wrap"><div class="modal ${cls}">${inner}</div></div>`);
+    const wrap = el(`<div class="modal-wrap"><div class="modal ${cls}">${html}</div></div>`);
     this.e.modal.appendChild(wrap);
     requestAnimationFrame(() => wrap.classList.add('in'));
     this.modalStack.push(wrap);
@@ -830,51 +828,44 @@ export class UI {
     return w;
   }
 
-  // The end-of-day report, printed as a till receipt
+  // End-of-day results: a medal for the day, the rating change, what happened and the money
   showSummary(rep, onContinue) {
     const g = this.game;
     const money = (v) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${formatMoney(Math.abs(v))}`;
-    // costs print red only when there was a cost
-    const row = (label, v, cls = '', zero = false) => `<div class="r-row ${zero ? '' : cls}"><span>${label}</span><i></i><b>${v}</b></div>`;
+    const row = (ic, label, v, cls = '') => `<div class="r-row ${cls}">${icon(ic)}<span>${label}</span><b>${v}</b></div>`;
     const critic = {
-      wowed: ['gold', 'crown', 'The critic loved it. Expect a glowing review.'],
-      meh: ['', 'dots', 'The critic left unimpressed.'],
-      angry: ['', 'warn', 'The critic walked out before eating.'],
+      wowed: ['gold', badge('trophy'), 'The critic loved it. Expect a glowing review.'],
+      meh: ['', icon('dots'), 'The critic left unimpressed.'],
+      angry: ['', icon('warn'), 'The critic walked out before eating.'],
     }[rep.critic];
-    const unlocks = rep.newCuisines.map((c) => `<div class="r-note gold">${icon('lock')}<span><b>${CUISINES[c].name}</b> is ready to unlock in the Menu tab.</span></div>`).join('');
+    const unlocks = rep.newCuisines.map((c) => `<div class="r-note gold">${badge('star')}<span><b>${CUISINES[c].name}</b> is ready to unlock in the Menu tab.</span></div>`).join('');
     const grade = rep.net > 400 ? 'S' : rep.net > 250 ? 'A' : rep.net > 120 ? 'B' : rep.net > 0 ? 'C' : 'D';
+    const title = { S: 'Amazing day!', A: 'Great day!', B: 'Good day!', C: 'Not bad!', D: 'Tough day' }[grade];
     const delta = Math.round((rep.ratingAfter - rep.ratingBefore) * 100);
     const w = this.modal(`
-      <div class="r-head">
-        <div><div class="r-name">Pandemonium Bistro</div><div class="r-meta">Day ${rep.day} · Closed 10:00 PM</div></div>
-        <div class="stamp g-${grade}" title="Grade for the day">${grade}<small>GRADE</small></div>
-      </div>
-      <hr class="r-rule">
-      <div class="r-cols">
-        <div class="r-sec">
-          ${row('Guests served', rep.served)}
-          ${row('Walked out', rep.lost)}
-          ${row('Turned away', rep.turnedAway)}
-          ${row('Dishes burnt', rep.burnt)}
-          ${row('Fires', rep.fires)}
+      <h2>Day ${rep.day}: ${title}</h2>
+      <div class="res-medal g-${grade}" title="Grade for the day">${grade}</div>
+      <div class="res-rating">${starsHTML(rep.ratingAfter)} ${rep.ratingBefore.toFixed(2)} → ${rep.ratingAfter.toFixed(2)}${delta ? `<span class="${delta > 0 ? 'up' : 'down'}">${icon(delta > 0 ? 'trendup' : 'trenddown')}</span>` : ''}</div>
+      <div class="res-cols">
+        <div class="res-sec">
+          ${row('check', 'Guests served', rep.served)}
+          ${row('exit', 'Walked out', rep.lost, rep.lost ? 'neg' : '')}
+          ${row('people', 'Turned away', rep.turnedAway, rep.turnedAway ? 'neg' : '')}
+          ${row('fire', 'Burnt dishes', rep.burnt, rep.burnt ? 'neg' : '')}
         </div>
-        <hr class="r-rule r-mid">
-        <div class="r-sec">
-          ${row('Food sales', money(rep.revenue))}
-          ${row('Tips', money(rep.tips))}
-          ${rep.criticBonus ? row('Critic bonus', money(rep.criticBonus), 'gold') : ''}
-          ${row('Ingredients', money(-rep.ingredients), 'neg', !rep.ingredients)}
-          ${row('Staff wages', money(-rep.wages), 'neg', !rep.wages)}
-          ${row('Rent & utilities', money(-rep.rent), 'neg', !rep.rent)}
-          <hr class="r-rule double">
-          <div class="r-row total"><span>Net</span><i></i><b class="${rep.net >= 0 ? 'pos' : 'neg'}">${money(rep.net)}</b></div>
+        <div class="res-sec">
+          ${row('cloche', 'Food sales', money(rep.revenue))}
+          ${row('heart', 'Tips', money(rep.tips))}
+          ${rep.criticBonus ? row('crown', 'Critic bonus', money(rep.criticBonus), 'gold') : ''}
+          ${row('crate', 'Ingredients', money(-rep.ingredients), rep.ingredients ? 'neg' : '')}
+          ${rep.wages ? row('people', 'Staff wages', money(-rep.wages), 'neg') : ''}
+          ${row('floor', 'Rent', money(-rep.rent), rep.rent ? 'neg' : '')}
         </div>
       </div>
-      <div class="r-rating">${starsHTML(rep.ratingAfter)} ${rep.ratingBefore.toFixed(2)} → <b>${rep.ratingAfter.toFixed(2)}</b>${delta ? `<span class="${delta > 0 ? 'up' : 'down'}">${icon(delta > 0 ? 'trendup' : 'trenddown')}</span>` : ''}</div>
-      ${critic ? `<div class="r-note ${critic[0]}">${icon(critic[1])}<span>${critic[2]}</span></div>` : ''}
+      <div class="r-total">${badge('coin')}<b class="${rep.net >= 0 ? 'pos' : 'neg'}">${money(rep.net)}</b></div>
+      ${critic ? `<div class="r-note ${critic[0]}">${critic[1]}<span>${critic[2]}</span></div>` : ''}
       ${unlocks}
-      <div class="r-thanks">Thank you · Come again</div>
-      <div class="m-actions"><button class="big-btn primary" data-a="go">Close up for the night</button></div>`, 'receipt');
+      <div class="m-actions"><button class="big-btn primary" data-a="go">Continue</button></div>`, 'results');
     w.onclick = (ev) => {
       if (actionOf(ev) === 'go') {
         g.audio.click();

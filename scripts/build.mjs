@@ -76,7 +76,7 @@ async function main() {
 
   let bytes = 0;
   for (const f of files) bytes += (await stat(f)).size;
-  console.log(`✔ Built Pandemonium Bistro ${version} → public/ (${files.length} files, ${(bytes / 1024).toFixed(0)} KB) in ${Date.now() - started} ms`);
+  console.log(`✔ Built Sizzle Shack ${version} → public/ (${files.length} files, ${(bytes / 1024).toFixed(0)} KB) in ${Date.now() - started} ms`);
 }
 
 main().catch((e) => {

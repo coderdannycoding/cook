@@ -36,9 +36,9 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   height: 58px;
   margin: -29px 0 0 -29px;
   border-radius: 50%;
-  background: var(--paper);
-  border: 2.5px solid var(--ink);
-  box-shadow: 0 3px 0 var(--ink);
+  background: linear-gradient(#fff, var(--cream-2));
+  border: 3px solid var(--line);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.8), 0 4px 0 var(--line);
 }
 
 .tbtns {
@@ -53,8 +53,8 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   position: absolute;
   pointer-events: auto;
   border-radius: 50%;
-  border: 2.5px solid var(--ink);
-  color: var(--paper);
+  border: 3px solid var(--line);
+  color: #fff;
   font-family: var(--font);
   font-weight: 800;
   font-stretch: 85%;
@@ -63,7 +63,8 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   align-items: center;
   justify-content: center;
   gap: 2px;
-  box-shadow: 0 4px 0 var(--ink);
+  box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.4), inset 0 -6px 0 rgba(0, 0, 0, 0.16), 0 5px 0 var(--line);
+  text-shadow: var(--ol-sm);
   user-select: none;
   -webkit-user-select: none;
   transition: transform 0.06s ease, box-shadow 0.06s ease, opacity 0.15s;
@@ -72,11 +73,11 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 .tbtn i { display: grid; place-items: center; font-style: normal; }
 .tbtn i .ic { width: 28px; height: 28px; stroke-width: 2.4; }
 .tbtn span { font-size: 11.5px; line-height: 1.05; max-width: 90%; text-align: center; letter-spacing: 0.02em; }
-.tbtn.down { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.tbtn.down { transform: translateY(4px); box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.4), 0 1px 0 var(--line); }
 .tbtn.idle { opacity: 0.62; }
-.tbtn.pick { right: 0; bottom: 0; width: 108px; height: 108px; background: var(--tomato); }
-.tbtn.work { right: 118px; bottom: 6px; width: 92px; height: 92px; background: var(--basil); }
-.tbtn.dash { right: 18px; bottom: 120px; width: 72px; height: 72px; background: var(--mustard); color: var(--ink); }
+.tbtn.pick { right: 0; bottom: 0; width: 108px; height: 108px; background: linear-gradient(var(--grass), var(--grass-2)); }
+.tbtn.work { right: 118px; bottom: 6px; width: 92px; height: 92px; background: linear-gradient(var(--sky), var(--sky-2)); }
+.tbtn.dash { right: 18px; bottom: 120px; width: 72px; height: 72px; background: linear-gradient(var(--sun), var(--sun-2)); }
 .tbtn.dash i .ic { width: 24px; height: 24px; }
 .tbtn.dash .cd {
   position: absolute;
@@ -112,18 +113,21 @@ body.touch .dash-ring { display: none; }
   align-items: center;
   gap: 6px;
   border: var(--edge);
-  background: var(--paper);
-  color: var(--ink);
+  background: linear-gradient(#fffaf0, var(--cream-2));
+  color: var(--text);
   font-size: 14px;
   font-weight: 700;
   min-height: 40px;
   padding: 7px 14px;
   border-radius: 8px;
-  box-shadow: var(--lift);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.6), var(--lift);
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 16px;
 }
 #build-tools button .ic { width: 18px; height: 18px; }
-#build-tools button.ok { background: var(--basil); color: var(--paper); }
-#build-tools button.bad { background: var(--tomato); color: var(--paper); }
+#build-tools button.ok { background: linear-gradient(var(--grass), var(--grass-2)); color: #fff; text-shadow: var(--ol-sm); }
+#build-tools button.bad { background: linear-gradient(var(--berry), var(--berry-2)); color: #fff; text-shadow: var(--ol-sm); }
 #build-tools button:disabled { opacity: 0.5; }
 /* while the dock is folded for placing, the toolbar sits just above it instead of over the kitchen */
 body.dock-peek #build-tools { top: auto; bottom: calc(112px + env(safe-area-inset-bottom, 0px)); }
@@ -147,8 +151,8 @@ body.dock-peek #build-tools { top: auto; bottom: calc(112px + env(safe-area-inse
 }
 
 .fatal-card { max-width: min(460px, calc(100vw - 32px)); }
-.fatal-text { color: var(--chalk-dim); font-size: 16px; line-height: 1.5; margin: 0; }
-.fatal { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; background: var(--board); color: var(--chalk); font: 600 18px/1.5 var(--font); z-index: 200; }
+.fatal-text { color: #fff; font: 800 16px/1.5 var(--font); margin: 0; text-shadow: 0 2px 0 rgba(29, 26, 47, 0.5); }
+.fatal { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; background: #e2541a; color: #fff; font: 800 18px/1.5 var(--font); z-index: 200; }
 
 /* ---------------------------------------------------------------- safe areas */
 #hud {
@@ -204,16 +208,28 @@ body.dock-peek #build-tools { top: auto; bottom: calc(112px + env(safe-area-inse
   .card.staff, .card.hire { width: 150px; }
   .pl-row .mini-btn { min-height: 40px; }
   .pricelist { grid-template-columns: minmax(0, 1fr); }
+  .hud-left { padding-left: 12px; }
+  .hud-box { min-height: 32px; padding: 4px 10px 5px 24px; }
+  .hud-box > .ico, .hud-day-row > #hud-sun { left: -13px; }
+  .hud-box .bdg { width: 32px; height: 32px; }
+  .hud-box b { font-size: 17px; }
+  .hud-day-row b { font-size: 15px; }
+  .day-box, .stars-box { padding: 4px 10px 6px 24px; }
+  .t-table { min-width: 22px; height: 22px; font-size: 11px; }
+  .logo h1 { font-size: 48px; }
+  .logo-mark { width: 60px; height: 60px; }
   .cuisines { grid-template-columns: minmax(0, 1fr); }
   #build-help { font-size: 12px; padding: 6px 12px; white-space: normal; text-align: center; width: max-content; max-width: calc(100vw - 340px); }
-  .title-card { padding: 20px 20px 16px; max-height: calc(100vh - 24px); overflow: auto; }
+  .title-card { padding: 10px 6px 12px; max-height: calc(100vh - 24px); overflow: auto; }
   .logo h1 { font-size: 38px; }
-  .tagline { margin: 10px 0 14px; font-size: 14px; }
-  .hours { margin-top: 10px; }
+  .tagline { font-size: 14px; }
+  .title-card { gap: 10px; }
   .title-buttons { gap: 8px; }
-  .title-buttons .big-btn { padding: 10px; font-size: 16px; }
+  .title-buttons .big-btn { padding: 10px; font-size: 19px; }
+  .title-buttons .big-btn.primary { padding: 12px; font-size: 24px; }
   .swatch { width: 32px; height: 32px; }
-  .modal { padding: 18px 18px; }
+  .modal { padding: 0 16px 16px; }
+  .modal h2 { margin: 0 -16px 12px; font-size: 25px; }
   .settings input[type=range] { height: 32px; }
   .hint-skip { padding: 8px 0; }
   .tbtn.pick { width: 92px; height: 92px; }
@@ -245,22 +261,21 @@ body.dock-peek #build-tools { top: auto; bottom: calc(112px + env(safe-area-inse
 /* Modal actions stay reachable when a modal scrolls (short phone screens) */
 .modal .m-actions {
   position: sticky;
-  bottom: -24px;
-  margin-bottom: -24px;
-  padding: 12px 0 24px;
-  background: linear-gradient(to bottom, rgba(251, 244, 228, 0), var(--paper) 35%);
+  bottom: -22px;
+  margin-bottom: -22px;
+  padding: 12px 0 22px;
+  background: linear-gradient(to bottom, rgba(255, 246, 224, 0), var(--cream) 35%);
 }
-.receipt-paper .m-actions { bottom: -22px; margin-bottom: -22px; padding-bottom: 22px; }
 @media (max-height: 520px) {
-  .modal { padding: 14px 18px; max-height: calc(100vh - 16px); }
-  .modal .m-actions { bottom: -14px; margin-bottom: -14px; padding: 8px 0 14px; }
-  .modal h2 { font-size: 22px; margin-bottom: 4px; }
-  .receipt-paper { max-height: calc(100vh - 34px); padding: 12px 18px 14px; font-size: 13.5px; line-height: 1.35; }
-  .receipt-paper .m-actions { bottom: -14px; margin-bottom: -14px; padding-bottom: 14px; }
-  .r-rule { margin: 7px 0; }
-  .r-head .r-name { font-size: 20px; }
-  .stamp { width: 56px; height: 56px; font-size: 28px; }
-  .stamp small { bottom: 6px; font-size: 7px; }
+  .modal { padding: 0 16px 12px; max-height: calc(100vh - 16px); }
+  .modal .m-actions { bottom: -12px; margin-bottom: -12px; padding: 8px 0 12px; margin-top: 10px; }
+  .modal h2 { font-size: 21px; padding: 8px 14px 7px; margin: 0 -16px 8px; }
+  .res-medal { width: 56px; height: 56px; font-size: 32px; margin: 0 auto 2px; }
+  .res-rating { margin-bottom: 6px; font-size: 15px; }
+  .r-row { padding: 2px 0; font-size: 13px; }
+  .r-row b { font-size: 15px; }
+  .r-total { margin-top: 6px; }
+  .r-total b { font-size: 26px; }
   .help-grid ul { font-size: 13px; }
   .settings { gap: 8px; margin: 8px 0 4px; }
 }
@@ -281,9 +296,8 @@ body.dock-peek #build-tools { top: auto; bottom: calc(112px + env(safe-area-inse
   #night-dock .card.staff, #night-dock .card.hire { width: 150px; }
   #night-dock .chip { min-height: 34px; padding: 5px 10px; font-size: 13px; }
   #night-dock .chips { margin-bottom: 5px; }
-  .modal.receipt { width: min(680px, 94vw); }
-  .r-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
-  .r-cols .r-mid { display: none; }
+  .modal.results { width: min(680px, 94vw); }
+  .res-cols { grid-template-columns: 1fr 1fr; }
   .pricelist { grid-template-columns: minmax(0, 1fr); }
   .pl-txt small:not(.pl-now) { display: none; }
   .expand-tip { margin-top: 4px; font-size: 12px; }
@@ -291,3 +305,29 @@ body.dock-peek #build-tools { top: auto; bottom: calc(112px + env(safe-area-inse
 
 /* Mouse and keyboard players place with clicks and R; the on-screen toolbar is for touch only */
 body:not(.touch) #build-tools { display: none !important; }
+
+/* Short landscape phones: a compact title and smaller shop tiles so nothing is cut off */
+@media (max-height: 520px) {
+  #title-screen { padding: 8px 4vw; align-items: center; }
+  .title-card { gap: 8px; width: min(420px, 60vw); }
+  .tagline { display: none; }
+  .logo h1 { font-size: 40px; }
+  .logo-mark { width: 50px; height: 50px; }
+  .title-buttons .big-btn { padding: 8px; font-size: 18px; }
+  .title-buttons .big-btn.primary { padding: 10px; font-size: 22px; }
+  .apron { padding: 5px 10px; font-size: 14px; }
+  .swatch { width: 28px; height: 28px; }
+  .title-keys { padding: 6px 10px; font-size: 12px; }
+  #night-dock .card { width: 86px; padding: 4px 4px 6px; gap: 2px; border-radius: 13px; }
+  #night-dock .card img { width: 100%; height: 44px; border-radius: 9px; }
+  #night-dock .card .c-name { font-size: 12px; }
+  #night-dock .card .c-meta { font-size: 11px; flex-wrap: nowrap; white-space: nowrap; gap: 2px; }
+  #night-dock .card .c-meta b { font-size: 12px; padding: 0 6px 1px 3px; }
+  #night-dock .card .c-meta b .bdg { width: 13px; height: 13px; }
+  #night-dock .card.style .swatch-img { height: 40px; }
+  #night-dock .card.style .swatch-img.tall { height: 52px; }
+  #night-dock .portrait { width: 40px; height: 40px; }
+  #night-dock .portrait .ic { width: 22px; height: 22px; }
+  .tab { font-size: 14px; padding: 6px 10px 7px; }
+  .open-btn { font-size: 16px; padding: 7px 12px 9px; }
+}

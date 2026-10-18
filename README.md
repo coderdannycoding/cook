@@ -1,4 +1,4 @@
-# Pandemonium Bistro
+# Sizzle Shack
 
 An isometric restaurant game that runs in the browser. During service you cook every order by
 hand, in the spirit of *Overcooked!*. After closing you rearrange the kitchen like in *PlateUp!*
@@ -9,7 +9,7 @@ texture, particle and sound is generated procedurally at runtime, with no asset 
 
 ## Deploy it to the web (Vercel)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcoderdannycoding%2Fcook&project-name=pandemonium-bistro&repository-name=pandemonium-bistro)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcoderdannycoding%2Fcook&project-name=sizzle-shack&repository-name=sizzle-shack)
 
 The repo is ready to import as-is. There are no dependencies to install and no settings to change:
 
@@ -42,7 +42,7 @@ an Actions workflow that runs `npm run build` and uploads `public/`.
 ### Single-file build (itch.io, offline)
 
 ```bash
-npm run build:single    # → dist/pandemonium-bistro.html, everything inlined (about 1 MB)
+npm run build:single    # → dist/sizzle-shack.html, everything inlined (about 1 MB)
 ```
 
 This bundles the JS with esbuild (fetched on demand through `npx`) and inlines all CSS and
@@ -92,7 +92,7 @@ Firefox, and Safari 15 or later. Gamepads also work.
 ## How to play
 
 **Service (4 minutes, 10 AM to 10 PM).** Guests walk in from the street, take a seat and order.
-The order slips along the top show each dish, its ingredients and how to prepare each one (chop,
+The order cards along the top show each dish, its ingredients and how to prepare each one (chop,
 sear, boil, fry or bake), plus a patience bar that runs from green through yellow to red.
 
 1. Grab ingredients from crates. Each one costs a little money.
@@ -105,7 +105,7 @@ sear, boil, fry or bake), plus a patience bar that runs from green through yello
 5. **Food critics** wear a gold crown and have little patience. Serve them quickly for a large cash
    bonus and a big rating boost.
 
-**After closing.** The day's receipt shows what you earned and spent. Then use the board at the bottom:
+**After closing.** The results screen shows how the day went and what you earned and spent. Then use the menu at the bottom:
 
 - **Build:** buy, place, rotate, move and sell stations, tables, décor and automation on the grid.
   Placement is validated so a layout can never wall off a station, seat or the door.
@@ -127,9 +127,9 @@ guests, and booths make guests more patient still. Progress autosaves to `localS
 
 ```
 index.html            HTML shell (loads src/main.js as an ES module; no build step needed to run it)
-styles/               main.css (design tokens, buttons, title, modals) · hud.css (stats, order slips, overlays)
-                      panels.css (night board, till receipt) · touch.css (touch controls, phone layouts, safe areas)
-                      fonts.css (self-hosted Shrikhand, Archivo, Courier Prime)
+styles/               main.css (design tokens, buttons, title, modals) · hud.css (counters, order cards, overlays)
+                      panels.css (night menu, shop tiles, results screen) · touch.css (touch controls, phone layouts)
+                      fonts.css (self-hosted Lilita One and Nunito)
 vendor/               three-0.169.0.module.min.js · fonts/ (SIL Open Font License)
 scripts/              build.mjs (static build → public/) · build-single.mjs (one-file build → dist/)
 vercel.json           Vercel build settings, security headers and caching
@@ -164,5 +164,5 @@ src/
 
 Debugging hook: `window.__game` exposes the running game instance in the browser console.
 
-Three.js is MIT-licensed (see `vendor/THREE-LICENSE`). The Shrikhand, Archivo and Courier Prime
-fonts are licensed under the SIL Open Font License (see `vendor/fonts/OFL.txt`).
+Three.js is MIT-licensed (see `vendor/THREE-LICENSE`). The Lilita One and Nunito fonts are licensed
+under the SIL Open Font License (see `vendor/fonts/OFL.txt`).

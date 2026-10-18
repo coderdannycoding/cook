@@ -1,36 +1,19 @@
 /* Self-hosted fonts (SIL Open Font License, see vendor/fonts/OFL.txt). No third-party requests. */
 
-/* Display: Shrikhand, a retro sign-painter face for the logo, banners and big numbers */
+/* Display: Lilita One, a chunky rounded face for the logo, buttons, counters and banners */
 @font-face {
-  font-family: 'Shrikhand';
+  font-family: 'Lilita One';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('../vendor/fonts/shrikhand-latin.woff2') format('woff2');
+  src: url('../vendor/fonts/lilita-one-latin.woff2') format('woff2');
 }
 
-/* Interface: Archivo, variable weight and width (condensed for labels, normal for text) */
+/* Text: Nunito, rounded and friendly, variable weight */
 @font-face {
-  font-family: 'Archivo';
+  font-family: 'Nunito';
   font-style: normal;
-  font-weight: 100 900;
-  font-stretch: 62% 125%;
+  font-weight: 200 1000;
   font-display: swap;
-  src: url('../vendor/fonts/archivo-latin-var.woff2') format('woff2');
-}
-
-/* Receipts, tickets and prices: Courier Prime */
-@font-face {
-  font-family: 'Courier Prime';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('../vendor/fonts/courier-prime-latin-400.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Courier Prime';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('../vendor/fonts/courier-prime-latin-700.woff2') format('woff2');
+  src: url('../vendor/fonts/nunito-latin-var.woff2') format('woff2');
 }

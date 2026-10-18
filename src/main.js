@@ -1,4 +1,4 @@
-// Pandemonium Bistro — game bootstrap, phase machine (title → day → summary → night),
+// Sizzle Shack: game bootstrap, phase machine (title → day → summary → night),
 // economy, ratings and the main loop that wires every module together.
 
 import * as THREE from '../vendor/three-0.169.0.module.min.js';
@@ -27,6 +27,8 @@ import { CATALOG, UPGRADES, FLOOR_THEMES, WALL_THEMES, PLAYER_SPAWN, STARTER_LAY
 import { buildItem, buildDishPreview, buildAppliance } from './models.js';
 import { floorTexture, wallTexture } from './textures.js';
 
+// The name painted on the shop sign (older saves stored the game's previous name)
+const SHOP_NAME = 'Sizzle Shack';
 const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
 
 function blankDay(rating) {
@@ -110,7 +112,7 @@ class Game {
     this.ui.setLoading(0.05, 'Lighting the stoves');
     // Signage & UI are painted onto canvases, so wait (briefly) for the web font first.
     try {
-      const fonts = document.fonts ? Promise.all(['400 64px Shrikhand', '700 16px Archivo', '700 16px "Courier Prime"'].map((f) => document.fonts.load(f))) : Promise.resolve();
+      const fonts = document.fonts ? Promise.all(['400 64px "Lilita One"', '800 16px Nunito'].map((f) => document.fonts.load(f))) : Promise.resolve();
       await Promise.race([fonts, new Promise((r) => setTimeout(r, 2500))]);
     } catch {
       /* fall back to system fonts */
@@ -179,7 +181,7 @@ class Game {
     this.orders.clear();
     this.grid.clear();
     this.grid.setSize(w, h);
-    this.renderer.buildRoom(w, h, this.grid.doorX, s.floorTheme, s.wallTheme, s.name);
+    this.renderer.buildRoom(w, h, this.grid.doorX, s.floorTheme, s.wallTheme, SHOP_NAME);
     const objs = Array.isArray(s.objects) && s.objects.length ? s.objects : STARTER_LAYOUT;
     const hardFail = new Set(['Out of bounds', 'Space occupied', 'Keep the doorway clear']);
     for (const o of objs) {
@@ -354,7 +356,7 @@ class Game {
   expandFloor() {
     const { w, h } = this.floorSize;
     this.grid.setSize(w, h);
-    this.renderer.buildRoom(w, h, this.grid.doorX, this.state.floorTheme, this.state.wallTheme, this.state.name);
+    this.renderer.buildRoom(w, h, this.grid.doorX, this.state.floorTheme, this.state.wallTheme, SHOP_NAME);
     this.updateAmbience(true);
     this.renderer.addShake(0.3);
     this.audio.thud();
@@ -373,7 +375,7 @@ class Game {
     if (kind === 'floor') s.floorTheme = id;
     else s.wallTheme = id;
     const { w, h } = this.floorSize;
-    this.renderer.buildRoom(w, h, this.grid.doorX, s.floorTheme, s.wallTheme, s.name);
+    this.renderer.buildRoom(w, h, this.grid.doorX, s.floorTheme, s.wallTheme, SHOP_NAME);
     this.updateAmbience(true);
     this.save();
   }

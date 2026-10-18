@@ -1,7 +1,7 @@
 {
-  "name": "pandemonium-bistro",
+  "name": "sizzle-shack",
   "version": "1.0.0",
-  "description": "An isometric kitchen-chaos restaurant tycoon built with Three.js and the Web Audio API.",
+  "description": "Sizzle Shack: a fast, bright cooking and restaurant game for the browser, built with Three.js and the Web Audio API.",
   "type": "module",
   "private": true,
   "scripts": {

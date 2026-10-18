@@ -3,7 +3,7 @@
 // Useful for hosts that want one file (itch.io "HTML" uploads, offline sharing) and for
 // embedding as a claude.ai Artifact page.
 //
-//   node scripts/build-single.mjs                 → dist/pandemonium-bistro.html (full document)
+//   node scripts/build-single.mjs                 → dist/sizzle-shack.html (full document)
 //   node scripts/build-single.mjs --artifact out  → also writes an Artifact page body to `out`
 //
 // Bundling uses esbuild, fetched on demand with `npx` (pinned version) — the regular `npm run build`
@@ -81,14 +81,14 @@ ${body}
 </html>
 `;
   await mkdir(OUT_DIR, { recursive: true });
-  const outFile = join(OUT_DIR, 'pandemonium-bistro.html');
+  const outFile = join(OUT_DIR, 'sizzle-shack.html');
   await writeFile(outFile, page);
-  console.log(`✔ dist/pandemonium-bistro.html (${(page.length / 1024).toFixed(0)} KB)`);
+  console.log(`✔ dist/sizzle-shack.html (${(page.length / 1024).toFixed(0)} KB)`);
 
   // Artifact pages are wrapped in their own document skeleton: no doctype/html/head/body here.
   const ai = process.argv.indexOf('--artifact');
   if (ai > 0 && process.argv[ai + 1]) {
-    const artifact = `<title>Pandemonium Bistro</title>
+    const artifact = `<title>Sizzle Shack</title>
 <meta name="description" content="Run a small, chaotic restaurant: cook every order by hand during service, then rebuild the kitchen after closing.">
 <style>
 html, body { height: 100%; }

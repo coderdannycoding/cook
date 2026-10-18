@@ -79,3 +79,27 @@ export function icon(name, cls = '') {
 
 export const hasIcon = (name) => !!P[name];
 export const ICON_NAMES = Object.keys(P);
+
+// Full-colour badges for counters and headers, drawn with the same thick outline as the UI.
+const L = '#1d1a2f';
+const B = {
+  coin: `<circle cx="16" cy="16" r="12.5" fill="#ffc62e" stroke="${L}" stroke-width="3"/><circle cx="16" cy="16" r="8" fill="none" stroke="#e8900c" stroke-width="2.6"/><path d="M10.6 11a7 7 0 0 1 6.6-3.4" fill="none" stroke="#fff6b0" stroke-width="2.6" stroke-linecap="round"/>`,
+  star: `<path d="M16 3.6l3.7 7.8 8.5 1-6.2 5.9 1.6 8.4L16 22.6l-7.6 4.1 1.6-8.4-6.2-5.9 8.5-1z" fill="#ffd23f" stroke="${L}" stroke-width="3" stroke-linejoin="round"/><path d="M12.6 12.4l1.8-3.4" stroke="#fff8c8" stroke-width="2.4" stroke-linecap="round"/>`,
+  sun: `<g stroke="${L}" stroke-width="3" stroke-linecap="round"><path d="M16 2.5v4M16 25.5v4M2.5 16h4M25.5 16h4M6.5 6.5l2.8 2.8M22.7 22.7l2.8 2.8M6.5 25.5l2.8-2.8M22.7 9.3l2.8-2.8"/></g><g stroke="#ffb31a" stroke-width="1.4" stroke-linecap="round"><path d="M16 2.5v4M16 25.5v4M2.5 16h4M25.5 16h4M6.5 6.5l2.8 2.8M22.7 22.7l2.8 2.8M6.5 25.5l2.8-2.8M22.7 9.3l2.8-2.8"/></g><circle cx="16" cy="16" r="7.5" fill="#ffd23f" stroke="${L}" stroke-width="3"/>`,
+  sunset: `<path d="M5 22a11 11 0 0 1 22 0z" fill="#ff9a3d" stroke="${L}" stroke-width="3" stroke-linejoin="round"/><path d="M3 22h26" stroke="${L}" stroke-width="3" stroke-linecap="round"/><path d="M9.5 17a7 7 0 0 1 4-4" stroke="#ffe1a0" stroke-width="2.4" stroke-linecap="round" fill="none"/>`,
+  moon: `<path d="M24.5 19.5A10.5 10.5 0 1 1 12.5 5.5a8.5 8.5 0 0 0 12 14z" fill="#ffe7a3" stroke="${L}" stroke-width="3" stroke-linejoin="round"/>`,
+  heart: `<path d="M16 27S4 19.6 4 11.8A6.2 6.2 0 0 1 16 9a6.2 6.2 0 0 1 12 2.8C28 19.6 16 27 16 27z" fill="#ff5a6e" stroke="${L}" stroke-width="3" stroke-linejoin="round"/><path d="M8.6 11.4a3 3 0 0 1 2.6-2.6" stroke="#ffc2cb" stroke-width="2.4" stroke-linecap="round" fill="none"/>`,
+  lock: `<path d="M10.5 14v-3.5a5.5 5.5 0 0 1 11 0V14" fill="none" stroke="${L}" stroke-width="3"/><rect x="7" y="14" width="18" height="13" rx="3" fill="#ffc62e" stroke="${L}" stroke-width="3"/><circle cx="16" cy="20.5" r="2" fill="${L}"/>`,
+  chef: `<circle cx="16" cy="16" r="14" fill="#ffa63d" stroke="${L}" stroke-width="3"/><path d="M10.5 20v4h11v-4M10.5 20a4 4 0 0 1-1-7.6 4.6 4.6 0 0 1 6.5-3.3 4.6 4.6 0 0 1 6.5 3.3 4 4 0 0 1-1 7.6z" fill="#fff" stroke="${L}" stroke-width="2.4" stroke-linejoin="round"/>`,
+  trophy: `<path d="M10 5h12v6a6 6 0 0 1-12 0z" fill="#ffd23f" stroke="${L}" stroke-width="3" stroke-linejoin="round"/><path d="M10 7H6.5a3.5 3.5 0 0 0 3.8 5M22 7h3.5a3.5 3.5 0 0 1-3.8 5M16 17v4M11 26h10l-1.5-5h-7z" fill="none" stroke="${L}" stroke-width="2.6" stroke-linejoin="round"/>`,
+  // the game's mark: a pan with a sizzling egg
+  logo: `<path d="M44 40l15 12" stroke="${L}" stroke-width="10" stroke-linecap="round"/><path d="M44 40l15 12" stroke="#a0522d" stroke-width="5" stroke-linecap="round"/><ellipse cx="28" cy="34" rx="25" ry="21" fill="#3a3f6e" stroke="${L}" stroke-width="4"/><ellipse cx="28" cy="31" rx="20" ry="15.5" fill="#545a99"/><path d="M15 33c-1-7 6-11 11-9 4-5 13-3 13 4 6 2 4 10-2 10-3 5-12 5-14 1-6 1-9-3-8-6z" fill="#fff" stroke="${L}" stroke-width="3" stroke-linejoin="round"/><circle cx="28" cy="31" r="6" fill="#ffb21a" stroke="${L}" stroke-width="3"/><circle cx="26" cy="29" r="1.8" fill="#fff3c0"/><path d="M14 10c-3 3 3 5 0 8M27 6c-3 3 3 5 0 8M40 10c-3 3 3 5 0 8" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none"/>`,
+};
+const BOX = { logo: '0 0 64 64' };
+
+// Full-colour badge markup (counters, ribbons, the logo); unknown names render nothing.
+export function badge(name, cls = '') {
+  const body = B[name];
+  if (!body) return '';
+  return `<svg class="bdg bdg-${name}${cls ? ` ${cls}` : ''}" viewBox="${BOX[name] || '0 0 32 32'}" aria-hidden="true" focusable="false">${body}</svg>`;
+}

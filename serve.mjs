@@ -53,4 +53,4 @@ createServer(async (req, res) => {
   } catch {
     res.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found');
   }
-}).listen(PORT, HOST, () => console.log(`Pandemonium Bistro → http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}  (serving ${ROOT})`));
+}).listen(PORT, HOST, () => console.log(`Sizzle Shack → http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}  (serving ${ROOT})`));
