@@ -274,3 +274,16 @@ button.card:active { transform: translateY(2px); }
   .card img { height: 62px; }
   .dock-info { display: none; }
 }
+
+/* restaurant-wide perk on a shop tile; turns green once one is placed */
+.card .c-perk {
+  display: inline-flex; align-items: center; gap: 3px; max-width: 100%;
+  padding: 2px 6px; border-radius: 8px;
+  background: #ffe7a6; border: 2px solid var(--line);
+  font: 800 10.5px/1.15 var(--font); color: var(--text);
+}
+.card .c-perk .ic { width: 11px; height: 11px; flex: none; color: var(--sun-2); }
+.card .c-perk.on { background: #c9f5a2; }
+.card .c-perk.on .ic { color: var(--grass-2); }
+.perk-sum { width: 100%; font: 800 13px var(--font); color: rgba(255, 255, 255, 0.85); }
+.perk-sum b { color: var(--sun); }

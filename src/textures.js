@@ -133,6 +133,93 @@ export function floorTexture(theme) {
       g.strokeRect(1.5, S / 2 + 1.5, S / 2 - 3, S / 2 - 3);
       g.strokeRect(S / 2 + 1.5, S / 2 + 1.5, S / 2 - 3, S / 2 - 3);
       noise(g, S, S, 8);
+    } else if (theme === 'parquet') {
+      // basket weave: 2 × 2 blocks of three planks, alternating direction
+      const b = S / 4;
+      const tones = ['#c58a52', '#b97d48', '#d29a62', '#bf8550'];
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+        const across = (i + j) % 2 === 0;
+        for (let k = 0; k < 3; k++) {
+          const tone = tones[randInt(0, tones.length - 1)];
+          g.fillStyle = tone;
+          const t = b / 3;
+          if (across) g.fillRect(i * b, j * b + k * t, b, t);
+          else g.fillRect(i * b + k * t, j * b, t, b);
+          g.fillStyle = 'rgba(70,35,12,0.4)';
+          if (across) g.fillRect(i * b, j * b + k * t, b, 1.5);
+          else g.fillRect(i * b + k * t, j * b, 1.5, b);
+        }
+        g.strokeStyle = 'rgba(70,35,12,0.5)';
+        g.lineWidth = 2;
+        g.strokeRect(i * b + 1, j * b + 1, b - 2, b - 2);
+      }
+      noise(g, S, S, 12);
+    } else if (theme === 'cherry') {
+      const n = 8;
+      const t = S / n;
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+        g.fillStyle = (i + j) % 2 ? '#f6a6bd' : '#fff1f4';
+        g.fillRect(i * t, j * t, t, t);
+      }
+      // little diamonds where four tiles meet
+      g.fillStyle = '#e8507a';
+      for (let i = 0; i <= n; i++) for (let j = 0; j <= n; j++) {
+        if ((i + j) % 2) continue;
+        g.beginPath();
+        g.moveTo(i * t, j * t - 9); g.lineTo(i * t + 9, j * t); g.lineTo(i * t, j * t + 9); g.lineTo(i * t - 9, j * t);
+        g.fill();
+      }
+      g.strokeStyle = 'rgba(150,60,90,0.22)';
+      g.lineWidth = 2;
+      for (let i = 0; i <= n; i++) {
+        g.beginPath(); g.moveTo(i * t, 0); g.lineTo(i * t, S); g.stroke();
+        g.beginPath(); g.moveTo(0, i * t); g.lineTo(S, i * t); g.stroke();
+      }
+      noise(g, S, S, 8);
+    } else if (theme === 'terrazzo') {
+      g.fillStyle = '#f3ece0';
+      g.fillRect(0, 0, S, S);
+      const chips = ['#e8735a', '#3fa7a0', '#f2b84b', '#8f8a84', '#e89aa8', '#5b7fc4'];
+      for (let k = 0; k < 420; k++) {
+        const x = rand(0, S), y = rand(0, S), r = k < 60 ? rand(8, 16) : rand(2, 7);
+        g.fillStyle = chips[randInt(0, chips.length - 1)];
+        const pts = [];
+        for (let p = 0; p < 6; p++) { const a = (p / 6) * Math.PI * 2 + rand(-0.3, 0.3); pts.push([Math.cos(a) * r * rand(0.6, 1.2), Math.sin(a) * r * rand(0.6, 1.2)]); }
+        // wrap chips across the edges so the floor tiles seamlessly
+        for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) {
+          if (x + ox < -20 || x + ox > S + 20 || y + oy < -20 || y + oy > S + 20) continue;
+          g.beginPath();
+          pts.forEach(([px, py], p) => (p ? g.lineTo(x + ox + px, y + oy + py) : g.moveTo(x + ox + px, y + oy + py)));
+          g.fill();
+        }
+      }
+      noise(g, S, S, 8);
+    } else if (theme === 'starry') {
+      const n = 4;
+      const t = S / n;
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+        g.fillStyle = (i + j) % 2 ? '#26295c' : '#2f336e';
+        g.fillRect(i * t, j * t, t, t);
+      }
+      const star = (x, y, r) => {
+        g.beginPath();
+        for (let p = 0; p < 10; p++) {
+          const a = (p / 10) * Math.PI * 2 - Math.PI / 2, rr = p % 2 ? r * 0.45 : r;
+          p ? g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr) : g.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+        }
+        g.fill();
+      };
+      g.fillStyle = '#ffd23f';
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) star(i * t + t / 2, j * t + t / 2, 18);
+      g.fillStyle = 'rgba(255,255,255,0.7)';
+      for (let k = 0; k < 140; k++) g.fillRect(rand(0, S), rand(0, S), 2, 2);
+      g.strokeStyle = '#d4af37';
+      g.lineWidth = 3;
+      for (let i = 0; i <= n; i++) {
+        g.beginPath(); g.moveTo(i * t, 0); g.lineTo(i * t, S); g.stroke();
+        g.beginPath(); g.moveTo(0, i * t); g.lineTo(S, i * t); g.stroke();
+      }
+      noise(g, S, S, 6);
     }
     // Environment surfaces sit a step softer than the props & characters on top of them
     gradeCanvas(g, S, S, 0.84, 1.03);
@@ -220,6 +307,119 @@ export function wallTexture(theme) {
       g.fillStyle = '#5a2d3c';
       g.fillRect(0, H - 22, W, 22);
       noise(g, W, H, 8);
+    } else if (theme === 'candy') {
+      for (let x = 0; x < W; x += 32) {
+        g.fillStyle = (x / 32) % 2 ? '#ffd6e4' : '#fff6f9';
+        g.fillRect(x, 0, 32, top);
+      }
+      g.fillStyle = '#8fdcc8';
+      g.fillRect(0, top, W, wainscot);
+      g.fillStyle = '#fff6f9';
+      for (let x = 0; x < W; x += 32) {
+        g.beginPath(); g.arc(x + 16, top, 16, 0, Math.PI); g.fill();
+      }
+      g.fillStyle = '#ff7aa8';
+      g.fillRect(0, top - 4, W, 8);
+      g.fillStyle = 'rgba(255,255,255,0.35)';
+      for (let x = 0; x < W; x += 64) g.fillRect(x + 20, top + 40, 24, wainscot - 70);
+    } else if (theme === 'cabin') {
+      const lh = 46;
+      for (let y = 0; y < H; y += lh) {
+        const grad = g.createLinearGradient(0, y, 0, y + lh);
+        const base = ['#a8693b', '#9c6035', '#b07342'][Math.floor(y / lh) % 3];
+        grad.addColorStop(0, shade(base, 0.08));
+        grad.addColorStop(0.5, base);
+        grad.addColorStop(1, shade(base, -0.14));
+        g.fillStyle = grad;
+        g.fillRect(0, y, W, lh);
+        g.fillStyle = 'rgba(50,25,10,0.55)';
+        g.fillRect(0, y + lh - 3, W, 3);
+        for (let k = 0; k < 2; k++) {
+          const kx = rand(20, W - 20), ky = y + rand(14, lh - 14);
+          g.strokeStyle = 'rgba(70,35,15,0.5)';
+          g.lineWidth = 2;
+          g.beginPath(); g.ellipse(kx, ky, 9, 5, 0, 0, Math.PI * 2); g.stroke();
+        }
+      }
+      noise(g, W, H, 14);
+    } else if (theme === 'subway') {
+      g.fillStyle = '#c9cdd2';
+      g.fillRect(0, 0, W, H);
+      const tw = 64, th = 30;
+      for (let row = 0; row * th < H; row++) {
+        const off = row % 2 ? -tw / 2 : 0;
+        const y = row * th;
+        const band = y > top - 70 && y < top - 20;
+        for (let x = off; x < W; x += tw) {
+          g.fillStyle = band ? '#2f8f7a' : y >= top ? '#e9edf0' : '#fbfcfd';
+          g.fillRect(x + 2, y + 2, tw - 4, th - 4);
+          g.fillStyle = 'rgba(255,255,255,0.55)';
+          g.fillRect(x + 5, y + 4, tw - 14, 3);
+        }
+      }
+      g.fillStyle = '#2b3a42';
+      g.fillRect(0, H - 22, W, 22);
+      noise(g, W, H, 6);
+    } else if (theme === 'jungle') {
+      g.fillStyle = '#2f6b4f';
+      g.fillRect(0, 0, W, H);
+      const leaf = (x, y, r, a, c) => {
+        g.save();
+        g.translate(x, y);
+        g.rotate(a);
+        g.fillStyle = c;
+        g.beginPath();
+        g.moveTo(0, -r); g.quadraticCurveTo(r * 0.75, -r * 0.2, 0, r); g.quadraticCurveTo(-r * 0.75, -r * 0.2, 0, -r);
+        g.fill();
+        g.strokeStyle = 'rgba(20,50,30,0.5)';
+        g.lineWidth = 2;
+        g.beginPath(); g.moveTo(0, -r * 0.9); g.lineTo(0, r * 0.9); g.stroke();
+        g.restore();
+      };
+      const cols = ['#3f8f5f', '#4fa36a', '#6cbf6a', '#2f7f56', '#8fd37a'];
+      for (let k = 0; k < 70; k++) {
+        const x = rand(0, W), y = rand(0, H - 30), r = rand(22, 48), a = rand(0, Math.PI * 2), c = cols[randInt(0, cols.length - 1)];
+        for (const ox of [-W, 0, W]) if (x + ox > -60 && x + ox < W + 60) leaf(x + ox, y, r, a, c);
+      }
+      g.fillStyle = '#ff8fa8';
+      for (let k = 0; k < 10; k++) {
+        const x = rand(0, W), y = rand(20, H - 60);
+        for (const ox of [-W, 0, W]) { g.beginPath(); g.arc(x + ox, y, 7, 0, Math.PI * 2); g.fill(); }
+      }
+      g.fillStyle = '#3b2a20';
+      g.fillRect(0, H - 22, W, 22);
+      noise(g, W, H, 8);
+    } else if (theme === 'galaxy') {
+      const grad = g.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, '#1b1446');
+      grad.addColorStop(0.55, '#3d2a7a');
+      grad.addColorStop(1, '#a23d8a');
+      g.fillStyle = grad;
+      g.fillRect(0, 0, W, H);
+      for (let k = 0; k < 6; k++) {
+        const x = rand(0, W), y = rand(0, H * 0.8), r = rand(50, 110);
+        const neb = g.createRadialGradient(x, y, 0, x, y, r);
+        neb.addColorStop(0, `hsla(${randInt(180, 330)}, 80%, 65%, 0.35)`);
+        neb.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = neb;
+        for (const ox of [-W, 0, W]) g.fillRect(x + ox - r, y - r, r * 2, r * 2);
+      }
+      for (let k = 0; k < 260; k++) {
+        g.fillStyle = `rgba(255,255,255,${rand(0.4, 1)})`;
+        const sz = rand(1, 3);
+        g.fillRect(rand(0, W), rand(0, H), sz, sz);
+      }
+      // a ringed planet
+      const px = W * 0.6, py = H * 0.3;
+      g.fillStyle = '#ffb35a';
+      g.beginPath(); g.arc(px, py, 26, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#ffe3a8';
+      g.lineWidth = 4;
+      g.beginPath(); g.ellipse(px, py, 44, 12, -0.3, 0, Math.PI * 2); g.stroke();
+      g.fillStyle = '#d4af37';
+      g.fillRect(0, H - 24, W, 24);
+      g.fillStyle = '#1b1446';
+      g.fillRect(0, H - 18, W, 18);
     }
     gradeCanvas(g, W, H, 0.86, 1.02);
     return toTexture(c);

@@ -23,13 +23,18 @@ import { newGameState, saveGame, loadGame, loadSettings, saveSettings } from './
 import {
   DISHES, CUISINES, CUISINE_ORDER, INGREDIENTS, COOKER_INFO, dishRequirements, allThumbKeys, itemFromKey,
 } from './recipes.js';
-import { CATALOG, UPGRADES, FLOOR_THEMES, WALL_THEMES, PLAYER_SPAWN, STARTER_LAYOUT } from './catalog.js';
+import { CATALOG, UPGRADES, FLOOR_THEMES, WALL_THEMES, PLAYER_SPAWN, STARTER_LAYOUT, PERKS } from './catalog.js';
 import { buildItem, buildDishPreview, buildAppliance } from './models.js';
+import { TOWN_STAGES } from './town.js';
 import { floorTexture, wallTexture } from './textures.js';
 
 // The name painted on the shop sign (older saves stored the game's previous name)
 const SHOP_NAME = 'Sizzle Shack';
 const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
+
+function blankPerks() {
+  return Object.fromEntries(Object.keys(PERKS).map((k) => [k, 0]));
+}
 
 function blankDay(rating) {
   return {
@@ -71,6 +76,7 @@ class Game {
     this.time = 0;
     this.today = blankDay(1);
     this.ambience = 0;
+    this.perks = blankPerks();
     this._ambVer = -1;
     this.menuVer = 0;
     this._dishCache = { key: '', list: [] };
@@ -182,6 +188,9 @@ class Game {
     this.grid.clear();
     this.grid.setSize(w, h);
     this.renderer.buildRoom(w, h, this.grid.doorX, s.floorTheme, s.wallTheme, SHOP_NAME);
+    // saves from before the town existed get the neighbourhood their rating has earned
+    if (s.townLevel === undefined) s.townLevel = this.townLevelFor(s.rating);
+    this.renderer.setTownLevel(s.townLevel);
     const objs = Array.isArray(s.objects) && s.objects.length ? s.objects : STARTER_LAYOUT;
     const hardFail = new Set(['Out of bounds', 'Space occupied', 'Keep the doorway clear']);
     for (const o of objs) {
@@ -328,7 +337,17 @@ class Game {
     this._ambVer = this.grid.version;
     const s = this.state;
     let total = (FLOOR_THEMES[s.floorTheme]?.decor || 0) + (WALL_THEMES[s.wallTheme]?.decor || 0);
-    for (const o of this.grid.objects) total += o.def.decor || 0;
+    const perks = blankPerks();
+    const counted = new Set();
+    for (const o of this.grid.objects) {
+      total += o.def.decor || 0;
+      // a perk counts once per kind of item, however many copies are placed
+      if (!o.def.perk || counted.has(o.def.id)) continue;
+      counted.add(o.def.id);
+      for (const [k, v] of Object.entries(o.def.perk)) perks[k] += v;
+    }
+    for (const k of Object.keys(perks)) perks[k] = Math.min(perks[k], PERKS[k].cap);
+    this.perks = perks;
     const area = this.grid.W * this.grid.H;
     this.ambience = clamp(1 - Math.exp(-total / (area * 0.3)), 0, 1);
   }
@@ -533,6 +552,27 @@ class Game {
     this.save();
   }
 
+  townLevelFor(rating) {
+    return TOWN_STAGES.filter((st) => rating >= st.rating).length;
+  }
+
+  // New neighbours open overnight once the rating crosses each stage's threshold (never closes again)
+  growTown() {
+    const s = this.state;
+    const from = s.townLevel || 0;
+    const to = this.townLevelFor(s.rating);
+    if (to <= from) return;
+    s.townLevel = to;
+    this.renderer.setTownLevel(to);
+    const fresh = TOWN_STAGES.slice(from, to);
+    this.ui.toast(fresh.length > 1 ? `The town is growing: ${fresh.map((f) => f.name).join(', ')}.` : fresh[0].toast, 'gold', 'pin');
+    for (let i = from + 1; i <= to; i++) {
+      const p = this.renderer.townStagePos(i);
+      this.particles.confetti(p.x, 2.6, p.z, 40);
+    }
+    this.audio.levelUp();
+  }
+
   enterNight() {
     this.phase = 'night';
     this.setWakeLock(false);
@@ -546,6 +586,7 @@ class Game {
     this.build.enter();
     this.ui.showDock(true);
     this.audio.startMusic('night');
+    this.growTown();
     this.save();
   }
 

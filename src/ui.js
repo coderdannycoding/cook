@@ -4,7 +4,7 @@
 
 import { DISHES, CUISINES, CUISINE_ORDER, ticketParts, itemLabel } from './recipes.js';
 import {
-  CATALOG, CATEGORIES, UPGRADES, STAFF_TYPES, STAFF_LEVELS, MAX_STAFF, FLOOR_THEMES, WALL_THEMES, catalogByCategory,
+  CATALOG, CATEGORIES, UPGRADES, STAFF_TYPES, STAFF_LEVELS, MAX_STAFF, FLOOR_THEMES, WALL_THEMES, catalogByCategory, perkText, PERKS,
 } from './catalog.js';
 import { formatMoney, formatClock, clamp } from './utils.js';
 import { DAY } from './config.js';
@@ -323,7 +323,7 @@ export class UI {
           this.place(node, c.pos.x, y, c.pos.z);
         } else if (c.group.state === 'queue' && c === c.group.members[0]) {
           const node = this.w(`q${c.root.id}`, 'bubble queue', `${RING}${icon('timer')}`);
-          const p = clamp(1 - c.group.queueT / c.group.queueMax, 0, 1);
+          const p = clamp(1 - c.group.queueT / (c.group.queueMax * (1 + this.game.perks.queue)), 0, 1);
           this.ring(node, p, p > 0.4 ? '#3f8f5a' : '#d8452c');
           this.place(node, c.pos.x, y, c.pos.z);
         }
@@ -510,6 +510,12 @@ export class UI {
     [...D.querySelectorAll('.dock-panel, .dock-panel .cards, .dock-panel .chips')].forEach((n, i) => {
       if (keep[i]) [n.scrollTop, n.scrollLeft] = keep[i];
     });
+    // a fresh category in a scrolling chip row: keep its chip in sight
+    if (!keep.length) {
+      const chip = D.querySelector('.chips .chip.on');
+      const row = chip?.parentElement;
+      if (row && row.scrollWidth > row.clientWidth) row.scrollLeft = Math.max(0, chip.offsetLeft - row.offsetLeft - (row.clientWidth - chip.offsetWidth) / 2);
+    }
     this.e.buildHelp.classList.toggle('hidden', this.dockTab !== 'build');
   }
 
@@ -544,17 +550,25 @@ export class UI {
       cards = `<div class="card-label">Flooring</div>${fl}<div class="card-label">Wallpaper</div>${wl}`;
     } else {
       cards = catalogByCategory(this.buildCat).map((d) => {
-        const locked = d.req && !s.cuisines[d.req];
+        const needsCuisine = d.req && !s.cuisines[d.req];
+        const needsStars = d.stars && s.rating < d.stars;
+        const locked = needsCuisine || needsStars;
         const afford = s.cash >= d.price;
         const sel = g.build.selectedType === d.id;
         const count = g.grid.countType(d.id);
+        const perk = d.perk ? `<div class="c-perk ${count ? 'on' : ''}">${count ? icon('check') : icon('star')}${esc(perkText(d.perk))}</div>` : '';
         return `<button class="card ${locked ? 'locked' : ''} ${!afford ? 'poor' : ''} ${sel ? 'selected' : ''}" data-buy="${d.id}" title="${esc(d.desc)}">
           <img src="${this.thumb(`cat:${d.id}`)}" alt="">
           <div class="c-name">${esc(d.name)}</div>
+          ${perk}
           <div class="c-meta"><b>${badge('coin')}${d.price}</b>${decor(d.decor)}${count ? `<span>×${count}</span>` : ''}</div>
-          ${locked ? `<div class="lock">${badge('lock')}${esc(CUISINES[d.req].name)}</div>` : ''}
+          ${needsCuisine ? `<div class="lock">${badge('lock')}${esc(CUISINES[d.req].name)}</div>` : needsStars ? `<div class="lock">${badge('lock')}${d.stars.toFixed(1)}★</div>` : ''}
         </button>`;
       }).join('');
+      if (this.buildCat === 'decor' || this.buildCat === 'show') {
+        const active = Object.entries(g.perks).filter(([, v]) => v > 0).map(([k, v]) => PERKS[k].label(v));
+        cards = `<div class="perk-sum">${active.length ? `Restaurant perks: <b>${esc(active.join(', '))}</b>` : 'Items with a star tag add a bonus for the whole restaurant. Each kind counts once.'}</div>${cards}`;
+      }
     }
     const floorNext = UPGRADES.floor.levels[s.upgrades.floor];
     return `<div class="chips">${cats}</div><div class="cards">${cards}</div>
@@ -662,6 +676,7 @@ export class UI {
     if (b.dataset.buy) {
       const d = CATALOG[b.dataset.buy];
       if (d.req && !g.state.cuisines[d.req]) { this.toast(`Unlock ${CUISINES[d.req].name} in the Menu tab first`, 'warn', 'lock'); g.audio.error(); return; }
+      if (d.stars && g.state.rating < d.stars) { this.toast(`${d.name} needs a ${d.stars.toFixed(1)}★ rating`, 'warn', 'lock'); g.audio.error(); return; }
       if (g.state.cash < d.price) { this.toast(`You need ${formatMoney(d.price)} for that`, 'warn', 'coin'); g.audio.error(); return; }
       g.build.select(d.id);
       this.renderDock();
@@ -788,6 +803,8 @@ export class UI {
             <li><b>Upgrades:</b> faster dash, sharper knives, fireproof stoves, more plates, a bigger floor.</li>
             <li><b>Menu:</b> earn stars to unlock new cuisines, then choose which dishes to serve.</li>
             <li>Decorations raise ambience, so guests wait longer and tip more. Lamps calm the guests sitting near them.</li>
+            <li>Showpieces and some decor add a bonus for the whole restaurant, like bigger tips or more guests. Each kind counts once.</li>
+            <li>As your rating climbs, new shops and sights open around town.</li>
             <li>Food critics wear a gold crown. Serve them quickly for a big bonus.</li>
           </ul></div>
       </div>

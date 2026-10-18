@@ -50,7 +50,7 @@ async function inlineCss() {
     css += `\n/* ${f} */\n${text}`;
   }
   // Fonts are inlined above, so carry their licence notice with them
-  css = `/* Fonts: Shrikhand, Archivo and Courier Prime, SIL Open Font License 1.1 (https://openfontlicense.org). */${css}`;
+  css = `/* Fonts: Lilita One and Nunito, SIL Open Font License 1.1 (https://openfontlicense.org). */${css}`;
   return css.replace(/<\/style/gi, '<\\/style');
 }
 

@@ -78,6 +78,7 @@ export class CustomerManager {
     if (h > 11.5 && h < 13.5) t *= 0.72;
     if (h > 17.5 && h < 19.5) t *= 0.65;
     t *= 1 - 0.15 * g.ambience;
+    t /= 1 + g.perks.arrivals;
     if (g.state.day === 1) t *= 1.3;
     else if (g.state.day === 2) t *= 1.1;
     return Math.max(5, t);
@@ -240,13 +241,14 @@ export class CustomerManager {
     this.queue = this.queue.filter((gr) => gr.state === 'queue');
     this.queue.forEach((gr, qi) => {
       gr.queueT += dt;
+      const queueMax = gr.queueMax * (1 + g.perks.queue);
       const bx = this.grid.doorX + 0.5 - 1.4 - qi * 1.3;
       gr.members.forEach((c, i) => {
         this.steer(c, bx - (i % 2) * 0.48, this.sidewalkZ - 0.1 + (i > 1 ? 0.5 : 0), dt);
         c.targetFacing = Math.PI / 2;
-        c.setMood(gr.queueT > gr.queueMax * 0.6 ? 'frown' : 'smile');
+        c.setMood(gr.queueT > queueMax * 0.6 ? 'frown' : 'smile');
       });
-      if (gr.queueT > gr.queueMax) {
+      if (gr.queueT > queueMax) {
         g.today.lost += gr.members.length;
         for (const c of gr.members) g.particles.emote(c.pos.x, 2.1, c.pos.z, '#@!', 'bad');
         for (let i = 0; i < gr.members.length; i++) g.applyReview(2, REVIEW_WEIGHT.queue);
@@ -291,7 +293,7 @@ export class CustomerManager {
 
   patienceMult(c) {
     const g = this.game;
-    let m = g.upg('patience') * (1 + g.ambience * 0.35) * (c.table?.def.patience || 1);
+    let m = g.upg('patience') * (1 + g.ambience * 0.35) * (1 + g.perks.patience) * (c.table?.def.patience || 1);
     if (g.state.day === 1) m *= 1.35;
     else if (g.state.day === 2) m *= 1.15;
     if (c.critic) m *= 0.85;
@@ -390,7 +392,7 @@ export class CustomerManager {
     if (c.state !== 'waiting') return;
     const used = 1 - c.patience;
     let score = used < 0.4 ? 5 : used < 0.65 ? 4 : used < 0.85 ? 3 : 2;
-    score = Math.min(5, score + Math.max(0, g.ambience - 0.3) * 1.5); // a nicer room softens every review
+    score = Math.min(5, score + Math.max(0, g.ambience - 0.3) * 1.5 + g.perks.review); // a nicer room softens every review
     c.review = score;
     c.state = 'eating';
     c.eatProgress = 0;
@@ -422,7 +424,7 @@ export class CustomerManager {
         continue;
       }
       const price = DISHES[c.order].price;
-      const tipPct = clamp((c.review - 2.5) * 0.09 + g.ambience * 0.12 + (g.state.rating - 1) * 0.02, 0, 0.6);
+      const tipPct = clamp((c.review - 2.5) * 0.09 + g.ambience * 0.12 + (g.state.rating - 1) * 0.02 + g.perks.tips, 0, 0.6);
       const tip = Math.round(price * tipPct);
       total += price + tip;
       g.today.revenue += price;
@@ -441,7 +443,7 @@ export class CustomerManager {
   criticVerdict(c, served) {
     const g = this.game;
     if (served && c.review >= 4) {
-      const bonus = 50 + 10 * g.state.day;
+      const bonus = Math.round((50 + 10 * g.state.day) * (1 + g.perks.critic));
       g.addCash(bonus, c.pos.x, 2.4, c.pos.z);
       g.today.criticBonus += bonus;
       g.today.critic = 'wowed';

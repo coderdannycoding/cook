@@ -256,6 +256,12 @@ body.dock-peek #build-tools { top: auto; bottom: calc(var(--dock-h, 100px) + 14p
   body.touch-play #prompt { bottom: calc(200px + env(safe-area-inset-bottom, 0px)); max-width: calc(100vw - 32px); }
   #build-help { top: calc(144px + env(safe-area-inset-top, 0px)); max-width: calc(100vw - 32px); }
   #build-tools { top: calc(196px + env(safe-area-inset-top, 0px)); }
+  /* upright phones: one row of tabs, one scrolling row of categories, more room for the shop */
+  #night-dock .tab:not(.collapse) .ic { display: none; }
+  #night-dock .dock-tabs .tab { padding: 6px 9px 7px; font-size: 14px; }
+  #night-dock .dock-tabs { flex-wrap: nowrap; }
+  #night-dock .chips { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding-bottom: 2px; }
+  #night-dock .chip { flex: none; }
 }
 
 /* Modal actions stay reachable when a modal scrolls (short phone screens) */
@@ -323,6 +329,11 @@ body:not(.touch) #build-tools { display: none !important; }
   #night-dock .card .c-meta { font-size: 11px; flex-wrap: nowrap; white-space: nowrap; gap: 2px; }
   #night-dock .card .c-meta b { font-size: 12px; padding: 0 6px 1px 3px; }
   #night-dock .card .c-meta b .bdg { width: 13px; height: 13px; }
+  #night-dock .card .c-perk { max-width: 100%; padding: 1px 4px; font-size: 9.5px; white-space: nowrap; }
+  #night-dock .card .c-perk .ic { width: 9px; height: 9px; }
+  #night-dock .card .c-perk { overflow: hidden; text-overflow: ellipsis; display: block; }
+  #night-dock .card:has(.c-perk) { width: 112px; }
+  #night-dock .perk-sum { display: none; }
   #night-dock .card.style .swatch-img { height: 40px; }
   #night-dock .card.style .swatch-img.tall { height: 52px; }
   #night-dock .portrait { width: 40px; height: 40px; }

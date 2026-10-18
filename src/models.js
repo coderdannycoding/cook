@@ -7,6 +7,7 @@ import { itemKey, DISHES, itemFromKey, makePlate } from './recipes.js';
 import { ginghamTexture, rugTexture, beltTexture, counterTopTexture } from './textures.js';
 import { pick, TAU } from './utils.js';
 import { LOOK, gradeColor, addRim, outlineMaterial, makeBlobShadow, buildGardenTree } from './look.js';
+import { DECOR_BUILDERS } from './decor.js';
 
 const S = SURFACE_Y;
 
@@ -277,14 +278,14 @@ function cabinet(root, o = {}) {
   root.add(mesh(rbox(0.99, 0.07, 0.99, 0.025), topMat, 0, h - 0.035, 0));
 }
 
-function finish(root, anchor, extra = {}) {
+export function finish(root, anchor, extra = {}) {
   root.userData.anchor = new THREE.Vector3(...anchor);
   Object.assign(root.userData, extra);
   mergeStatic(root);
   return root;
 }
 
-function dyn(obj) {
+export function dyn(obj) {
   obj.userData.dynamic = true;
   return obj;
 }
@@ -654,6 +655,37 @@ function booth(root, x, z, faceX, faceZ) {
   root.add(g);
 }
 
+function stool(root, x, z) {
+  const g = new THREE.Group();
+  const metal = mat('#dfe5ea', { r: 0.2, m: 0.85 });
+  g.add(mesh(cyl(0.17, 0.2, 0.03, 16), metal, 0, 0.015, 0));
+  g.add(mesh(cyl(0.035, 0.035, 0.42, 10), metal, 0, 0.22, 0));
+  g.add(rotated(mesh(torus(0.13, 0.012, 6, 18), metal, 0, 0.17, 0), 'x', Math.PI / 2));
+  g.add(mesh(cyl(0.21, 0.2, 0.07, 18), mat('#e8343f', { r: 0.45 }), 0, 0.46, 0));
+  g.add(rotated(mesh(torus(0.205, 0.014, 6, 22), mat('#fff6ea'), 0, 0.46, 0), 'x', Math.PI / 2));
+  g.position.set(x, 0, z);
+  root.add(g);
+}
+
+function armchair(root, x, z, faceX, faceZ) {
+  const g = new THREE.Group();
+  const velvet = mat('#1f7a5c', { r: 0.85 });
+  const dark = mat('#17604a', { r: 0.85 });
+  const brass = mat(C.brass, { r: 0.3, m: 0.8 });
+  g.add(mesh(rbox(0.66, 0.24, 0.6, 0.06), dark, 0, 0.2, 0));
+  g.add(mesh(rbox(0.56, 0.12, 0.52, 0.05), velvet, 0, 0.38, 0.03));
+  g.add(mesh(rbox(0.68, 0.62, 0.18, 0.08), velvet, 0, 0.66, -0.24));
+  g.add(rotated(mesh(cyl(0.34, 0.34, 0.18, 20, false, -Math.PI / 2, Math.PI), velvet, 0, 0.94, -0.24), 'x', -Math.PI / 2));
+  for (const s of [1, -1]) {
+    g.add(mesh(rbox(0.13, 0.32, 0.58, 0.05), velvet, s * 0.3, 0.46, 0.0));
+    g.add(mesh(cyl(0.025, 0.02, 0.08, 8), brass, s * 0.26, 0.04, 0.24));
+    g.add(mesh(cyl(0.025, 0.02, 0.08, 8), brass, s * 0.26, 0.04, -0.24));
+  }
+  g.position.set(x, 0, z);
+  g.rotation.y = Math.atan2(faceX, faceZ);
+  root.add(g);
+}
+
 BUILDERS.table = (def) => {
   const r = new THREE.Group();
   const [w, d] = def.size;
@@ -663,26 +695,56 @@ BUILDERS.table = (def) => {
   const minZ = Math.min(...tableCells.map((c) => c[1])), maxZ = Math.max(...tableCells.map((c) => c[1]));
   const tx = (minX + maxX) / 2, tz = (minZ + maxZ) / 2;
   const tw = maxX - minX + 0.92, td = maxZ - minZ + 0.92;
-  const isBooth = def.id === 'booth';
+  const style = def.style || (def.id === 'booth' ? 'booth' : 'basic');
   const topY = 0.78;
-  if (tableCells.length === 1 && !isBooth) {
-    r.add(mesh(cyl(0.47, 0.47, 0.05, 28), mat('#8a5a33', { r: 0.6 }), tx, topY - 0.025, tz));
-    r.add(mesh(cyl(0.5, 0.5, 0.03, 28), mat('#ffffff', { map: ginghamTexture('#d94545'), mapKey: 'gingham-red', r: 0.9 }), tx, topY + 0.01, tz));
+  if (style === 'round') {
+    r.add(mesh(cyl(0.66, 0.66, 0.04, 32), mat('#fff4e0', { r: 0.8 }), tx, topY - 0.01, tz));
+    r.add(mesh(cyl(0.67, 0.71, 0.2, 32, true), mat('#ffe2b8', { r: 0.85, side: THREE.DoubleSide }), tx, topY - 0.12, tz));
+    r.add(mesh(cyl(0.4, 0.4, 0.012, 24), mat('#ffffff', { map: ginghamTexture('#2fbf5f'), mapKey: 'gingham-green', r: 0.9 }), tx, topY + 0.016, tz));
+    r.add(mesh(cyl(0.07, 0.09, topY - 0.05, 12), mat('#3a2a1e'), tx, (topY - 0.05) / 2, tz));
+    r.add(mesh(cyl(0.3, 0.33, 0.04, 18), mat('#3a2a1e'), tx, 0.02, tz));
+  } else if (style === 'bar') {
+    const front = Math.sign(def.cells.find((c) => c[2] === 'seat')[1] + 0.5 - d / 2 - tz) || 1;
+    r.add(mesh(rbox(tw + 0.04, 0.06, td + 0.1, 0.025), mat('#e8343f', { r: 0.35 }), tx, topY - 0.03, tz + front * 0.05));
+    r.add(mesh(rbox(tw + 0.08, 0.03, td + 0.14, 0.012), mat('#dfe5ea', { r: 0.2, m: 0.85 }), tx, topY - 0.07, tz + front * 0.05));
+    r.add(mesh(rbox(tw - 0.06, topY - 0.08, td - 0.3, 0.03), mat('#8fd3c1', { r: 0.5 }), tx, (topY - 0.08) / 2, tz - front * 0.12));
+    for (let i = 0; i < 3; i++) r.add(mesh(box(tw - 0.04, 0.025, 0.012), mat('#dfe5ea', { r: 0.2, m: 0.85 }), tx, 0.2 + i * 0.18, tz - front * 0.12 + front * (td - 0.3) / 2 + front * 0.004));
+    for (const sx of [-1, 1]) {
+      r.add(mesh(cyl(0.03, 0.03, 0.14, 10), mat(sx > 0 ? '#e8343f' : '#ffd23f', { r: 0.3 }), tx + sx * (tw / 2 - 0.12), topY + 0.07, tz - front * 0.18));
+      r.add(mesh(cone(0.02, 0.05, 8), mat(sx > 0 ? '#e8343f' : '#ffd23f', { r: 0.3 }), tx + sx * (tw / 2 - 0.12), topY + 0.165, tz - front * 0.18));
+    }
+  } else if (style === 'lounge') {
+    r.add(mesh(rbox(tw, 0.05, td, 0.025), mat('#f1ede6', { r: 0.2 }), tx, topY - 0.025, tz));
+    r.add(mesh(rbox(tw - 0.04, 0.03, td - 0.04, 0.012), mat(C.brass, { r: 0.3, m: 0.8 }), tx, topY - 0.06, tz));
+    const legX = tw / 2 - 0.12, legZ = td / 2 - 0.12;
+    for (const [lx, lz] of [[-legX, -legZ], [legX, -legZ], [-legX, legZ], [legX, legZ]]) r.add(mesh(cyl(0.025, 0.018, topY - 0.07, 8), mat(C.brass, { r: 0.3, m: 0.8 }), tx + lx, (topY - 0.07) / 2, tz + lz));
+  } else if (tableCells.length === 1 && style !== 'booth') {
+    const cloth = style === 'parasol' ? ginghamTexture('#ffbb1f') : ginghamTexture('#d94545');
+    r.add(mesh(cyl(0.47, 0.47, 0.05, 28), mat(style === 'parasol' ? '#f4f1e6' : '#8a5a33', { r: 0.6 }), tx, topY - 0.025, tz));
+    r.add(mesh(cyl(0.5, 0.5, 0.03, 28), mat('#ffffff', { map: cloth, mapKey: style === 'parasol' ? 'gingham-yellow' : 'gingham-red', r: 0.9 }), tx, topY + 0.01, tz));
     r.add(mesh(cyl(0.05, 0.07, topY - 0.05, 10), mat('#3a2a1e'), tx, (topY - 0.05) / 2, tz));
     r.add(mesh(cyl(0.24, 0.26, 0.04, 16), mat('#3a2a1e'), tx, 0.02, tz));
   } else {
-    r.add(mesh(rbox(tw, 0.06, td, 0.025), mat(isBooth ? '#6b3e22' : '#9a6538', { r: 0.55 }), tx, topY - 0.03, tz));
-    if (!isBooth) r.add(mesh(box(tw - 0.06, 0.02, 0.32), mat('#ffffff', { map: ginghamTexture('#3a7bd5'), mapKey: 'gingham-blue', r: 0.9 }), tx, topY + 0.005, tz));
+    r.add(mesh(rbox(tw, 0.06, td, 0.025), mat(style === 'booth' ? '#6b3e22' : '#9a6538', { r: 0.55 }), tx, topY - 0.03, tz));
+    if (style !== 'booth') r.add(mesh(box(tw - 0.06, 0.02, 0.32), mat('#ffffff', { map: ginghamTexture('#3a7bd5'), mapKey: 'gingham-blue', r: 0.9 }), tx, topY + 0.005, tz));
     const legX = tw / 2 - 0.1, legZ = td / 2 - 0.1;
     for (const [lx, lz] of [[-legX, -legZ], [legX, -legZ], [-legX, legZ], [legX, legZ]]) {
       r.add(mesh(box(0.06, topY - 0.06, 0.06), mat('#3a2a1e'), tx + lx, (topY - 0.06) / 2, tz + lz));
     }
   }
+  if (style === 'parasol') {
+    // striped sunshade, high enough that the table & guests stay readable from above
+    r.add(mesh(cyl(0.022, 0.022, 1.7, 8), mat('#f4f1e6'), tx + 0.05, 0.85 + 0.75, tz + 0.05));
+    for (let i = 0; i < 8; i++) r.add(mesh(cyl(0.03, 0.78, 0.3, 3, false, (i / 8) * TAU, TAU / 8), mat(i % 2 ? '#fff6ea' : '#ff5a4a', { r: 0.6 }), tx + 0.05, 2.38, tz + 0.05));
+    r.add(mesh(sph(0.045, 10, 8), mat(C.brass, { r: 0.3, m: 0.8 }), tx + 0.05, 2.55, tz + 0.05));
+  }
   // Candle + flowers centrepiece
-  r.add(mesh(cyl(0.035, 0.04, 0.12, 10), mat('#f6f0e0'), tx + 0.08, topY + 0.07, tz - 0.05));
-  r.add(mesh(sph(0.025, 8, 6), mat('#ffd27a', { e: '#ffaa33', ei: 2 }), tx + 0.08, topY + 0.15, tz - 0.05, false));
-  r.add(mesh(cyl(0.04, 0.03, 0.1, 10), mat('#7fb8d8', { r: 0.2 }), tx - 0.09, topY + 0.06, tz + 0.04));
-  r.add(mesh(sph(0.045, 8, 6), mat('#ff6b8b'), tx - 0.09, topY + 0.14, tz + 0.04));
+  if (style !== 'bar') {
+    r.add(mesh(cyl(0.035, 0.04, 0.12, 10), mat('#f6f0e0'), tx + 0.08, topY + 0.07, tz - 0.05));
+    r.add(mesh(sph(0.025, 8, 6), mat('#ffd27a', { e: '#ffaa33', ei: 2 }), tx + 0.08, topY + 0.15, tz - 0.05, false));
+    r.add(mesh(cyl(0.04, 0.03, 0.1, 10), mat('#7fb8d8', { r: 0.2 }), tx - 0.09, topY + 0.06, tz + 0.04));
+    r.add(mesh(sph(0.045, 8, 6), mat('#ff6b8b'), tx - 0.09, topY + 0.14, tz + 0.04));
+  }
   // Seats
   for (const c of def.cells) {
     if (c[2] !== 'seat') continue;
@@ -694,7 +756,11 @@ BUILDERS.table = (def) => {
       const dd = Math.hypot(cx - sx, cz - sz);
       if (dd < best) { best = dd; fx = cx - sx; fz = cz - sz; }
     }
-    if (isBooth) booth(r, sx, sz, fx, fz);
+    if (style === 'booth') booth(r, sx, sz, fx, fz);
+    else if (style === 'bar') stool(r, sx, sz);
+    else if (style === 'lounge') armchair(r, sx, sz, fx, fz);
+    else if (style === 'parasol') chair(r, sx, sz, fx, fz, '#2f6b4f', '#3f8f6a');
+    else if (style === 'round') chair(r, sx, sz, fx, fz, '#a0612f', c[0] === 1 ? '#e2b04a' : '#c47a3c');
     else chair(r, sx, sz, fx, fz);
   }
   return finish(r, [tx, topY + 0.02, tz], { tableTop: topY });
@@ -856,7 +922,7 @@ export function buildAppliance(def) {
   if (def.station === 'crate') return BUILDERS.crate(def);
   if (def.station === 'table') return BUILDERS.table(def);
   if (def.station === 'board') return BUILDERS.board(def);
-  const b = BUILDERS[def.id];
+  const b = BUILDERS[def.id] || DECOR_BUILDERS[def.id];
   if (b) return b(def);
   const r = new THREE.Group();
   cabinet(r);

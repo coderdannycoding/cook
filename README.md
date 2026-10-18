@@ -107,8 +107,10 @@ sear, boil, fry or bake), plus a patience bar that runs from green through yello
 
 **After closing.** The results screen shows how the day went and what you earned and spent. Then use the menu at the bottom:
 
-- **Build:** buy, place, rotate, move and sell stations, tables, décor and automation on the grid.
-  Placement is validated so a layout can never wall off a station, seat or the door.
+- **Build:** buy, place, rotate, move and sell stations, tables, décor, showpieces and automation
+  on the grid. Placement is validated so a layout can never wall off a station, seat or the door.
+  There are seven kinds of seating (bistro, family, round, parasol, diner counter, booth and a
+  velvet lounge), over twenty décor pieces, fifteen showpieces, nine floors and ten wallpapers.
 - **Staff:** hire and level up Sous-Chefs, Waiters and Dishwashers (they use A* pathfinding):
   - Sous-chefs prep and cook what open orders need, rescue food before it burns and fight fires.
     At level 3 they also plate full dishes onto the Serving Pass.
@@ -121,7 +123,18 @@ sear, boil, fry or bake), plus a patience bar that runs from green through yello
   your layout has every crate and station it needs.
 
 Décor raises **ambience**, which gives more patience and bigger tips. Mood lamps calm nearby
-guests, and booths make guests more patient still. Progress autosaves to `localStorage` every night.
+guests, and booths make guests more patient still.
+
+**Showpieces** (a shop cat, a parrot, an arcade cabinet, a grand piano, a fireplace, a golden chef
+statue and more) unlock with your rating and each add a bonus for the whole restaurant: bigger
+tips, more patience, a longer queue, more guests, better reviews or a larger critic bonus. Each
+kind of item counts once, and every bonus has a cap.
+
+**The town grows with you.** Every time your rating crosses a milestone, something new opens
+around the shop overnight: a cottage, a bakery, a flower market, a park with a duck pond, an ice
+cream corner, a row of townhouses, a windmill and finally a Ferris wheel.
+
+Progress autosaves to `localStorage` every night.
 
 ## Architecture
 
@@ -138,9 +151,11 @@ src/
   main.js             Game bootstrap, phase machine (title → countdown → day → summary → night), economy, main loop
   config.js           Tuning constants (day length, player physics, cooking/fire timings, camera)
   recipes.js          Ingredients, cook rules, dishes & cuisines, item factories, plate/topping/dish matching, production chains
-  catalog.js          Buildable catalog, starter layout, upgrades, staff types & levels, floor/wall themes
+  catalog.js          Buildable catalog, perks, starter layout, upgrades, staff types & levels, floor/wall themes
   renderer.js         Three.js renderer: iso ortho camera, shadows, day/night sky, pooled point lights, room shell, street, thumbnail baker
-  models.js           Procedural meshes: characters, appliances, furniture, décor, every food state, plates, street props; static mesh merging
+  models.js           Procedural meshes: characters, appliances, furniture, every food state, plates, street props; static mesh merging
+  decor.js            Décor and showpiece models (plants, pets, arcade, piano, fireplace, statue…), several animated
+  town.js             The neighbourhood around the shop, built up in stages as the rating grows
   textures.js         Procedural canvas textures (floors, wallpapers, gingham, rug, signage, road)
   particles.js        GPU point sprites (steam, smoke, fire, foam, dust, sparks), instanced chunks (crumbs, confetti, coins), DOM floaters
   audio.js            Web Audio synth: all SFX, ambient loops (sizzle, fryer, boil, fire, spray), alarm, procedural music sequencer

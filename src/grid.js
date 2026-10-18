@@ -141,13 +141,10 @@ export class Grid {
 
   hasAccess(o, reach) {
     if (o.def.station === 'table') {
-      let tableOk = false;
       for (const c of o.cells) {
-        const near = DIRS4.some(([dx, dz]) => this._reach(reach, c.x + dx, c.z + dz));
-        if (c.role === 'seat' && !near) return false;
-        if (c.role === 'table' && near) tableOk = true;
+        if (c.role === 'seat' && !DIRS4.some(([dx, dz]) => this._reach(reach, c.x + dx, c.z + dz))) return false;
       }
-      return tableOk;
+      return this.interactCells(o).some((c) => DIRS4.some(([dx, dz]) => this._reach(reach, c.x + dx, c.z + dz)));
     }
     for (const c of o.cells) {
       if (DIRS4.some(([dx, dz]) => this._reach(reach, c.x + dx, c.z + dz))) return true;
@@ -180,12 +177,20 @@ export class Grid {
     return reach;
   }
 
+  // Cells a worker stands beside to use an object. Tables are served from beside a table cell; a
+  // table top ringed by its own seats (the round table) is served from beside any of its seats.
+  interactCells(o) {
+    if (o.def.station !== 'table') return o.cells;
+    const own = new Set(o.cells.map((c) => c.x * 1000 + c.z));
+    const open = o.cells.filter((c) => c.role === 'table' && DIRS4.some(([dx, dz]) => !own.has((c.x + dx) * 1000 + c.z + dz)));
+    return open.length ? open : o.cells;
+  }
+
   // Walkable tiles adjacent to the object's interactive cells.
   accessTiles(obj) {
     const out = [];
     const seen = new Set();
-    for (const c of obj.cells) {
-      if (obj.def.station === 'table' && c.role !== 'table') continue;
+    for (const c of this.interactCells(obj)) {
       for (const [dx, dz] of DIRS4) {
         const x = c.x + dx, z = c.z + dz;
         const k = x * 1000 + z;

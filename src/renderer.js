@@ -11,6 +11,7 @@ import {
   mat, mesh, box, cyl, sph, torus, mergeStatic, buildStreetLamp, buildCar, buildBench, buildPointer, envMats, disposeObject,
 } from './models.js';
 import { LOOK, buildAOStrips, buildGarden, makeGroundMaterial } from './look.js';
+import { TOWN_STAGES, buildTown, townLots, townStagePos } from './town.js';
 
 // Time-of-day grade. fog = the horizon haze the top of the screen fades into (also the clear
 // colour); sun = warm key; hemi = cool sky fill over a warm ground bounce; rim = the sky-rim
@@ -98,6 +99,8 @@ export class Renderer {
 
     this._initHelpers();
     this.cars = [];
+    this.town = null;
+    this.townLevel = 0;
     this.doorOpen = 0;
     this.doorTarget = 0;
     this.openSignOn = false;
@@ -576,6 +579,43 @@ export class Renderer {
       g.add(car);
       this.cars.push(car);
     }
+
+    // The neighbourhood around the shop (rebuilt only if the floor size changed)
+    this.setTownLevel(this.townLevel);
+  }
+
+  // ---------------------------------------------------------------- town
+  // Show the town for stages 1..level (0 = only empty plots). Cheap to call every day: it only
+  // rebuilds when the level or the floor size changed.
+  setTownLevel(level) {
+    this.townLevel = clamp(Math.floor(level) || 0, 0, TOWN_STAGES.length);
+    if (this.W === undefined) return;
+    const key = `${this.W}|${this.H}|${this.doorX}|${this.townLevel}`;
+    if (this.town && this._townKey === key) return;
+    this._disposeTown();
+    this.town = buildTown(this.W, this.H, this.doorX, this.townLevel);
+    this._townKey = key;
+    this.world.add(this.town);
+    this.town.userData.setNight(this.lampLevel);
+  }
+
+  _disposeTown() {
+    const t = this.town;
+    if (!t) return;
+    this.world.remove(t);
+    t.userData.dispose?.();
+    disposeObject(t);
+    t.traverse((o) => {
+      if (!o.isMesh) return;
+      if (o.userData.ownGeo) o.geometry.dispose();
+      if (o.material.userData?.ownMat) { o.material.map?.dispose(); o.material.dispose(); }
+    });
+    this.town = null;
+  }
+
+  // World position {x, z} of a town stage's plot (1..8), e.g. for a celebration effect
+  townStagePos(stage) {
+    return townStagePos(this.W ?? 12, this.H ?? 9, this.doorX ?? 10, stage);
   }
 
   // Where the garden grows: tree rows behind and beside the restaurant, round street trees in
@@ -619,12 +659,18 @@ export class Renderer {
       const x = W / 2 + (rnd() - 0.5) * 46, z = -11 + rnd() * (H + 30);
       if (!paved(x, z)) tufts.push({ x, z, s: 0.8 + rnd() * 0.5 });
     }
+    // Keep the town's plots clear (canopies need a little more room than flowers & tufts)
+    const lots = townLots(W, H, doorX);
+    const clear = (pad) => (o) => !lots.some((l) => o.x > l.x0 - pad && o.x < l.x1 + pad && o.z > l.z0 - pad && o.z < l.z1 + pad);
     // Spatial chunks (front / back-left / right) so off-screen parts are culled; only trees
     // inside the sun's shadow box cast shadows
     const cx = W / 2, cz = H / 2, r = Math.max(W, H) * 0.85 + 4;
     const chunk = (x, z) => (z > H + 3 ? 'front' : x > W + 2 ? 'right' : 'back');
     const caster = (x, z) => Math.hypot(x - cx, z - cz) < r;
-    return { trees, bushes, flowers, tufts, pits, chunk, caster };
+    return {
+      trees: trees.filter(clear(0.6)), bushes: bushes.filter(clear(0.4)), flowers: flowers.filter(clear(0.3)),
+      tufts: tufts.filter(clear(0.1)), pits: pits.filter(clear(0.5)), chunk, caster,
+    };
   }
 
   _fitShadow() {
@@ -683,6 +729,7 @@ export class Renderer {
     envMats.headlight.emissiveIntensity = 0.3 + this.lampLevel * 3;
     if (this.signMat) this.signMat.emissiveIntensity = 0.35 + this.lampLevel * 0.9;
     if (this.openSignMat) this.openSignMat.emissiveIntensity = this.openSignOn ? 1.6 + Math.sin(this.time * 8) * 0.1 : 0.05;
+    this.town?.userData.setNight(this.lampLevel);
   }
 
   requestLight(x, y, z, color, intensity, distance, priority = 1) {
@@ -845,6 +892,11 @@ export class Renderer {
     // Street lamp lights at night
     if (this.lampLevel > 0.3 && this.streetLamps) {
       for (const p of this.streetLamps) this.requestLight(p.x, p.y, p.z, '#ffcf80', 10 * this.lampLevel, 7, 1.5);
+    }
+    // Town: Ferris wheel, sails, ducks & swings; two warm porch lights at night (lowest priority)
+    if (this.town) {
+      this.town.userData.animate(this.time, dt);
+      if (this.lampLevel > 0.3) for (const l of this.town.userData.lights) this.requestLight(l.x, l.y, l.z, l.color, l.intensity * this.lampLevel, l.distance, 0.8);
     }
     this.particleScale = this.pixelsPerUnit;
     // Ink outlines stay ~1.6 CSS px wide at any zoom; foliage sways on the shared clock
