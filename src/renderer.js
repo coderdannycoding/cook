@@ -563,9 +563,10 @@ export class Renderer {
     bench.rotation.y = Math.PI;
     props.add(bench);
     if (this.driveZ === null) {
-      const parked = buildCar('#4aa3f0');
+      // the owner's favourite ride from home if there is one, else the old blue hatchback
+      const parked = this.parkedBuilder ? this.parkedBuilder() : buildCar('#4aa3f0');
       parked.position.set(W + 3.15, 0, H - 2.1);
-      parked.rotation.y = Math.PI / 2;
+      parked.rotation.y = this.parkedBuilder ? 0 : Math.PI / 2;
       props.add(parked);
     } else props.add(this._buildDriveLane(W, H));
     g.add(mergeStatic(props, 'env'));
@@ -592,6 +593,15 @@ export class Renderer {
   // ---------------------------------------------------------------- town
   // Show the town for stages 1..level (0 = only empty plots). Cheap to call every day: it only
   // rebuilds when the level or the floor size changed.
+  // The car parked beside the shop (key changes rebuild the street; builder returns a car facing +z)
+  setParkedCar(key, builder) {
+    key = key || null;
+    if (key === (this.parkedKey || null)) return;
+    this.parkedKey = key;
+    this.parkedBuilder = key ? builder : null;
+    if (this.W !== undefined) this._buildStreet(this.W, this.H, this.doorX);
+  }
+
   // ---------------------------------------------------------------- drive-thru
   // Lane for a drive-thru window on cell (W - 1, wz); null removes it. Rebuilds the street only on change.
   setDriveThru(wz) {
