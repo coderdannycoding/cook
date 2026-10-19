@@ -28,6 +28,7 @@ import { buildItem, buildDishPreview, buildAppliance, playerLook } from './model
 import { TOWN_STAGES } from './town.js';
 import { DriveThru } from './drivethru.js';
 import { Goals } from './goals.js';
+import { HomeMode, homePerks, defaultHomeState, buildLuxuryCar, CARS } from './home.js';
 import { floorTexture, wallTexture } from './textures.js';
 
 // The name painted on the shop sign (older saves stored the game's previous name)
@@ -71,6 +72,7 @@ class Game {
     this.touch = new TouchControls(this);
     this.input.onTouchMode = () => this.ui.onInputModeChanged();
     this.tutorial = new Tutorial(this);
+    this.home = new HomeMode(this, { onExit: () => this.exitHome() });
 
     this.state = null;
     this.phase = 'boot';
@@ -196,6 +198,8 @@ class Game {
     // saves from before the town existed get the neighbourhood their rating has earned
     if (s.townLevel === undefined) s.townLevel = this.townLevelFor(s.rating);
     this.renderer.setTownLevel(s.townLevel);
+    s.home ??= defaultHomeState();
+    this.syncParkedCar();
     const objs = Array.isArray(s.objects) && s.objects.length ? s.objects : STARTER_LAYOUT;
     const hardFail = new Set(['Out of bounds', 'Space occupied', 'Keep the doorway clear']);
     for (const o of objs) {
@@ -351,6 +355,8 @@ class Game {
     const s = this.state;
     let total = (FLOOR_THEMES[s.floorTheme]?.decor || 0) + (WALL_THEMES[s.wallTheme]?.decor || 0);
     const perks = blankPerks();
+    // the house, pets and cars bought at home add their own small bonuses
+    for (const [k, v] of Object.entries(homePerks(s.home))) if (k in perks) perks[k] += v;
     const counted = new Set();
     for (const o of this.grid.objects) {
       total += o.def.decor || 0;
@@ -369,6 +375,27 @@ class Game {
   syncDriveThru() {
     const win = this.grid.stations('drivethru')[0];
     this.renderer.setDriveThru(win && win.obj.x === this.grid.W - 1 ? win.obj.z : null);
+  }
+
+  // Your favourite car from home waits in the space beside the shop
+  syncParkedCar() {
+    const fav = this.state?.home?.favCar;
+    this.renderer.setParkedCar(fav && CARS[fav] ? fav : null, () => buildLuxuryCar(fav));
+  }
+
+  // ---- home (night only): the restaurant is hidden while the player shops for houses, pets and cars
+  enterHome() {
+    if (this.phase !== 'night' || this.home.active) return;
+    this.build.cancel();
+    this.home.enter();
+  }
+
+  exitHome() {
+    if (this.home.active) this.home.exit();
+    this.updateAmbience(true);
+    this.syncParkedCar();
+    this.ui.renderDock();
+    this.save();
   }
 
   onLayoutChanged() {
@@ -472,6 +499,7 @@ class Game {
   }
 
   quitToTitle() {
+    if (this.home.active) this.home.exit(false);
     this.paused = false;
     this.pauseModal = null;
     for (const m of [...this.ui.modalStack]) this.ui.closeModal(m);
@@ -705,6 +733,10 @@ class Game {
   }
 
   update(dt) {
+    if (this.home.active) {
+      this.home.update(dt);
+      return;
+    }
     const r = this.renderer;
     const W = this.grid.W, H = this.grid.H;
     const input = this.input;

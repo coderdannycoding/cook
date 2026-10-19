@@ -905,9 +905,9 @@ D.neon_pizza = (def) => {
   const r = new THREE.Group();
   neonBacker(r, 0.66, 0.66, 0.33);
   const z = 0.062;
-  const cheese = umat('#fff2b0', { e: '#ffbb1a', ei: 2.2 });
-  const crust = umat('#ffd6a8', { e: '#ff7a1a', ei: 2.2 });
-  const pep = umat('#ffc4c4', { e: '#ff2a3a', ei: 2.2 });
+  const cheese = umat('#ffd84a', { e: '#ffaa00', ei: 1.8 });
+  const crust = umat('#ff9a40', { e: '#ff6a00', ei: 1.8 });
+  const pep = umat('#ff5a6a', { e: '#ff1a2a', ei: 1.8 });
   r.add(mesh(tube('pizza-slice', [[-0.2, 0.5, 0], [0, 0.1, 0], [0.2, 0.5, 0]], 0.017, { tension: 0.1 }), cheese, 0, 0, z, false));
   r.add(mesh(tube('pizza-crust', [[-0.25, 0.48, 0], [-0.12, 0.56, 0], [0, 0.58, 0], [0.12, 0.56, 0], [0.25, 0.48, 0]], 0.024), crust, 0, 0, z, false));
   for (const [x, y] of [[-0.06, 0.4], [0.07, 0.43], [0.01, 0.27]]) r.add(mesh(torus(0.04, 0.012, 6, 18), pep, x, y, z, false));
@@ -918,8 +918,8 @@ D.neon_pizza = (def) => {
     light,
     animate(t) {
       const k = neonFlicker(t, 1.3);
-      cheese.emissiveIntensity = 2.2 * k;
-      crust.emissiveIntensity = 2.2 * k;
+      cheese.emissiveIntensity = 1.8 * k;
+      crust.emissiveIntensity = 1.8 * k;
       pep.emissiveIntensity = 1.4 + Math.max(0, Math.sin(t * 2.4)) * 1.2;
       light.intensity = 3.5 * (0.4 + 0.6 * k);
     },
@@ -930,8 +930,8 @@ D.neon_coffee = (def) => {
   const r = new THREE.Group();
   neonBacker(r, 0.66, 0.68, 0.34);
   const z = 0.062;
-  const cup = umat('#e6fbff', { e: '#3fd8ff', ei: 2.2 });
-  const steam = [0, 1, 2].map(() => umat('#ffe0f4', { e: '#ff5fc8', ei: 2 }));
+  const cup = umat('#7fe8ff', { e: '#1fc8ff', ei: 1.8 });
+  const steam = [0, 1, 2].map(() => umat('#ff8ad9', { e: '#ff3fc0', ei: 1.8 }));
   r.add(mesh(tube('coffee-cup', [[-0.19, 0.4, 0], [-0.16, 0.2, 0], [-0.08, 0.13, 0], [0.08, 0.13, 0], [0.16, 0.2, 0], [0.19, 0.4, 0], [-0.19, 0.4, 0]], 0.017, { tension: 0.25, seg: 120 }), cup, 0, 0, z, false));
   r.add(R(mesh(torus(0.065, 0.015, 6, 20, Math.PI * 1.2), cup, 0.19, 0.3, z, false), 0, 0, -Math.PI * 0.6));
   r.add(mesh(tube('coffee-saucer', [[-0.26, 0.1, 0], [-0.1, 0.07, 0], [0.1, 0.07, 0], [0.26, 0.1, 0]], 0.015), cup, 0, 0, z, false));
@@ -943,7 +943,7 @@ D.neon_coffee = (def) => {
     light,
     animate(t) {
       const k = neonFlicker(t, 4.1);
-      cup.emissiveIntensity = 2.2 * k;
+      cup.emissiveIntensity = 1.8 * k;
       steam.forEach((m, i) => { m.emissiveIntensity = 0.3 + Math.max(0, Math.sin(t * 2.6 - i * 0.9)) * 2.2; });
       light.intensity = 3.2 * (0.4 + 0.6 * k);
     },
@@ -954,8 +954,8 @@ D.neon_yum = (def) => {
   const r = new THREE.Group();
   neonBacker(r, 1.6, 0.66, 0.33, 0.2);
   const z = 0.062;
-  const pink = umat('#ffd6ee', { e: '#ff2fa0', ei: 2.4 });
-  const cyan = umat('#d8fbff', { e: '#29d4ff', ei: 2.2 });
+  const pink = umat('#ff6fc0', { e: '#ff1f90', ei: 2 });
+  const cyan = umat('#6fe4ff', { e: '#19c4ff', ei: 1.8 });
   const T = (key, pts, m, rad = 0.022, o) => r.add(mesh(tube(key, pts, rad, o), m, 0, 0, z, false));
   T('yum-y1', [[-0.6, 0.53, 0], [-0.44, 0.33, 0], [-0.28, 0.53, 0]], pink, 0.022, { tension: 0.15 });
   T('yum-y2', [[-0.44, 0.33, 0], [-0.44, 0.15, 0]], pink, 0.022, { tension: 0 });
@@ -972,7 +972,7 @@ D.neon_yum = (def) => {
     light,
     animate(t) {
       const k = neonFlicker(t, 0.7);
-      pink.emissiveIntensity = 2.4 * k + Math.sin(t * 2) * 0.15;
+      pink.emissiveIntensity = 2 * k + Math.sin(t * 2) * 0.15;
       cyan.emissiveIntensity = 1.4 + Math.sin(t * 3) * 0.8;
       light.intensity = 4.2 * (0.35 + 0.65 * k);
     },

@@ -748,6 +748,16 @@ function tent(c) {
   put(chair, box(0.5, 0.42, 0.04), '#3cb46e', 0, 0.52, -0.2, -0.25);
   for (const s of [-1, 1]) put(chair, box(0.03, 0.4, 0.5), '#555b66', s * 0.25, 0.2, 0, 0.6);
   g.add(chair);
+  // Picnic blanket with a basket, and a washing line between two poles
+  const pb = grp(-1.9, 0, 2.0, 0.3);
+  for (let i = 0; i < 4; i++) for (let k = 0; k < 4; k++) put(pb, box(0.36, 0.02, 0.36), (i + k) % 2 ? '#ff6b6b' : '#fff4e8', -0.54 + i * 0.36, 0.012, -0.54 + k * 0.36).castShadow = false;
+  put(pb, rbox(0.42, 0.26, 0.3, 0.05, 1), '#c98a4e', 0.3, 0.14, -0.2);
+  put(pb, torus(0.16, 0.025, 6, 12, PI), '#9a6a3e', 0.3, 0.27, -0.2);
+  put(pb, ico(0.08, 0), '#e8302a', -0.25, 0.08, 0.25);
+  g.add(pb);
+  for (const x of [-2.2, -0.4]) put(g, cyl(0.035, 0.04, 1.4, 6), '#8a5a33', x, 0.7, -1.95);
+  put(g, box(1.8, 0.015, 0.015), '#fff4e0', -1.3, 1.32, -1.95).castShadow = false;
+  [['#5cc6ff', -1.85], ['#ffd23f', -1.35], ['#ff8ab0', -0.85]].forEach(([col, x]) => put(g, box(0.34, 0.4, 0.03), col, x, 1.1, -1.95, 0, 0, (x + 1.3) * 0.08));
   c.anim.push((t) => {
     flames.children.forEach((f, i) => { f.scale.set(1 + Math.sin(t * 13 + i) * 0.12, 1 + Math.sin(t * 9 + i * 2) * 0.22, 1 + Math.cos(t * 11 + i) * 0.12); });
   });
@@ -1227,7 +1237,7 @@ function buildTier(tier) {
   root.add(lawnMesh(tier, c.own));
   const pathRects = tier >= 2 ? [[SITE.x - 0.55, 0.0, SITE.x + 0.55, PLOT.z1 + 0.3]] : [];
   if (tier === 4) pathRects.length = 0;
-  root.add(pavingMesh([[COURT.x0, PLOT.z0 + 0.1, COURT.x1 - 0.1, PLOT.z1 + 0.3], ...pathRects], tier < 2 ? '#e8d6ae' : '#ffffff', c.own));
+  root.add(pavingMesh([[COURT.x0, PLOT.z0 + 0.1, COURT.x1 - 0.1, PLOT.z1 + 0.3], ...pathRects], tier < 2 ? '#efe6d6' : '#ffffff', c.own));
   if (tier < 2) stones(stat, [[SITE.x, -0.2], [SITE.x, PLOT.z1 + 0.1]], 0.5, 0.22);
   if (tier === 4) {
     const ring = [];

@@ -342,3 +342,6 @@ button.card:active { transform: translateY(2px); }
 .res-goals .rg.failed, .res-goals .rg.open { color: var(--text-dim); }
 .res-goals .rg.failed .ic, .res-goals .rg.open .ic { color: var(--berry-2); }
 .res-goals .rg b { font: 400 15px var(--display); color: var(--grass-2); }
+.tab.home-btn { --b1: #ff8fb0; --b2: #e8507a; }
+.open-btn, .tab.home-btn { white-space: nowrap; }
+@media (max-width: 1200px) { .dock-info { font-size: 12px; } }

@@ -590,6 +590,7 @@ export class UI {
         <div class="dock-tabs">${tabs.map(([id, ic, n]) => `<button class="tab ${this.dockTab === id ? 'on' : ''}" data-tab="${id}">${icon(ic)}${n}</button>`).join('')}</div>
         <div class="dock-info">Ambience <b>${Math.round(g.ambience * 100)}%</b>, wages <b>${formatMoney(wages)}</b> and rent <b>${formatMoney(g.rent())}</b> a day</div>
         <button class="tab collapse" data-act="collapse" title="Show or hide the panel">${this.dockCollapsed ? 'Show' : 'Hide'}</button>
+        <button class="tab home-btn" data-act="home" title="Visit your home: houses, pets and cars">${icon('home')}Home</button>
         <button class="big-btn primary open-btn" data-act="open">Open for day ${g.state.day}</button>
       </div>
       <div class="dock-panel ${this.dockCollapsed ? 'hidden' : ''}">${this.renderPanel()}</div>`;
@@ -765,6 +766,7 @@ export class UI {
       return;
     }
     if (b.dataset.act === 'open') { g.openRestaurant(); return; }
+    if (b.dataset.act === 'home') { g.enterHome(); return; }
     if (b.dataset.act === 'collapse') { this.dockCollapsed = !this.dockCollapsed; this.renderDock(); return; }
     if (b.dataset.buy) {
       const d = CATALOG[b.dataset.buy];
