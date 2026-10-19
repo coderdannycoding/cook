@@ -5,7 +5,7 @@
 import {
   DISHES, chainFor, itemKey, chopInfo, cookRule, isCookOutput, matchDish, canTop,
 } from './recipes.js';
-import { clamp, rand } from './utils.js';
+import { clamp, rand, pick } from './utils.js';
 
 // ---------------------------------------------------------------------------
 // A*
@@ -124,7 +124,8 @@ export function findPath(grid, sx, sz, goals, opts = {}) {
 // Demand analysis
 
 export function openOrders(game) {
-  return game.customers.allCustomers().filter((c) => c.state === 'waiting' && c.order);
+  const list = game.customers.allCustomers().filter((c) => c.state === 'waiting' && c.order);
+  return game.drive ? list.concat(game.drive.waiting()) : list;
 }
 
 export function canBecome(item, key) {
@@ -157,27 +158,30 @@ function worldItems(game) {
 export function computeNeeds(game, exclude = null) {
   const needs = new Map();
   const add = (k, n = 1) => needs.set(k, (needs.get(k) || 0) + n);
-  const orders = openOrders(game);
+  // Most urgent first (critics, then whoever is closest to walking out)
+  const orders = openOrders(game).slice().sort((a, b) => (b.critic || b.vip ? 1 : 0) - (a.critic || a.vip ? 1 : 0) || a.patience - b.patience);
   const items = worldItems(game);
   const plates = items.filter((w) => w.item.kind === 'plate' && !w.item.dirty);
-  const used = new Set();
+  const usedPlates = new Set();
+  // Supply: loose ingredients plus the parts already sitting on half-built plates
+  const supply = items.filter((w) => w.item.kind === 'ing').map((w) => w.item);
+  for (const w of plates) if (!matchDish(w.item)) supply.push(...w.item.contents);
+  const taken = new Set();
+  // Only work on as many dishes as there's room to set their parts down, so the kitchen
+  // finishes plates instead of filling every surface with half of everything
+  let room = game.grid.stations().filter((st) => (st.kind === 'counter' || st.kind === 'pass') && !st.item && st.fire <= 0).length + 1;
   for (const o of orders) {
-    const p = plates.find((w) => !used.has(w) && matchDish(w.item) === o.order);
-    if (p) { used.add(p); continue; }
-    for (const part of DISHES[o.order].parts) add(part);
-  }
-  for (const w of plates) {
-    if (used.has(w)) continue;
-    for (const c of w.item.contents) {
-      const k = itemKey(c);
-      if ((needs.get(k) || 0) > 0) needs.set(k, needs.get(k) - 1);
+    const p = plates.find((w) => !usedPlates.has(w) && matchDish(w.item) === o.order);
+    if (p) { usedPlates.add(p); continue; }
+    const missing = [];
+    for (const part of DISHES[o.order].parts) {
+      const it = supply.find((x) => !taken.has(x) && (itemKey(x) === part || canBecome(x, part)));
+      if (it) taken.add(it);
+      else missing.push(part);
     }
-  }
-  for (const w of items) {
-    if (w.item.kind !== 'ing') continue;
-    for (const [k, n] of needs) {
-      if (n > 0 && canBecome(w.item, k)) { needs.set(k, n - 1); break; }
-    }
+    if (needs.size && missing.length > room) break;
+    for (const k of missing) add(k);
+    room -= missing.length;
   }
   for (const s of game.staff.members) {
     const b = s.brain;
@@ -350,7 +354,11 @@ class Brain {
     const it = s.held;
     if (!it) return;
     const ia = this.ia;
+    // Food some open order still needs isn't binned right away: hold it a few seconds in case a
+    // counter frees up (but never long enough to jam the kitchen)
+    const useful = it.kind === 'ing' && it.state !== 'burnt' && (this.holdWait || 0) < 4 && [...computeNeeds(this.g).keys()].some((k) => canBecome(it, k));
     const pref = (st) => {
+      if (useful && st.kind === 'trash') return 50;
       if (it.kind === 'plate' && it.dirty) return st.kind === 'sink' || st.kind === 'autowasher' ? 0 : 50;
       if (it.kind === 'plate' && !it.contents.length) return st.kind === 'platerack' ? 0 : st.kind === 'counter' ? 8 : 50;
       if (it.kind === 'plate') return st.kind === 'pass' ? 0 : st.kind === 'counter' ? 4 : 50;
@@ -361,6 +369,7 @@ class Brain {
     const cands = this.stations((st) => this.free(st) && ia.canTransfer(st, it) && pref(st) < 50 && !(st.kind === 'cooker'));
     if (!cands.length) {
       s.status = 'dots';
+      this.holdWait = (this.holdWait || 0) + 1.2;
       yield* this.pause(1.2);
       return;
     }
@@ -369,6 +378,7 @@ class Brain {
     this.claim(target);
     yield* this.walkTo(target);
     if (!this.act(target)) fail('dispose failed');
+    this.holdWait = 0;
   }
 
   // Any staff member will grab the extinguisher and fight a fire (one at a time).
@@ -437,6 +447,31 @@ class Brain {
   }
 
   home() { return null; }
+
+  // Shared chores: carry dirty plates from a table / drive-thru sill to the sink, pocket table cash
+  *clearTable(table) {
+    this.taskName = 'clearTable';
+    this.claim(table);
+    this.s.status = 'broom';
+    yield* this.walkTo(table);
+    if (!this.act(table)) fail('nothing');
+    this.release(table);
+    if (!this.s.held) return;
+    const sink = this.nearest(this.stations((st) => (st.kind === 'sink' || st.kind === 'autowasher') && this.ia.canTransfer(st, this.s.held)));
+    if (!sink) fail('no sink');
+    yield* this.walkTo(sink);
+    if (!this.act(sink)) fail('sink');
+  }
+
+  *collect(table) {
+    this.taskName = 'collect';
+    this.claim(table);
+    this.s.status = 'coin';
+    yield* this.walkTo(table);
+    table.collectCash();
+  }
+
+  has(role) { return this.g.staff.members.some((m) => m.role === role); }
 }
 
 // ---------------------------------------------------------------------------
@@ -448,18 +483,19 @@ export class WaiterBrain extends Brain {
 
   pickTask() {
     const g = this.g;
-    // 1. Deliver finished dishes from the pass
-    const waiting = openOrders(g).filter((c) => !c.claimedBy);
-    for (const pass of this.stations((st) => st.kind === 'pass' && this.free(st) && st.item && st.item.kind === 'plate')) {
+    // 1. Deliver finished dishes from the pass (drive-thru orders are the operator's, if there is one)
+    const operator = this.has('drive');
+    const waiting = openOrders(g).filter((c) => !c.claimedBy && (!c.window || !operator));
+    for (const pass of this.stations((st) => (st.kind === 'pass' || st.kind === 'counter') && this.free(st) && st.item && st.item.kind === 'plate')) {
       const dish = matchDish(pass.item);
       if (!dish) continue;
       const cands = waiting.filter((c) => c.order === dish);
       if (!cands.length) continue;
-      cands.sort((a, b) => (b.critic ? 1 : 0) - (a.critic ? 1 : 0) || a.patience - b.patience);
+      cands.sort((a, b) => (b.critic || b.vip ? 1 : 0) - (a.critic || a.vip ? 1 : 0) || a.patience - b.patience);
       return this.deliver(pass, cands[0]);
     }
-    // 2. Clear dirty tables
-    const dirty = this.stations((st) => st.kind === 'table' && this.free(st) && st.hasDirty());
+    // 2. Clear dirty tables (bussers get first go)
+    const dirty = this.stations((st) => (st.kind === 'table' || st.kind === 'drivethru') && this.free(st) && st.hasDirty() && !this.has('busser'));
     if (dirty.length) return this.clearTable(this.nearest(dirty));
     // 3. Collect cash
     const cash = this.stations((st) => st.kind === 'table' && this.free(st) && st.cash > 0);
@@ -478,35 +514,13 @@ export class WaiterBrain extends Brain {
     if (!pass.item || matchDish(pass.item) !== cust.order || cust.state !== 'waiting') fail('changed');
     if (!this.act(pass)) fail('take');
     this.release(pass);
-    const table = cust.table;
+    const table = cust.table || cust.window;
     yield* this.walkTo(table);
     if (cust.state !== 'waiting') fail('customer left');
     if (!this.act(table)) fail('serve');
     this.g.today.staffServed++;
   }
 
-  *clearTable(table) {
-    this.taskName = 'clearTable';
-    this.claim(table);
-    this.s.status = 'broom';
-    yield* this.walkTo(table);
-    if (!this.act(table)) fail('nothing');
-    this.release(table);
-    if (!this.s.held) return;
-    const sinks = this.stations((st) => (st.kind === 'sink' || st.kind === 'autowasher') && this.ia.canTransfer(st, this.s.held));
-    const sink = this.nearest(sinks);
-    if (!sink) fail('no sink');
-    yield* this.walkTo(sink);
-    if (!this.act(sink)) fail('sink');
-  }
-
-  *collect(table) {
-    this.taskName = 'collect';
-    this.claim(table);
-    this.s.status = 'coin';
-    yield* this.walkTo(table);
-    table.collectCash();
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -526,8 +540,8 @@ export class DishwasherBrain extends Brain {
     const parked = this.stations((st) => (st.kind === 'counter' || st.kind === 'pass') && this.free(st) && st.item && st.item.kind === 'plate' && st.item.dirty);
     if (parked.length) return this.clearTable(this.nearest(parked));
     const hasWaiter = this.g.staff.members.some((m) => m.role === 'waiter');
-    if (!hasWaiter) {
-      const tables = this.stations((st) => st.kind === 'table' && this.free(st) && st.hasDirty());
+    if (!hasWaiter && !this.has('busser')) {
+      const tables = this.stations((st) => (st.kind === 'table' || st.kind === 'drivethru') && this.free(st) && st.hasDirty());
       if (tables.length) return this.clearTable(this.nearest(tables));
     }
     return null;
@@ -571,19 +585,6 @@ export class DishwasherBrain extends Brain {
     if (!this.act(rack)) fail('rack');
   }
 
-  *clearTable(table) {
-    this.taskName = 'clearTable';
-    this.claim(table);
-    this.s.status = 'broom';
-    yield* this.walkTo(table);
-    if (!this.act(table)) fail('nothing');
-    this.release(table);
-    if (!this.s.held) return;
-    const sink = this.nearest(this.stations((st) => (st.kind === 'sink' || st.kind === 'autowasher') && this.ia.canTransfer(st, this.s.held)));
-    if (!sink) fail('no sink');
-    yield* this.walkTo(sink);
-    if (!this.act(sink)) fail('sink');
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -699,8 +700,12 @@ export class ChefBrain extends Brain {
     if (c.chop && !this.stations((st) => st.kind === 'board' && this.free(st) && !st.item).length && !hasLoose) return false;
     if (c.cooker && !this.stations((st) => st.kind === 'cooker' && st.cookType === c.cooker && this.free(st) && !st.item).length) return false;
     for (const t of c.toppings) if (!crates.some((st) => st.ing === t)) return false;
-    if (c.toppings.length && !this.freeCounters().length) return false;
-    if (!c.cooker && !this.freeCounters().length) return false;
+    // Everything cooking now will need a counter when it comes off the heat: don't start more
+    // food than there's room to set down, or it ends up in the bin
+    const cooking = this.grid.stations('cooker').filter((ck) => ck.item && ck.item.state !== 'burnt').length;
+    const free = this.freeCounters().length;
+    if (c.toppings.length && free <= cooking) return false;
+    if (free <= (c.cooker ? cooking : Math.max(0, cooking - 1))) return false;
     return true;
   }
 
@@ -857,14 +862,15 @@ export class ChefBrain extends Brain {
     yield* this.deposit();
   }
 
-  findPlating() {
+  // A dish whose parts are all ready somewhere. `direct`: hand it straight through the drive-thru
+  // window instead of setting it on the serving pass.
+  findPlating(filter = null, direct = false) {
     const g = this.g;
-    const orders = openOrders(g).filter((c) => !c.platedBy && !c.claimedBy);
+    const orders = openOrders(g).filter((c) => !c.platedBy && !c.claimedBy && (!filter || filter(c)));
     if (!orders.length) return null;
     const plates = worldItems(g).filter((w) => w.item.kind === 'plate' && !w.item.dirty && w.item.contents.length);
-    orders.sort((a, b) => (b.critic ? 1 : 0) - (a.critic ? 1 : 0) || a.patience - b.patience);
+    orders.sort((a, b) => (b.critic || b.vip ? 1 : 0) - (a.critic || a.vip ? 1 : 0) || a.patience - b.patience);
     const passes = this.stations((st) => st.kind === 'pass' && !st.item && this.free(st));
-    if (!passes.length) return null;
     const plateSrc = this.nearest(this.stations((st) => (st.kind === 'platerack' && st.count > 0) || ((st.kind === 'sink' || st.kind === 'autowasher') && st.clean > 0)));
     if (!plateSrc) return null;
     for (const cust of orders) {
@@ -885,7 +891,12 @@ export class ChefBrain extends Brain {
         used.add(found);
         sources.push(found);
       }
-      if (ok) return { cust, sources, plateSrc, pass: this.nearest(passes) };
+      if (!ok) continue;
+      if (direct) return { cust, sources, plateSrc, pass: null };
+      // No free pass: set the plate down where one of its parts was picked up (frees the jam
+      // when loose ingredients have filled every pass and counter)
+      const pass = this.nearest(passes) || sources.find((st) => st.kind === 'pass') || sources.find((st) => st.kind === 'counter');
+      if (pass) return { cust, sources, plateSrc, pass };
     }
     return null;
   }
@@ -897,7 +908,7 @@ export class ChefBrain extends Brain {
     cust.platedBy = s;
     this.claims.push(cust);
     for (const st of sources) this.claim(st);
-    this.claim(pass);
+    if (pass) this.claim(pass);
     s.status = 'cloche';
     yield* this.walkTo(plateSrc);
     if (!this.act(plateSrc)) fail('no plate');
@@ -905,17 +916,145 @@ export class ChefBrain extends Brain {
       yield* this.walkTo(st);
       if (!this.ia.canScoop(s.held, st)) fail('part gone');
       if (!this.act(st)) fail('scoop');
-      this.release(st);
+      if (st !== pass) this.release(st);
       this.tending.delete(st);
+    }
+    if (!pass) {
+      const win = cust.window;
+      if (!win || cust.state !== 'waiting') fail('car left');
+      yield* this.walkTo(win);
+      if (cust.state !== 'waiting' || !this.act(win)) fail('hand over');
+      this.g.today.staffServed++;
+      return;
     }
     yield* this.walkTo(pass);
     if (!this.act(pass)) fail('pass');
   }
 }
 
+// ---------------------------------------------------------------------------
+// Plater: assembles finished dishes onto plates and sets them on the serving pass, and pulls
+// cooked food off the heat so it doesn't burn while waiting to be plated.
+export class PlaterBrain extends ChefBrain {
+  home() {
+    const pass = this.grid.stations('pass')[0];
+    return pass ? { x: pass.x - 1, z: pass.z } : super.home();
+  }
+
+  pickTask() {
+    for (const ck of this.grid.stations('cooker')) {
+      const it = ck.item;
+      if (!it || ck.fire > 0) continue;
+      const other = ck.reservedBy && ck.reservedBy !== this.s ? ck.reservedBy : null;
+      const otherBusy = !other || !other.brain || other.brain.taskName !== 'rescue';
+      if (!otherBusy) continue;
+      if (it.state === 'burnt' || (isCookOutput(ck.cookType, it) && it.burn > 0.05)) return this.rescue(ck);
+    }
+    const job = this.findPlating();
+    if (job) return this.plate(job);
+    if (this.freeCounters().length < 2) {
+      const stale = this.findStale();
+      if (stale) return this.binStale(stale);
+    }
+    return null;
+  }
+}
+
+// Drive-thru operator: hands plated dishes through the window, assembles drive-thru orders
+// itself when everything is ready, and keeps the window sill clear of empty plates.
+export class DriveBrain extends ChefBrain {
+  home() {
+    const w = this.grid.stations('drivethru')[0];
+    return w ? { x: w.x - 1, z: w.z } : super.home();
+  }
+
+  pickTask() {
+    const win = this.grid.stations('drivethru')[0];
+    if (!win) return null;
+    const car = this.g.drive.carAt();
+    if (car && car.state === 'waiting' && !car.claimedBy && !car.platedBy) {
+      const ready = this.stations((st) => (st.kind === 'pass' || st.kind === 'counter') && this.free(st) && st.item && st.item.kind === 'plate' && matchDish(st.item) === car.order);
+      if (ready.length) return this.handOver(this.nearest(ready), car, win);
+      const job = this.findPlating((c) => c === car, true);
+      if (job) return this.plate(job);
+    }
+    const job = this.findPlating((c) => !!c.window);
+    if (job) return this.plate(job);
+    if (win.hasDirty() && this.free(win)) return this.clearTable(win);
+    return null;
+  }
+
+  *handOver(src, car, win) {
+    this.taskName = 'deliver';
+    const s = this.s;
+    this.claim(src);
+    car.claimedBy = s;
+    this.claims.push(car);
+    s.status = 'cloche';
+    yield* this.walkTo(src);
+    if (!src.item || matchDish(src.item) !== car.order || car.state !== 'waiting') fail('changed');
+    if (!this.act(src)) fail('take');
+    this.release(src);
+    yield* this.walkTo(win);
+    if (car.state !== 'waiting' || !this.act(win)) fail('hand over');
+    this.g.today.staffServed++;
+  }
+}
+
+// Busser: clears tables and the drive-thru sill, carries plates to the sink, collects cash.
+export class BusserBrain extends Brain {
+  home() {
+    const t = this.grid.stations('table')[0];
+    return t ? { x: t.x, z: t.z + 1 } : null;
+  }
+
+  pickTask() {
+    const dirty = this.stations((st) => (st.kind === 'table' || st.kind === 'drivethru') && this.free(st) && st.hasDirty());
+    if (dirty.length) return this.clearTable(this.nearest(dirty));
+    const parked = this.stations((st) => (st.kind === 'counter' || st.kind === 'pass') && this.free(st) && st.item && st.item.kind === 'plate' && st.item.dirty);
+    if (parked.length) return this.clearTable(this.nearest(parked));
+    const cash = this.stations((st) => st.kind === 'table' && this.free(st) && st.cash > 0);
+    if (cash.length) return this.collect(this.nearest(cash));
+    return null;
+  }
+}
+
+// Host: waits by the door and welcomes every group. While a host is on duty the queue outside
+// waits much longer and guests sit down in a better mood (see customers.js).
+export class HostBrain extends Brain {
+  home() {
+    const g = this.grid;
+    return { x: g.doorX - 0.5, z: g.H - 1.2 };
+  }
+
+  pickTask() { return null; }
+
+  idle(dt) {
+    const s = this.s;
+    const home = this.home();
+    const spot = this.g.freeTileNear(home.x, home.z);
+    if (spot && Math.hypot(spot.x + 0.5 - s.pos.x, spot.z + 0.5 - s.pos.z) > 0.6 && !s.path) {
+      const p = findPath(this.grid, s.pos.x, s.pos.z, [spot]);
+      if (p) s.setPath(p);
+    }
+    if (s.path) {
+      if (s.followPath(dt, s.speed * 0.8) !== 'moving') s.path = null;
+      return;
+    }
+    s.vel.set(0, 0, 0);
+    const door = this.g.customers.doorOut;
+    s.targetFacing = Math.atan2(door.x - s.pos.x, door.z - s.pos.z);
+    for (const gr of this.g.customers.groups) {
+      if (gr.greeted || (gr.state !== 'queue' && gr.state !== 'seated')) continue;
+      gr.greeted = true;
+      this.g.particles.emote(s.pos.x, 2.0, s.pos.z, pick(['Welcome!', 'Hi there!', 'Table for you?', 'Right this way!']), 'good');
+      s.cheer = 0.8;
+    }
+  }
+}
+
+const BRAINS = { chef: ChefBrain, waiter: WaiterBrain, dish: DishwasherBrain, plater: PlaterBrain, drive: DriveBrain, busser: BusserBrain, host: HostBrain };
 export function createBrain(staff, game) {
-  if (staff.role === 'chef') return new ChefBrain(staff, game);
-  if (staff.role === 'waiter') return new WaiterBrain(staff, game);
-  return new DishwasherBrain(staff, game);
+  return new (BRAINS[staff.role] || DishwasherBrain)(staff, game);
 }
 

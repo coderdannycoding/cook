@@ -662,6 +662,56 @@ export class GrabberStation extends Station {
 }
 
 // ---------------------------------------------------------------------------
+// Drive-thru window: the car waiting outside takes a matching plated dish through it. The food
+// goes home in a paper bag, so the empty plate stays on the sill until someone clears it.
+export class DriveThruStation extends Station {
+  constructor(obj, game) {
+    super(obj, game);
+    this.dirty = 0;
+  }
+  get hasSlot() { return false; }
+  get flammable() { return false; }
+  get car() { return this.game.drive ? this.game.drive.carAt(this) : null; }
+
+  accepts(item) {
+    const car = this.car;
+    return !!car && car.state === 'waiting' && item.kind === 'plate' && !item.dirty && matchDish(item) === car.order;
+  }
+  canAccept(item) { return this.fire <= 0 && this.accepts(item); }
+  put(item) {
+    const car = this.car;
+    if (!car) return;
+    this.dirty += item.stack || 1;
+    this.changed();
+    this.game.audio.clink();
+    this.game.drive.serve(car, item);
+  }
+  hasDirty() { return this.dirty > 0; }
+  canTake() { return this.dirty > 0 && this.fire <= 0; }
+  take() {
+    const n = this.dirty;
+    this.dirty = 0;
+    this.changed();
+    return n ? makePlate(true, n) : null;
+  }
+  clearForDay() { super.clearForDay(); this.dirty = 0; }
+  syncView() {
+    const key = this.dirty ? `d${Math.min(this.dirty, 4)}` : '';
+    if (key === this.view.key) return;
+    if (this.view.mesh) this.obj.mesh.remove(this.view.mesh);
+    this.view.mesh = null;
+    this.view.key = key;
+    if (this.dirty) {
+      const m = buildItem(makePlate(true, Math.min(this.dirty, 4)));
+      m.position.copy(this.anchor);
+      m.scale.setScalar(this.itemScale);
+      m.userData.pop = 0;
+      this.obj.mesh.add(m);
+      this.view.mesh = m;
+    }
+  }
+}
+
 export class TableStation extends Station {
   constructor(obj, game) {
     super(obj, game);
@@ -856,6 +906,7 @@ export function createStation(obj, game) {
     case 'conveyor': return new ConveyorStation(obj, game);
     case 'grabber': return new GrabberStation(obj, game);
     case 'table': return new TableStation(obj, game);
+    case 'drivethru': return new DriveThruStation(obj, game);
     default: return null;
   }
 }

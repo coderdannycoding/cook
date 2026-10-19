@@ -2,7 +2,8 @@
 // painted canvases; anything that moves is a small dynamic group animated from userData.animate.
 
 import * as THREE from '../vendor/three-0.169.0.module.min.js';
-import { mat, umat, mesh, box, rbox, cyl, sph, cone, torus, ico, capsule, finish, dyn } from './models.js';
+import { mat, umat, mesh, box, rbox, cyl, sph, cone, torus, ico, capsule, finish, dyn, cabinet } from './models.js';
+import { SURFACE_Y } from './config.js';
 import { buildGarden } from './look.js';
 import { TAU } from './utils.js';
 
@@ -661,7 +662,7 @@ D.parrot = () => {
   });
 };
 
-function signTex(key, text, bg, fg, w = 256, h = 80) {
+export function signTex(key, text, bg, fg, w = 256, h = 80) {
   return paintTex(key, w, h, (g) => {
     g.fillStyle = bg;
     g.fillRect(0, 0, w, h);
@@ -1198,4 +1199,33 @@ D.runner = () => {
   const fr = mat('#f4e3c4');
   for (const x of [-1.44, 1.44]) for (let i = 0; i < 8; i++) r.add(mesh(box(0.07, 0.01, 0.02), fr, x, 0.012, -0.36 + i * 0.103, false));
   return finish(r, [0, 0.02, 0]);
+};
+
+// ---------------------------------------------------------------------------- drive-thru
+
+// Built facing +z, which is outdoors once it is turned to face through the right-hand wall
+D.drivethru = () => {
+  const r = new THREE.Group();
+  const S = SURFACE_Y;
+  cabinet(r, { body: '#e8343f', panel: '#ff6b57', top: 'steel' });
+  const frame = mat('#f4efe6', { r: 0.5 });
+  for (const x of [-0.46, 0.46]) r.add(mesh(box(0.08, 1.05, 0.12), frame, x, S + 0.52, 0.4));
+  r.add(mesh(box(1.0, 0.1, 0.14), frame, 0, S + 1.08, 0.4));
+  r.add(mesh(box(1.0, 0.05, 0.22), frame, 0, S + 0.03, 0.42));
+  r.add(see(mesh(box(0.42, 0.9, 0.02), glass('#dff4ff', 0.3), 0.2, S + 0.52, 0.44, false)));
+  r.add(mesh(box(0.03, 0.9, 0.04), chrome(), -0.02, S + 0.52, 0.44));
+  // striped awning over the car lane
+  for (let i = 0; i < 6; i++) {
+    const a = mesh(box(0.18, 0.04, 0.62), mat(i % 2 ? '#fff6ea' : '#e8343f', { r: 0.6 }), -0.45 + i * 0.18, S + 1.24, 0.72);
+    a.rotation.x = 0.32;
+    r.add(a);
+  }
+  r.add(mesh(new THREE.PlaneGeometry(0.96, 0.24), mat('#ffffff', { map: signTex('sign-drive', 'DRIVE THRU', '#ffd23f', '#e8343f', 320, 80), mapKey: 'sign-drive', e: '#ffffff', ei: 0.12 }), 0, S + 1.38, 0.52, false));
+  r.add(mesh(box(1.0, 0.3, 0.06), mat('#2b2d5c'), 0, S + 1.38, 0.47));
+  // order bell and a little register on the sill
+  r.add(mesh(cyl(0.07, 0.08, 0.02, 14), gold(), -0.3, S + 0.01, 0.1));
+  r.add(mesh(sph(0.05, 12, 8, 0, TAU, 0, Math.PI / 2), gold(), -0.3, S + 0.02, 0.1));
+  r.add(mesh(rbox(0.26, 0.16, 0.2, 0.03), mat('#2b2d5c'), 0.3, S + 0.08, -0.22));
+  r.add(R(mesh(box(0.22, 0.1, 0.02), mat('#9fe6a0', { e: '#4fd36a', ei: 0.6 }), 0.3, S + 0.2, -0.18, false), -0.4));
+  return finish(r, [0, S, -0.05], { light: { y: S + 1.1, color: '#ffd9a0', intensity: 2.2, distance: 3 } });
 };

@@ -12,6 +12,8 @@ import {
 } from './models.js';
 import { LOOK, buildAOStrips, buildGarden, makeGroundMaterial } from './look.js';
 import { TOWN_STAGES, buildTown, townLots, townStagePos } from './town.js';
+import { driveLane } from './drivethru.js';
+import { signTex } from './decor.js';
 
 // Time-of-day grade. fog = the horizon haze the top of the screen fades into (also the clear
 // colour); sun = warm key; hemi = cool sky fill over a warm ground bounce; rim = the sky-rim
@@ -101,6 +103,7 @@ export class Renderer {
     this.cars = [];
     this.town = null;
     this.townLevel = 0;
+    this.driveZ = null;
     this.doorOpen = 0;
     this.doorTarget = 0;
     this.openSignOn = false;
@@ -559,10 +562,12 @@ export class Renderer {
     bench.position.set(doorX - 3.2, 0, H + 1.2);
     bench.rotation.y = Math.PI;
     props.add(bench);
-    const parked = buildCar('#4aa3f0');
-    parked.position.set(W + 3.15, 0, H - 2.1);
-    parked.rotation.y = Math.PI / 2;
-    props.add(parked);
+    if (this.driveZ === null) {
+      const parked = buildCar('#4aa3f0');
+      parked.position.set(W + 3.15, 0, H - 2.1);
+      parked.rotation.y = Math.PI / 2;
+      props.add(parked);
+    } else props.add(this._buildDriveLane(W, H));
     g.add(mergeStatic(props, 'env'));
 
     // Garden: lush rounded trees, bushes, flower patches and grass tufts (two draw calls)
@@ -587,6 +592,72 @@ export class Renderer {
   // ---------------------------------------------------------------- town
   // Show the town for stages 1..level (0 = only empty plots). Cheap to call every day: it only
   // rebuilds when the level or the floor size changed.
+  // ---------------------------------------------------------------- drive-thru
+  // Lane for a drive-thru window on cell (W - 1, wz); null removes it. Rebuilds the street only on change.
+  setDriveThru(wz) {
+    wz = wz ?? null;
+    if (wz === this.driveZ) return;
+    this.driveZ = wz;
+    if (this.W !== undefined) this._buildStreet(this.W, this.H, this.doorX);
+  }
+
+  _buildDriveLane(W, H) {
+    const L = driveLane(W, H, this.driveZ);
+    const g = new THREE.Group();
+    const r = (L.x1 - L.x0) / 2, cx = (L.x0 + L.x1) / 2;
+    // Asphalt: straight lanes from the road plus a U-turn behind the window (shape y = -world z)
+    const s = new THREE.Shape();
+    s.moveTo(L.x0, -(H + 3.0));
+    s.lineTo(L.x1, -(H + 3.0));
+    s.lineTo(L.x1, -L.topZ);
+    s.absarc(cx, -L.topZ, r, 0, Math.PI, false);
+    s.lineTo(L.x0, -(H + 3.0));
+    const lane = mesh(new THREE.ShapeGeometry(s, 24), mat('#5d636e', { kind: 'env', r: 0.92 }), 0, 0.012, 0, false);
+    lane.rotation.x = -Math.PI / 2;
+    lane.geometry.userData.own = true;
+    g.add(lane);
+    const paint = mat('#f4f1e6', { kind: 'env', r: 0.8 });
+    for (let z = H + 0.2; z > L.topZ + 0.2; z -= 1.0) g.add(mesh(box(0.08, 0.01, 0.5), paint, L.midX, 0.02, z, false));
+    const arrow = new THREE.Shape();
+    arrow.moveTo(-0.07, -0.35); arrow.lineTo(0.07, -0.35); arrow.lineTo(0.07, 0.05); arrow.lineTo(0.2, 0.05);
+    arrow.lineTo(0, 0.35); arrow.lineTo(-0.2, 0.05); arrow.lineTo(-0.07, 0.05); arrow.lineTo(-0.07, -0.35);
+    const arrowGeo = new THREE.ShapeGeometry(arrow);
+    arrowGeo.userData.own = true;
+    const addArrow = (x, z, south) => {
+      const a = mesh(arrowGeo, paint, x, 0.021, z, false);
+      a.rotation.set(-Math.PI / 2, 0, south ? Math.PI : 0);
+      g.add(a);
+    };
+    if (L.stopZ + 2.2 < H - 0.3) addArrow(L.inX, L.stopZ + 2.2, false);
+    addArrow(L.inX, H + 0.9, false);
+    addArrow(L.outX, Math.max(L.topZ + 1, (L.topZ + H) / 2), true);
+    addArrow(L.outX, H + 0.9, true);
+    // Drive-thru sign at the entrance and a menu board beside the order point
+    const post = mat('#2b2d5c', { kind: 'env', r: 0.5 });
+    const sx = L.x1 + 0.55;
+    g.add(mesh(cyl(0.06, 0.07, 1.9, 10), post, sx, 0.95, H + 0.8));
+    const sign = mesh(new THREE.PlaneGeometry(1.3, 0.34), mat('#ffffff', { kind: 'env', map: signTex('sign-drive', 'DRIVE THRU', '#ffd23f', '#e8343f', 320, 80), mapKey: 'sign-drive' }), sx, 2.0, H + 0.8, false);
+    sign.rotation.y = Math.PI / 4;
+    g.add(sign);
+    const back = mesh(box(1.38, 0.42, 0.06), post, sx, 2.0, H + 0.8);
+    back.rotation.y = Math.PI / 4;
+    back.position.x -= 0.03;
+    back.position.z -= 0.03;
+    g.add(back);
+    const mz = Math.min(L.stopZ + 1.7, H - 0.6);
+    for (const dz of [-0.45, 0.45]) g.add(mesh(box(0.08, 1.1, 0.08), post, sx, 0.55, mz + dz));
+    g.add(mesh(box(0.1, 0.9, 1.2), post, sx, 1.45, mz));
+    const menu = mesh(new THREE.PlaneGeometry(1.08, 0.24), mat('#ffffff', { kind: 'env', map: signTex('sign-menu', 'MENU', '#2b2d5c', '#ffd23f', 256, 64), mapKey: 'sign-menu' }), sx - 0.06, 1.75, mz, false);
+    menu.rotation.y = -Math.PI / 2;
+    g.add(menu);
+    const rows = ['#ff6b57', '#ffd23f', '#7fd833', '#5ccbff'];
+    rows.forEach((c, i) => {
+      g.add(mesh(box(0.02, 0.09, 0.12), mat(c, { kind: 'env' }), sx - 0.06, 1.52 - i * 0.14, mz - 0.38, false));
+      g.add(mesh(box(0.02, 0.04, 0.62), paint, sx - 0.06, 1.52 - i * 0.14, mz + 0.06, false));
+    });
+    return g;
+  }
+
   setTownLevel(level) {
     this.townLevel = clamp(Math.floor(level) || 0, 0, TOWN_STAGES.length);
     if (this.W === undefined) return;
@@ -661,6 +732,10 @@ export class Renderer {
     }
     // Keep the town's plots clear (canopies need a little more room than flowers & tufts)
     const lots = townLots(W, H, doorX);
+    if (this.driveZ !== null) {
+      const L = driveLane(W, H, this.driveZ);
+      lots.push({ x0: L.x0 - 0.7, x1: L.x1 + 1.0, z0: L.topZ - (L.x1 - L.x0) / 2 - 0.8, z1: H + 0.6 });
+    }
     const clear = (pad) => (o) => !lots.some((l) => o.x > l.x0 - pad && o.x < l.x1 + pad && o.z > l.z0 - pad && o.z < l.z1 + pad);
     // Spatial chunks (front / back-left / right) so off-screen parts are culled; only trees
     // inside the sun's shadow box cast shadows

@@ -287,3 +287,58 @@ button.card:active { transform: translateY(2px); }
 .card .c-perk.on .ic { color: var(--grass-2); }
 .perk-sum { width: 100%; font: 800 13px var(--font); color: rgba(255, 255, 255, 0.85); }
 .perk-sum b { color: var(--sun); }
+.portrait.role-plater { background: linear-gradient(#7fd833, var(--grass-2)); }
+.portrait.role-drive { background: linear-gradient(var(--berry), var(--berry-2)); }
+.portrait.role-busser { background: linear-gradient(#b7c0cc, #6d7a8c); }
+.portrait.role-host { background: linear-gradient(var(--sun), var(--sun-2)); }
+
+/* avatar editor */
+.portrait { position: relative; }
+.portrait.role-you { background: linear-gradient(#ff8fb0, #e8507a); }
+.portrait .restyle {
+  position: absolute; right: -8px; bottom: -6px; width: 28px; height: 28px; padding: 0;
+  display: grid; place-items: center; border-radius: 50%;
+  background: #fff; color: var(--text); border: 2.5px solid var(--line); box-shadow: 0 2px 0 var(--line);
+}
+.portrait .restyle .ic { width: 16px; height: 16px; filter: none; stroke-width: 2.2; }
+.card.staff.you { background: #fff0f5; }
+.modal.avatar { width: min(780px, 94vw); }
+.av-body { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
+.av-preview {
+  position: sticky; top: 0; aspect-ratio: 1; border-radius: 18px; border: 3px solid var(--line);
+  background: radial-gradient(circle at 50% 38%, #e7f6ff, #b9e3ff); display: grid; place-items: center; overflow: hidden;
+}
+.av-preview img { width: 100%; height: 100%; object-fit: contain; }
+.av-opts { max-height: min(58vh, 520px); overflow: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 8px; }
+.av-row { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; align-items: center; }
+.av-label { font: 400 15px var(--display); color: var(--text); }
+.av-opts-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.av-sw { width: 28px; height: 28px; padding: 0; border-radius: 50%; border: 2.5px solid var(--line); box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.35), 0 2px 0 var(--line); display: grid; place-items: center; }
+.av-sw.none { background: #fff; color: var(--berry-2); }
+.av-sw.none .ic { width: 14px; height: 14px; }
+.av-sw.on { box-shadow: 0 0 0 3px #fff, 0 0 0 5.5px var(--line); transform: scale(1.08); }
+.av-chip { padding: 4px 10px 5px; border-radius: 99px; border: 2.5px solid var(--line); background: #fff; color: var(--text); font: 800 13px var(--font); box-shadow: 0 2px 0 var(--line); }
+.av-chip.on { background: linear-gradient(var(--sun), var(--sun-2)); }
+.av-name { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; align-items: center; }
+.av-name input { font: 800 15px var(--font); padding: 6px 10px; border-radius: 12px; border: 2.5px solid var(--line); background: #fff; color: var(--text); min-width: 0; }
+.style-btn { display: inline-flex; align-items: center; gap: 4px; margin-left: 4px; padding: 4px 10px 5px; border-radius: 99px; border: 2.5px solid var(--line); background: #fff; color: var(--text); font: 800 13px var(--font); box-shadow: 0 2px 0 var(--line); }
+.style-btn .ic { width: 15px; height: 15px; }
+@media (max-width: 640px), (max-height: 520px) {
+  .av-body { grid-template-columns: 1fr; gap: 10px; }
+  .av-preview { position: static; width: min(170px, 46vw); margin: 0 auto; }
+  .av-opts { max-height: none; overflow: visible; }
+  .av-row, .av-name { grid-template-columns: 74px minmax(0, 1fr); }
+  .av-label { font-size: 13px; }
+}
+@media (max-height: 520px) and (min-width: 641px) {
+  .av-body { grid-template-columns: 150px minmax(0, 1fr); }
+  .av-preview { position: sticky; width: 150px; }
+  .av-opts { max-height: calc(100vh - 160px); overflow: auto; }
+}
+.res-goals { display: grid; gap: 4px; margin: 10px 0 4px; padding: 8px 10px; border-radius: 14px; background: var(--cream-2); border: 2.5px solid var(--line); }
+.res-goals .rg { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: center; font: 800 13px var(--font); }
+.res-goals .rg .ic { width: 16px; height: 16px; }
+.res-goals .rg.done .ic { color: var(--grass-2); }
+.res-goals .rg.failed, .res-goals .rg.open { color: var(--text-dim); }
+.res-goals .rg.failed .ic, .res-goals .rg.open .ic { color: var(--berry-2); }
+.res-goals .rg b { font: 400 15px var(--display); color: var(--grass-2); }

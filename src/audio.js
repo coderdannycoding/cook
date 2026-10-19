@@ -378,6 +378,14 @@ export class AudioEngine {
     if (!this._ok('angry', 0.25)) return;
     this._tone({ type: 'sawtooth', freq: 120, freqEnd: 90, dur: 0.35, vol: 0.09, filter: 700, vibrato: 12 });
   }
+  honk(angry = false) {
+    if (!this._ok('honk', 0.4)) return;
+    const n = angry ? 2 : 1;
+    for (let i = 0; i < n; i++) {
+      this._tone({ type: 'square', freq: 392, dur: 0.22, vol: 0.06, filter: 1400, delay: i * 0.3 });
+      this._tone({ type: 'square', freq: 494, dur: 0.22, vol: 0.05, filter: 1400, delay: i * 0.3 });
+    }
+  }
   happy() {
     if (!this._ok('happy', 0.15)) return;
     this._tone({ freq: 880, freqEnd: 1320, dur: 0.1, vol: 0.08 });

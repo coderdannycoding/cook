@@ -3,7 +3,7 @@
 
 import * as THREE from '../vendor/three-0.169.0.module.min.js';
 import { PLAYER } from './config.js';
-import { buildCharacter, buildItem, playerLook, criticLook, randomCustomerLook, staffLook, disposeObject } from './models.js';
+import { buildCharacter, buildItem, playerLook, criticLook, vipLook, randomCustomerLook, staffLook, disposeObject } from './models.js';
 import { STAFF_LEVELS } from './catalog.js';
 import { clamp, damp, dampAngle, rand } from './utils.js';
 
@@ -212,8 +212,8 @@ export class Character {
 
 // ---------------------------------------------------------------------------
 export class Player extends Character {
-  constructor(game, color) {
-    super(game, playerLook(color));
+  constructor(game, color, look = null) {
+    super(game, look || playerLook(color));
     this.radius = PLAYER.radius;
     this.dashT = 0;
     this.dashCD = 0;
@@ -407,10 +407,11 @@ export class Player extends Character {
 
 // ---------------------------------------------------------------------------
 export class Customer extends Character {
-  constructor(game, group, critic = false) {
-    super(game, critic ? criticLook() : randomCustomerLook());
+  constructor(game, group, critic = false, vip = false) {
+    super(game, critic ? criticLook() : vip ? vipLook() : randomCustomerLook());
     this.group = group;
     this.critic = critic;
+    this.vip = vip;
     this.state = 'arriving';
     this.order = null;
     this.patience = 1;
@@ -425,10 +426,10 @@ export class Customer extends Character {
     this.waypoints = [];
     this.speed = rand(1.9, 2.4);
     this.emoteT = rand(2, 5);
-    if (critic) {
+    if (critic || vip) {
       const ringGeo = new THREE.RingGeometry(0.42, 0.55, 32).rotateX(-Math.PI / 2);
       ringGeo.userData.own = true;
-      const ringMat = new THREE.MeshBasicMaterial({ color: '#ffd700', transparent: true, opacity: 0.7, depthWrite: false });
+      const ringMat = new THREE.MeshBasicMaterial({ color: vip ? '#ff6fd0' : '#ffd700', transparent: true, opacity: 0.7, depthWrite: false });
       ringMat.userData.unique = true;
       const ring = new THREE.Mesh(ringGeo, ringMat);
       ring.position.y = 0.03;
@@ -446,7 +447,7 @@ export class Customer extends Character {
 // ---------------------------------------------------------------------------
 export class Staff extends Character {
   constructor(game, data) {
-    super(game, staffLook(data.role, data.seed));
+    super(game, { ...staffLook(data.role, data.seed), ...(data.look || {}) });
     this.data = data;
     this.role = data.role;
     this.brain = null;

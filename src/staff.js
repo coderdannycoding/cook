@@ -61,6 +61,20 @@ export class StaffManager {
     return { ok: true, member: d };
   }
 
+  // Rebuild a worker's character after their look changed, in the same spot
+  restyle(id) {
+    const i = this.members.findIndex((s) => s.data.id === id);
+    if (i < 0) return;
+    const old = this.members[i];
+    const s = new Staff(this.game, old.data);
+    s.brain = createBrain(s, this.game);
+    s.setPos(old.pos.x, old.pos.z);
+    s.facing = s.targetFacing = old.facing;
+    s.cheer = 1.2;
+    old.dispose();
+    this.members[i] = s;
+  }
+
   fire(id) {
     const i = this.roster.findIndex((d) => d.id === id);
     if (i < 0) return;

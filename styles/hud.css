@@ -468,3 +468,36 @@
 @media (prefers-reduced-motion: reduce) {
   .ticket.danger, .bubble.urgent, .progress.warn, .st-icon.fire, #fire-vignette.on, .load-logo, .logo-mark { animation: none; }
 }
+
+/* drive-thru: a car badge on the ticket tag and over the order bubble */
+.t-table .ic { width: 13px; height: 13px; margin-right: 2px; vertical-align: -2px; }
+.bubble.drive { background: #e3f4ff; box-shadow: 0 0 0 3px var(--sky), 0 3px 0 3px var(--line); }
+.bubble.drive .crown { color: #fff; }
+.bubble.drive .crown .ic { width: 22px; height: 22px; background: var(--sky-2); border: 2px solid var(--line); border-radius: 50%; padding: 2px; }
+.t-table:has(.ic) { display: flex; gap: 1px; padding: 0 7px 0 5px; }
+
+/* daily goals: three pips on the day box, details drop down when tapped */
+.goal-pips { display: flex; gap: 4px; margin-top: 4px; padding: 0; background: none; border: 0; cursor: pointer; pointer-events: auto; }
+.goal-pips i { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--line); background: rgba(255, 255, 255, 0.85); color: var(--text); }
+.goal-pips i .ic { width: 12px; height: 12px; stroke-width: 2.6; }
+.goal-pips i.done { background: linear-gradient(#9cf05a, var(--grass-2)); color: #fff; }
+.goal-pips i.failed { background: #d9d3e6; color: var(--berry-2); }
+#goals-pop {
+  position: absolute; top: calc(100% + 6px); left: 14px; width: 270px; z-index: 5; pointer-events: auto;
+  padding: 10px 12px 12px; border-radius: 18px; background: var(--cream); color: var(--text);
+  border: 3px solid var(--line); box-shadow: 0 4px 0 var(--line), var(--drop);
+}
+.gp-title { font: 400 17px var(--display); margin-bottom: 6px; }
+.gp-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 0; }
+.gp-row > .ic { width: 20px; height: 20px; color: var(--orange-2); }
+.gp-row.done > .ic { color: var(--grass-2); }
+.gp-row.failed { opacity: 0.55; }
+.gp-txt span { font: 800 13px/1.2 var(--font); }
+.gp-bar { height: 7px; margin-top: 3px; border-radius: 99px; background: #e6dfef; border: 1.5px solid var(--line); overflow: hidden; }
+.gp-bar i { display: block; height: 100%; background: linear-gradient(#9cf05a, var(--grass-2)); }
+.gp-row b { font: 400 14px/1 var(--display); text-align: right; display: flex; flex-direction: column; gap: 2px; }
+.gp-row b small { font: 800 11px var(--font); color: var(--sun-2); }
+.hud-left { position: relative; }
+.bubble.vip { background: #ffe6f6; box-shadow: 0 0 0 3px #ff6fd0, 0 3px 0 3px var(--line); }
+.ticket.vip { background: linear-gradient(#fff3fb, #ffe0f3); }
+.ticket.vip .t-crown { background: linear-gradient(#ff8fd8, #d94fb0); }

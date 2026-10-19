@@ -24,8 +24,10 @@ import {
   DISHES, CUISINES, CUISINE_ORDER, INGREDIENTS, COOKER_INFO, dishRequirements, allThumbKeys, itemFromKey,
 } from './recipes.js';
 import { CATALOG, UPGRADES, FLOOR_THEMES, WALL_THEMES, PLAYER_SPAWN, STARTER_LAYOUT, PERKS } from './catalog.js';
-import { buildItem, buildDishPreview, buildAppliance } from './models.js';
+import { buildItem, buildDishPreview, buildAppliance, playerLook } from './models.js';
 import { TOWN_STAGES } from './town.js';
+import { DriveThru } from './drivethru.js';
+import { Goals } from './goals.js';
 import { floorTexture, wallTexture } from './textures.js';
 
 // The name painted on the shop sign (older saves stored the game's previous name)
@@ -39,7 +41,7 @@ function blankPerks() {
 function blankDay(rating) {
   return {
     served: 0, lost: 0, turnedAway: 0, revenue: 0, tips: 0, ingredients: 0, criticBonus: 0, critic: null,
-    burnt: 0, fires: 0, extinguished: 0, washed: 0, wasted: 0, staffServed: 0, ratingStart: rating,
+    burnt: 0, fires: 0, extinguished: 0, washed: 0, wasted: 0, staffServed: 0, ratingStart: rating, driveThru: 0, goalCash: 0,
   };
 }
 
@@ -61,6 +63,8 @@ class Game {
     this.fire = new FireSystem(this);
     this.orders = new OrderManager(this);
     this.customers = new CustomerManager(this);
+    this.drive = new DriveThru(this);
+    this.goals = new Goals(this);
     this.staff = new StaffManager(this);
     this.build = new BuildMode(this);
     this.ui = new UI(this);
@@ -184,6 +188,7 @@ class Game {
     const s = this.state;
     const { w, h } = this.floorSize;
     this.customers.clear(false);
+    this.drive?.clear();
     this.orders.clear();
     this.grid.clear();
     this.grid.setSize(w, h);
@@ -203,6 +208,7 @@ class Game {
     this.staff.load();
     this.spawnPlayer();
     this.updateAmbience(true);
+    this.syncDriveThru();
     this.renderer.setCameraTarget(w / 2, h / 2);
     this.renderer.setView(this.renderer.fitViewForRoom(w, h, 1.0));
     if (silent) this.renderer.snapCamera();
@@ -210,13 +216,20 @@ class Game {
 
   spawnPlayer() {
     if (this.player) this.player.dispose();
-    this.player = new Player(this, this.settings.color || '#c8442b');
+    this.player = new Player(this, this.settings.color || '#c8442b', this.avatarLook());
     const spot = this.freeTileNear(PLAYER_SPAWN.x, PLAYER_SPAWN.z);
     if (spot) this.player.setPos(spot.x + 0.5, spot.z + 0.5);
     this.player.targetFacing = this.player.facing = Math.PI * 0.75;
   }
 
+  // The chef's look: apron colour from the title screen plus anything set in the avatar editor
+  avatarLook() {
+    return { ...playerLook(this.settings.color || '#c8442b'), ...(this.settings.avatar || {}) };
+  }
+
   recolorPlayer(color) {
+    // a new apron from the title screen wins over an apron picked in the avatar editor
+    if (color && this.settings.avatar) { delete this.settings.avatar.apron; delete this.settings.avatar.scarf; }
     if (!this.player) return;
     const p = this.player.pos.clone();
     this.spawnPlayer();
@@ -352,7 +365,14 @@ class Game {
     this.ambience = clamp(1 - Math.exp(-total / (area * 0.3)), 0, 1);
   }
 
+  // Paint the drive-thru lane outside whichever wall cell holds the window
+  syncDriveThru() {
+    const win = this.grid.stations('drivethru')[0];
+    this.renderer.setDriveThru(win && win.obj.x === this.grid.W - 1 ? win.obj.z : null);
+  }
+
   onLayoutChanged() {
+    this.syncDriveThru();
     this.updateAmbience(true);
     this.save();
   }
@@ -374,9 +394,21 @@ class Game {
 
   expandFloor() {
     const { w, h } = this.floorSize;
+    const oldW = this.grid.W;
     this.grid.setSize(w, h);
+    // Pieces that belong on the right-hand wall move out with it (or get refunded if blocked)
+    for (const o of this.grid.objects.filter((x) => x.def.edge === 'right')) {
+      const nx = o.x + (w - oldW);
+      if (this.grid.canPlace(o.def, nx, o.z, o.rot, o).ok) this.grid.move(o, nx, o.z, o.rot);
+      else {
+        this.grid.remove(o);
+        this.state.cash += o.def.price;
+        this.ui.toast(`The ${o.def.name} was refunded. Place it on the new right-hand wall.`, 'info', 'coin');
+      }
+    }
     this.renderer.buildRoom(w, h, this.grid.doorX, this.state.floorTheme, this.state.wallTheme, SHOP_NAME);
     this.updateAmbience(true);
+    this.syncDriveThru();
     this.renderer.addShake(0.3);
     this.audio.thud();
     this.ui.toast(`The walls are down. Your floor is now ${w} × ${h}.`, 'gold', 'floor');
@@ -495,6 +527,8 @@ class Game {
     this.prepareKitchen();
     this.orders.clear();
     this.customers.startDay();
+    this.drive.startDay();
+    this.goals.start();
     this.staff.startDay();
     const spot = this.freeTileNear(PLAYER_SPAWN.x, PLAYER_SPAWN.z);
     if (spot) this.player.setPos(spot.x + 0.5, spot.z + 0.5);
@@ -523,6 +557,7 @@ class Game {
       if (t.cash > 0) { s.cash += t.cash; t.cash = 0; }
     }
     this.customers.clear(true);
+    this.drive.clear();
     this.orders.clear();
     this.staff.endDay();
     this.audio.silenceLoops();
@@ -533,14 +568,17 @@ class Game {
     const rent = this.rent();
     s.cash -= wages + rent;
     const t = this.today;
-    const net = t.revenue + t.tips + t.criticBonus - t.ingredients - wages - rent;
+    this.goals.finish();
+    const net = t.revenue + t.tips + t.criticBonus + t.goalCash - t.ingredients - wages - rent;
     const before = t.ratingStart;
     const newCuisines = CUISINE_ORDER.filter((id) => !s.cuisines[id] && before < CUISINES[id].stars && s.rating >= CUISINES[id].stars);
     const rep = {
       day: s.day, served: t.served, lost: t.lost, turnedAway: t.turnedAway, burnt: t.burnt, fires: t.fires,
       revenue: t.revenue, tips: t.tips, criticBonus: t.criticBonus, ingredients: t.ingredients, wages, rent, net,
       ratingBefore: before, ratingAfter: s.rating, critic: t.critic, newCuisines,
+      goals: this.goals.list.map((x) => ({ text: x.text, icon: x.icon, state: x.state, reward: x.reward })), goalCash: t.goalCash,
     };
+    this.goals.clear();
     s.stats.totalServed += t.served;
     s.stats.daysPlayed++;
     s.stats.bestDay = Math.max(s.stats.bestDay, net);
@@ -715,7 +753,7 @@ class Game {
           this.ui.toast('Closing time. Finish serving the guests still inside.', 'info', 'bell');
         }
         this.simulate(dt, true);
-        if (this.clock >= DAY.closeHour && this.customers.isEmpty()) this.endDay();
+        if (this.clock >= DAY.closeHour && this.customers.isEmpty() && this.drive.isEmpty()) this.endDay();
         break;
       }
       case 'night':
@@ -782,7 +820,11 @@ class Game {
     }
 
     this.player.update(dt);
-    if (open) this.customers.update(dt);
+    if (open) {
+      this.customers.update(dt);
+      this.drive.update(dt);
+      this.goals.update();
+    }
     else this.customers.updatePassers(dt);
     this.staff.update(dt, true);
     for (const st of this.grid.stations()) st.update(dt);

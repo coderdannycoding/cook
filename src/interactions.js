@@ -3,10 +3,10 @@
 
 import {
   canAddToPlate, addToPlate, canTop, addTopping, itemLabel, matchDish, ingredientName, INGREDIENTS, COOKER_INFO, chopInfo,
-  cookRule,
+  cookRule, DISHES,
 } from './recipes.js';
 
-const SPECIAL = new Set(['trash', 'crate', 'platerack', 'sink', 'autowasher', 'extinguisher', 'table']);
+const SPECIAL = new Set(['trash', 'crate', 'platerack', 'sink', 'autowasher', 'extinguisher', 'table', 'drivethru']);
 
 export class Interactions {
   constructor(game) {
@@ -198,6 +198,7 @@ export class Interactions {
       case 'platerack': return `Plate (${st.count})`;
       case 'sink': case 'autowasher': return 'Clean Plate';
       case 'extinguisher': return 'Extinguisher';
+      case 'drivethru': return 'dirty plates';
       default: return st.item ? itemLabel(st.item) : '';
     }
   }
@@ -209,6 +210,7 @@ export class Interactions {
       case 'platerack': return 'Rack plate';
       case 'sink': case 'autowasher': return 'Load dirty plates';
       case 'extinguisher': return 'Hang extinguisher';
+      case 'drivethru': return `Hand over ${itemLabel(held)}`;
       case 'cooker': {
         const r = cookRule(st.cookType, held);
         return r ? `${COOKER_INFO[st.cookType].verb} ${ingredientName(held)}` : 'Put back on heat';
@@ -226,10 +228,16 @@ export class Interactions {
     if (st.kind === 'sink' || st.kind === 'autowasher') return st.dirty ? 'Wash the dirty plates first (F)' : 'No clean plates here';
     if (st.kind === 'extinguisher') return 'Extinguisher is out';
     if (st.kind === 'trash') return null;
+    if (st.kind === 'drivethru') return st.car?.state === 'waiting' ? `Bring them a ${DISHES[st.car.order].name}` : 'No car at the window';
     return null;
   }
 
   _putReason(st, held) {
+    if (st.kind === 'drivethru') {
+      const car = st.car;
+      if (!car || car.state !== 'waiting') return 'No car at the window';
+      return held.kind === 'plate' && !held.dirty ? `They ordered a ${DISHES[car.order].name}` : 'Hand over a finished dish';
+    }
     if (st.kind === 'cooker') return `Can't ${COOKER_INFO[st.cookType].verb.toLowerCase()} that here`;
     if (st.kind === 'board' && held.kind !== 'ing') return 'Boards are for ingredients';
     if (st.kind === 'crate') return "That doesn't go in this crate";

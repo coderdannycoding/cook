@@ -12,8 +12,9 @@ export class OrderManager {
       id: this.nextId++,
       dish: customer.order,
       customer,
-      table: customer.table ? customer.table.number : '?',
+      table: customer.window ? 'DT' : customer.table ? customer.table.number : '?',
       critic: customer.critic,
+      vip: !!customer.vip,
       created: this.game.time,
       state: 'open',
     };

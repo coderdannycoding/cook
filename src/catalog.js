@@ -91,6 +91,10 @@ add('roundtable', {
   cells: [[1, 0, 'seat'], [0, 1, 'seat'], [1, 1, 'table'], [2, 1, 'seat'], [1, 2, 'seat']], seats: 4,
   desc: 'Seats four around one big round top. The corners stay free to walk through.',
 });
+add('drivethru', {
+  name: 'Drive-Thru Window', cat: 'dining', price: 450, station: 'drivethru', edge: 'right', max: 1, stars: 1.5, flammable: false,
+  desc: 'Goes on the right-hand wall. Cars queue outside and order through it. Hand each driver their plated dish.',
+});
 add('lounge', {
   name: 'Velvet Lounge', cat: 'dining', price: 360, size: [3, 2], station: 'table', flammable: false, decor: 10, style: 'lounge', stars: 2.5,
   cells: [[0, 0, 'seat'], [1, 0, 'table'], [2, 0, 'seat'], [0, 1, 'seat'], [1, 1, 'table'], [2, 1, 'seat']], seats: 4, patience: 1.25,
@@ -220,8 +224,12 @@ export const UPGRADES = {
 // Staff
 export const STAFF_TYPES = {
   chef:   { name: 'Sous-Chef', hire: 150, wage: 20, desc: 'Fetches, chops and cooks ingredients for open orders, and pulls food off the heat before it burns. At level 3 they plate whole dishes onto the serving pass.' },
+  plater: { name: 'Plater', hire: 140, wage: 18, desc: 'Assembles finished dishes on plates and sets them on the serving pass. Also pulls cooked food off the heat before it burns.' },
   waiter: { name: 'Waiter', hire: 90, wage: 12, desc: 'Carries finished dishes from the serving pass, clears tables and collects payment.' },
+  drive:  { name: 'Drive-Thru Operator', hire: 160, wage: 18, desc: 'Hands plated orders through the drive-thru window, plates drive-thru orders when everything is ready, and clears the window.' },
+  busser: { name: 'Busser', hire: 70, wage: 9, desc: 'Clears tables and the drive-thru window, carries plates to the sink and collects cash.' },
   dish:   { name: 'Dishwasher', hire: 60, wage: 8, desc: 'Washes dirty plates at the sink and refills the plate rack.' },
+  host:   { name: 'Host', hire: 110, wage: 14, desc: 'Welcomes guests at the door. The queue outside waits 60% longer and fits two more groups, and seated guests are 8% more patient.' },
 };
 export const STAFF_LEVELS = [
   { speed: 3.0, work: 0.8, label: 'Trainee' },
@@ -229,7 +237,7 @@ export const STAFF_LEVELS = [
   { speed: 4.3, work: 1.45, label: 'Master' },
 ];
 export const STAFF_UPGRADE_COST = [0, 300, 600];
-export const MAX_STAFF = 6;
+export const MAX_STAFF = 10;
 
 // ---------------------------------------------------------------------------
 // Cosmetic themes

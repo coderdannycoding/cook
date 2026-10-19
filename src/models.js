@@ -258,7 +258,7 @@ export const C = {
 const steelMat = () => mat(C.steel, { r: 0.32, m: 0.75 });
 const darkSteelMat = () => mat(C.steelDark, { r: 0.4, m: 0.6 });
 
-function cabinet(root, o = {}) {
+export function cabinet(root, o = {}) {
   const h = o.h ?? S;
   const body = o.body ?? C.cab;
   const panel = o.panel ?? C.cabPanel;
@@ -1617,12 +1617,24 @@ export function criticLook() {
   };
 }
 
+export function vipLook() {
+  return {
+    skin: pick(SKINS), shirt: '#ffd23f', vest: pick(['#ff6fae', '#9b5cf6', '#2b2d5c']), hair: pick(HAIRS), hairStyle: pick(['long', 'bob', 'afro', 'pony']),
+    hat: Math.random() < 0.5 ? 'fedora' : null, hatColor: '#1d1a2f', shades: true, scarf: '#ffffff', scale: 1.02,
+  };
+}
+
 export function staffLook(role, seed = 0) {
   const r = seeded(seed + 7);
   const skin = SKINS[Math.floor(r() * SKINS.length)];
   const hair = HAIRS[Math.floor(r() * 7)];
   if (role === 'chef') return { skin, shirt: '#f4f4f0', apron: '#4a69bd', hair, hairStyle: 'short', hat: 'chef', hatScale: 0.8, scarf: '#e74c3c', scale: 0.95 };
   if (role === 'waiter') return { skin, shirt: '#ffffff', vest: '#22252b', bowtie: '#b0263a', hair, hairStyle: pick(['short', 'bun', 'pony']), scale: 0.95 };
+  const style = ['short', 'bun', 'pony', 'bob', 'curly', 'spiky'][Math.floor(r() * 6)];
+  if (role === 'plater') return { skin, shirt: '#ffffff', apron: '#2fbf5f', hair, hairStyle: style, hat: 'cap', hatColor: '#2fbf5f', scale: 0.95 };
+  if (role === 'drive') return { skin, shirt: '#e8343f', apron: '#ffd23f', hair, hairStyle: style, hat: 'cap', hatColor: '#ffd23f', scale: 0.95 };
+  if (role === 'busser') return { skin, shirt: '#8d99ae', apron: '#6b4f3a', hair, hairStyle: 'short', hat: 'beanie', hatColor: '#2b2d5c', scale: 0.93 };
+  if (role === 'host') return { skin, shirt: '#ffffff', vest: '#2b2d5c', bowtie: '#ffd23f', hair, hairStyle: ['bun', 'bob', 'short', 'pony'][Math.floor(r() * 4)], scale: 0.97 };
   return { skin, shirt: '#3a8fd6', apron: '#1f5f99', hair, hairStyle: 'short', hat: 'bandana', hatColor: '#f1c40f', gloves: '#ffd23f', scale: 0.93 };
 }
 
@@ -1731,6 +1743,19 @@ export function buildCharacter(look) {
   if (look.monocle) {
     head.add(mesh(torus(0.065, 0.012, 6, 16), mat('#d4af37', { m: 0.9, r: 0.2, ...ch }), 0.095, 0.03, 0.255, false));
   }
+  if (look.shades) {
+    const sm = mat('#15151c', { r: 0.15, m: 0.4, ...ch });
+    for (const x of [-0.1, 0.1]) head.add(mesh(rbox(0.13, 0.08, 0.03, 0.025), sm, x, 0.035, 0.255, false));
+    head.add(mesh(box(0.08, 0.02, 0.02), sm, 0, 0.055, 0.262, false));
+  }
+  if (look.mustache) {
+    const mm = mat(look.hair, { r: 0.8, ...ch });
+    for (const sx of [-1, 1]) {
+      const m = mesh(capsule(0.025, 0.07), mm, sx * 0.05, -0.04, 0.262, false);
+      m.rotation.z = sx * (Math.PI / 2 - 0.35);
+      head.add(m);
+    }
+  }
 
   // Hair
   const hairM = mat(look.hair, { r: 0.8, ...ch });
@@ -1751,6 +1776,16 @@ export function buildCharacter(look) {
       head.add(s);
     }
     if (hs === 'curly') for (let i = 0; i < 7; i++) head.add(OL(mesh(sph(0.09, 8, 6), hairM, Math.cos(i * 0.9) * 0.2, 0.17 + Math.sin(i * 1.7) * 0.04, Math.sin(i * 0.9) * 0.2 - 0.04)));
+    if (hs === 'long') {
+      const l = OL(mesh(rbox(0.5, 0.42, 0.16, 0.07), hairM, 0, -0.16, -0.2));
+      l.rotation.x = 0.12;
+      head.add(l);
+    }
+    if (hs === 'afro') {
+      const a = OL(mesh(ico(0.36, 2), hairM, 0, 0.1, -0.06));
+      a.scale.set(1, 0.85, 0.95);
+      head.add(a);
+    }
   } else if (look.hat === 'chef' || look.hat === 'bandana') {
     head.add(OL(mesh(sph(0.28, 18, 10, 0, TAU, 0, 1.0), hairM, 0, -0.02, -0.03)));
   }
@@ -1799,6 +1834,56 @@ export function buildCharacter(look) {
   } else if (look.hat === 'bandana') {
     hat = OL(mesh(sph(0.29, 16, 10, 0, TAU, 0, 1.25), mat(look.hatColor, { r: 0.8, ...ch }), 0, 0.01, -0.02));
     hat.rotation.x = -0.15;
+    head.add(hat);
+  } else if (look.hat === 'crown') {
+    hat = new THREE.Group();
+    const gm = mat('#f5c542', { r: 0.25, m: 0.85, ...ch });
+    hat.add(OL(mesh(cyl(0.2, 0.19, 0.1, 18, true), gm, 0, 0.05, 0)));
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * TAU;
+      hat.add(mesh(cone(0.05, 0.12, 4), gm, Math.sin(a) * 0.19, 0.15, Math.cos(a) * 0.19));
+      hat.add(mesh(sph(0.025, 8, 6), mat(['#e8343f', '#2f8cf0', '#2fbf5f'][i % 3], { r: 0.2, ...ch }), Math.sin(a) * 0.2, 0.06, Math.cos(a) * 0.2, false));
+    }
+    hat.position.y = 0.22;
+    head.add(hat);
+  } else if (look.hat === 'tophat') {
+    hat = new THREE.Group();
+    const tm = mat(look.hatColor, { r: 0.5, ...ch });
+    hat.add(mesh(cyl(0.34, 0.34, 0.025, 22), tm, 0, 0, 0));
+    hat.add(OL(mesh(cyl(0.2, 0.2, 0.36, 20), tm, 0, 0.18, 0)));
+    hat.add(mesh(cyl(0.205, 0.205, 0.06, 20), mat('#e8343f', ch), 0, 0.05, 0));
+    hat.position.y = 0.21;
+    head.add(hat);
+  } else if (look.hat === 'party') {
+    hat = new THREE.Group();
+    hat.add(OL(mesh(cone(0.15, 0.36, 16), mat(look.hatColor, { r: 0.6, ...ch }), 0, 0.18, 0)));
+    for (let i = 0; i < 3; i++) hat.add(mesh(torus(0.13 - i * 0.04, 0.012, 6, 16), mat('#ffffff', ch), 0, 0.05 + i * 0.1, 0, false));
+    hat.children.slice(1).forEach((t) => { t.rotation.x = Math.PI / 2; });
+    hat.add(mesh(sph(0.05, 10, 8), mat('#ffd23f', ch), 0, 0.38, 0));
+    hat.position.set(0.04, 0.24, 0);
+    hat.rotation.z = -0.15;
+    head.add(hat);
+  } else if (look.hat === 'cowboy') {
+    hat = new THREE.Group();
+    const cm = mat(look.hatColor, { r: 0.75, ...ch });
+    const brim = mesh(cyl(0.44, 0.44, 0.03, 22), cm, 0, 0, 0);
+    brim.scale.set(1, 1, 0.85);
+    hat.add(brim);
+    hat.add(OL(mesh(cyl(0.2, 0.24, 0.24, 18), cm, 0, 0.12, 0)));
+    hat.add(mesh(cyl(0.245, 0.245, 0.04, 18), mat('#5b3420', ch), 0, 0.04, 0));
+    hat.position.y = 0.2;
+    head.add(hat);
+  } else if (look.hat === 'flowers') {
+    hat = new THREE.Group();
+    hat.add(mesh(torus(0.26, 0.025, 6, 22), mat('#4c9a45', ch), 0, 0, 0));
+    hat.children[0].rotation.x = Math.PI / 2;
+    const cols = ['#ff6fae', '#ffd23f', '#ffffff', '#b98cff', '#ff8a3a'];
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU;
+      hat.add(mesh(sph(0.055, 8, 6), mat(cols[i % cols.length], { r: 0.6, ...ch }), Math.sin(a) * 0.26, 0.02, Math.cos(a) * 0.26, false));
+    }
+    hat.position.y = 0.15;
+    hat.rotation.x = -0.12;
     head.add(hat);
   }
 

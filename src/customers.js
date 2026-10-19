@@ -11,7 +11,7 @@ import { DAY } from './config.js';
 
 // How far one review pulls the star rating toward its score (Game.applyReview blends by this weight).
 // Small weights make the rating a long-run average, so stars are earned over days rather than one rush.
-const REVIEW_WEIGHT = {
+export const REVIEW_WEIGHT = {
   served: 0.012,      // a normal guest who got their food
   critic: 0.06,       // a food critic who got their food
   angry: 0.018,       // walked out waiting for food (scores 1)
@@ -57,6 +57,9 @@ export class CustomerManager {
     this.forced = g.state.day === 1 && !g.state.settings.tutorialDone ? ['salad', 'salad'] : [];
     this.criticSpawned = false;
     this.criticTime = g.state.day >= 2 && g.state.rating >= 1.6 && Math.random() < 0.5 ? rand(11.5, 18.5) : null;
+    // Now and then a celebrity drops by: pays triple, tips big, but won't wait long
+    this.vipSpawned = false;
+    this.vipTime = g.state.day >= 3 && Math.random() < 0.4 ? rand(12, 19.5) : null;
     this.warnedMenu = 0;
   }
 
@@ -96,6 +99,10 @@ export class CustomerManager {
             this.spawnGroup(false);
           } else this.spawnT = rand(2, 4); // full house: the next group turns up soon after a table frees
         }
+        if (this.vipTime !== null && !this.vipSpawned && g.clock >= this.vipTime) {
+          this.vipSpawned = true;
+          this.spawnGroup(false, true);
+        }
         if (this.criticTime !== null && !this.criticSpawned && g.clock >= this.criticTime) {
           this.criticSpawned = true;
           this.spawnGroup(true);
@@ -113,7 +120,7 @@ export class CustomerManager {
     this.updatePassers(dt);
     for (const c of this.allCustomers()) {
       c.updateVisual(dt);
-      if (c.critic && Math.random() < dt * 10) g.particles.sparkle(c.pos.x, c.sitting ? 0.9 : 0.6, c.pos.z, '#ffd700');
+      if ((c.critic || c.vip) && Math.random() < dt * 10) g.particles.sparkle(c.pos.x, c.sitting ? 0.9 : 0.6, c.pos.z, c.vip ? '#ff8fd8' : '#ffd700');
       if (c.aura) c.aura.rotation.y += dt;
     }
     // Door animation
@@ -140,7 +147,7 @@ export class CustomerManager {
     return weightedPick(dishes, (d) => 1 + (DISHES[d].price / 40) * (r - 1) * 0.4);
   }
 
-  spawnGroup(critic) {
+  spawnGroup(critic, vip = false) {
     const g = this.game;
     if (!g.availableDishes().length) {
       if (g.time - this.warnedMenu > 20) {
@@ -153,19 +160,23 @@ export class CustomerManager {
     if (!tables.length) return;
     const maxSeats = Math.max(...tables.map((t) => t.seats.length));
     let size = 1;
-    if (!critic) {
+    if (!critic && !vip) {
       const opts = [1, 2, 3, 4].filter((n) => n <= maxSeats);
       size = weightedPick(opts, (n) => ({ 1: 0.5, 2: 0.36, 3: 0.08, 4: 0.08 })[n]);
     }
     const gr = { id: this.nextId++, members: [], table: null, state: 'arriving', critic, queueT: 0, queueMax: 32, fromLeft: Math.random() < 0.5 };
     const startX = gr.fromLeft ? -10 : this.grid.W + 10;
     for (let i = 0; i < size; i++) {
-      const c = new Customer(g, gr, critic);
+      const c = new Customer(g, gr, critic, vip);
       c.setPos(startX + (gr.fromLeft ? -i * 0.7 : i * 0.7), this.sidewalkZ + rand(-0.25, 0.25));
       c.targetFacing = c.facing = gr.fromLeft ? Math.PI / 2 : -Math.PI / 2;
       gr.members.push(c);
     }
     this.groups.push(gr);
+    if (vip) {
+      g.audio.fanfare();
+      g.ui.toast('A celebrity is coming in. Serve them fast: they pay triple.', 'gold', 'star');
+    }
     if (critic) {
       g.audio.critic();
       g.ui.toast('A food critic is on the way. Serve them fast for a big bonus.', 'gold', 'crown');
@@ -219,10 +230,15 @@ export class CustomerManager {
     }
   }
 
+  hasHost() { return this.game.staff.members.some((m) => m.role === 'host'); }
+
+  // Seconds a group will wait in the queue outside
+  queueLimit(gr) { return gr.queueMax * (1 + this.game.perks.queue) * (this.hasHost() ? 1.6 : 1); }
+
   decide(gr) {
     const table = this.findTable(gr.members.length);
     if (table && this.queue.length === 0) this.seatGroup(gr, table);
-    else if (this.queue.length < 4) {
+    else if (this.queue.length < (this.hasHost() ? 6 : 4)) {
       gr.state = 'queue';
       gr.queueT = 0;
       this.queue.push(gr);
@@ -241,7 +257,7 @@ export class CustomerManager {
     this.queue = this.queue.filter((gr) => gr.state === 'queue');
     this.queue.forEach((gr, qi) => {
       gr.queueT += dt;
-      const queueMax = gr.queueMax * (1 + g.perks.queue);
+      const queueMax = this.queueLimit(gr);
       const bx = this.grid.doorX + 0.5 - 1.4 - qi * 1.3;
       gr.members.forEach((c, i) => {
         this.steer(c, bx - (i % 2) * 0.48, this.sidewalkZ - 0.1 + (i > 1 ? 0.5 : 0), dt);
@@ -297,6 +313,8 @@ export class CustomerManager {
     if (g.state.day === 1) m *= 1.35;
     else if (g.state.day === 2) m *= 1.15;
     if (c.critic) m *= 0.85;
+    if (c.vip) m *= 0.8;
+    if (c.table && this.hasHost()) m *= 1.08;
     for (const o of this.grid.objects) {
       if (o.type === 'lamp' && Math.hypot(o.cx - c.pos.x, o.cz - c.pos.z) < 2.6) { m *= 1.1; break; }
     }
@@ -423,15 +441,19 @@ export class CustomerManager {
         }
         continue;
       }
-      const price = DISHES[c.order].price;
-      const tipPct = clamp((c.review - 2.5) * 0.09 + g.ambience * 0.12 + (g.state.rating - 1) * 0.02 + g.perks.tips, 0, 0.6);
+      const price = DISHES[c.order].price * (c.vip ? 3 : 1);
+      const tipPct = clamp((c.review - 2.5) * 0.09 + g.ambience * 0.12 + (g.state.rating - 1) * 0.02 + g.perks.tips + (c.vip ? 0.2 : 0), 0, 0.8);
       const tip = Math.round(price * tipPct);
       total += price + tip;
       g.today.revenue += price;
       g.today.tips += tip;
       g.particles.starsText(c.pos.x, 2.25, c.pos.z, c.review);
-      g.applyReview(c.review, c.critic ? REVIEW_WEIGHT.critic : REVIEW_WEIGHT.served);
+      g.applyReview(c.review, c.critic || c.vip ? REVIEW_WEIGHT.critic : REVIEW_WEIGHT.served);
       if (c.critic) this.criticVerdict(c, true);
+      if (c.vip) {
+        g.particles.confetti(c.pos.x, 1.6, c.pos.z, 40);
+        g.ui.toast(c.review >= 4 ? `The celebrity loved it and posted about you. +$${price + tip}` : `The celebrity paid $${price + tip}, but wasn't wowed.`, c.review >= 4 ? 'gold' : 'info', 'star');
+      }
     }
     if (total > 0 && gr.table) {
       gr.table.cash += total;

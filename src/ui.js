@@ -9,6 +9,8 @@ import {
 import { formatMoney, formatClock, clamp } from './utils.js';
 import { DAY } from './config.js';
 import { icon, hasIcon, badge } from './icons.js';
+import { openAvatarEditor } from './avatar.js';
+import { playerLook, staffLook } from './models.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 function el(html) {
@@ -45,8 +47,11 @@ function starsHTML(rating) {
   return `<span class="stars"><span class="stars-bg">★★★★★</span><span class="stars-fg" style="width:${pct}%">★★★★★</span></span>`;
 }
 
-const ROLE_ICON = { chef: 'chefhat', waiter: 'bowtie', dish: 'sponge' };
-const ROLE_BLURB = { chef: 'Preps and cooks', waiter: 'Serves and clears', dish: 'Washes plates' };
+const ROLE_ICON = { chef: 'chefhat', waiter: 'bowtie', dish: 'sponge', plater: 'cloche', drive: 'car', busser: 'broom', host: 'bell' };
+const ROLE_BLURB = {
+  chef: 'Preps and cooks', waiter: 'Serves and clears', dish: 'Washes plates', plater: 'Plates every dish',
+  drive: 'Runs the drive-thru', busser: 'Clears tables', host: 'Greets guests',
+};
 
 export class UI {
   constructor(game) {
@@ -85,6 +90,12 @@ export class UI {
       this.ticketEls.clear();
     });
     $('#btn-pause').addEventListener('click', () => { g.audio.click(); g.togglePause(); });
+    $('#hud-goals').addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      g.audio.click();
+      this.goalsOpenT = this.goalsOpenT > 0 ? 0 : 6;
+      this.renderGoalsPop();
+    });
     $('#btn-mute').addEventListener('click', () => {
       g.audio.click();
       g.setMuted(!g.audio.muted);
@@ -149,6 +160,7 @@ export class UI {
         <div class="apron">
           <span>Apron</span>
           ${colors.map((c) => `<button class="swatch ${c === cur ? 'on' : ''}" data-color="${c}" style="background:${c}" aria-label="Apron colour ${c}" title="Apron colour"></button>`).join('')}
+          <button class="style-btn" data-act="avatar">${icon('shirt')}Style</button>
         </div>
         <div class="title-keys">${this.game.input.touchMode
           ? `<span>${icon('joystick')} Left thumb moves</span><span>${icon('hand')} Grab</span><span>${icon('knife')} Use</span><span>${icon('wind')} Dash</span>`
@@ -175,7 +187,58 @@ export class UI {
         } else { this.hideTitle(); g.newGame(); }
       }
       if (act === 'help') this.showHelp();
+      if (act === 'avatar') this.editPlayerLook();
     };
+  }
+
+  // Today's goals, dropped down from the day box for a few seconds
+  renderGoalsPop() {
+    const g = this.game;
+    const pop = $('#goals-pop');
+    this.goalsPopT = 0.5;
+    const open = this.goalsOpenT > 0 && g.goals.list.length;
+    pop.classList.toggle('hidden', !open);
+    if (!open) return;
+    pop.innerHTML = `<div class="gp-title">Today's goals</div>${g.goals.list.map((x) => {
+      const p = g.goals.progress(x);
+      const val = x.end ? (x.state === 'done' ? 'Done' : x.state === 'failed' ? 'Missed' : 'Until closing') : `${Math.min(x.target, Math.floor(x.value(g.today)))}/${x.target}`;
+      return `<div class="gp-row ${x.state}">${icon(x.state === 'done' ? 'check' : x.state === 'failed' ? 'x' : x.icon)}<div class="gp-txt"><span>${esc(x.text)}</span><div class="gp-bar"><i style="width:${Math.round(p * 100)}%"></i></div></div><b>${val}<small>+${formatMoney(x.reward)}</small></b></div>`;
+    }).join('')}`;
+  }
+
+  editPlayerLook() {
+    const g = this.game;
+    openAvatarEditor(g, {
+      title: 'Your chef',
+      base: playerLook(g.settings.color || '#c8442b'),
+      look: g.settings.avatar || {},
+      onSave: (out) => {
+        g.settings.avatar = out;
+        g.saveSettings();
+        g.recolorPlayer();
+        if (g.phase !== 'title') this.toast('Looking sharp, chef', 'good', 'shirt');
+        if (this.dockTab === 'staff') this.renderDock();
+      },
+    });
+  }
+
+  editStaffLook(id) {
+    const g = this.game;
+    const d = g.state.staff.find((x) => x.id === id);
+    if (!d) return;
+    openAvatarEditor(g, {
+      title: STAFF_TYPES[d.role].name,
+      base: staffLook(d.role, d.seed),
+      look: d.look || {},
+      name: d.name,
+      onSave: (out, name) => {
+        d.look = out;
+        if (name) d.name = name;
+        g.staff.restyle(d.id);
+        g.save();
+        this.renderDock();
+      },
+    });
   }
 
   hideTitle() {
@@ -208,6 +271,19 @@ export class UI {
     setHTML(h.stars, `${starsHTML(Math.round(s.rating * 100) / 100)}<b>${s.rating.toFixed(2)}</b>`);
     const next = CUISINE_ORDER.map((id) => CUISINES[id]).find((c) => c.stars > s.rating);
     setText(h.next, next ? `${next.name.replace(/^(American|Italian|Japanese|Seaside) /, '')} at ${next.stars.toFixed(1)}★` : 'Every cuisine unlocked');
+    if (g.goals.ver !== this._goalsVer) {
+      this._goalsVer = g.goals.ver;
+      const list = g.goals.list;
+      const pips = $('#hud-goals');
+      pips.classList.toggle('hidden', !list.length);
+      pips.innerHTML = list.map((x) => `<i class="${x.state}">${icon(x.state === 'done' ? 'check' : x.state === 'failed' ? 'x' : x.icon)}</i>`).join('');
+      if (!list.length) this.goalsOpenT = 0;
+    }
+    if (this.goalsOpenT > 0) {
+      this.goalsOpenT -= dt;
+      this.goalsPopT = (this.goalsPopT || 0) - dt;
+      if (this.goalsPopT <= 0 || this.goalsOpenT <= 0) this.renderGoalsPop();
+    }
     const dash = g.player ? clamp(1 - g.player.dashCD / g.upg('dash'), 0, 1) : 1;
     setVar(h.dash, '--p', String(Math.round(dash * 40) / 40));
     toggle(h.dash, 'ready', dash >= 1);
@@ -236,10 +312,10 @@ export class UI {
     // Slips never hang perfectly straight on the rail
     const tilt = (((t.id * 37) % 7) - 3) * 0.7;
     const node = el(`
-      <div class="ticket ${t.critic ? 'critic' : ''}" style="--tilt:${tilt}deg">
-        ${t.critic ? `<div class="t-crown">${icon('crown')}Critic</div>` : ''}
+      <div class="ticket ${t.critic ? 'critic' : ''} ${t.vip ? 'critic vip' : ''}" style="--tilt:${tilt}deg">
+        ${t.critic ? `<div class="t-crown">${icon('crown')}Critic</div>` : t.vip ? `<div class="t-crown">${icon('star')}Celebrity</div>` : ''}
         <div class="t-bar"><div class="t-fill"></div></div>
-        <div class="t-head"><span class="t-table">T${t.table}</span><span class="t-price">$${d.price}</span></div>
+        <div class="t-head"><span class="t-table">${t.table === 'DT' ? `${icon('car')}Drive` : `T${t.table}`}</span><span class="t-price">$${d.price}</span></div>
         <div class="t-dish"><img src="${this.thumb(`dish:${t.dish}`)}" alt=""></div>
         <div class="t-name">${esc(d.name)}</div>
         <div class="t-parts">${parts.map((p) => `<div class="t-part"><img src="${this.thumb(`item:${p.key}`)}" alt="">${p.badge ? `<span class="badge">${icon(p.badge)}</span>` : ''}</div>`).join('')}</div>
@@ -312,8 +388,8 @@ export class UI {
         const y = c.sitting ? 1.95 : 1.75;
         if (c.state === 'waiting') {
           const key = `c${c.root.id}`;
-          const node = this.w(key, `bubble ${c.critic ? 'critic' : ''}`, `
-            ${RING}<img src="${this.thumb(`dish:${c.order}`)}" alt="">${c.critic ? `<span class="crown">${icon('crown')}</span>` : ''}`);
+          const node = this.w(key, `bubble ${c.critic ? 'critic' : ''} ${c.vip ? 'vip' : ''}`, `
+            ${RING}<img src="${this.thumb(`dish:${c.order}`)}" alt="">${c.critic ? `<span class="crown">${icon('crown')}</span>` : c.vip ? `<span class="crown">${icon('star')}</span>` : ''}`);
           const p = clamp(c.patience, 0, 1);
           this.ring(node, p, p > 0.5 ? '#3f8f5a' : p > 0.25 ? '#e0a020' : '#d8452c');
           toggle(node, 'urgent', p <= 0.25);
@@ -323,10 +399,19 @@ export class UI {
           this.place(node, c.pos.x, y, c.pos.z);
         } else if (c.group.state === 'queue' && c === c.group.members[0]) {
           const node = this.w(`q${c.root.id}`, 'bubble queue', `${RING}${icon('timer')}`);
-          const p = clamp(1 - c.group.queueT / (c.group.queueMax * (1 + this.game.perks.queue)), 0, 1);
+          const p = clamp(1 - c.group.queueT / g.customers.queueLimit(c.group), 0, 1);
           this.ring(node, p, p > 0.4 ? '#3f8f5a' : '#d8452c');
           this.place(node, c.pos.x, y, c.pos.z);
         }
+      }
+      // Drive-thru cars
+      for (const c of g.drive.cars) {
+        if (c.state !== 'waiting') continue;
+        const node = this.w(`d${c.id}`, 'bubble drive', `${RING}<img src="${this.thumb(`dish:${c.order}`)}" alt=""><span class="crown">${icon('car')}</span>`);
+        const p = clamp(c.patience, 0, 1);
+        this.ring(node, p, p > 0.5 ? '#3f8f5a' : p > 0.25 ? '#e0a020' : '#d8452c');
+        toggle(node, 'urgent', p <= 0.25);
+        this.place(node, c.pos.x, 1.85, c.pos.z);
       }
       // Stations
       for (const st of g.grid.stations()) {
@@ -583,7 +668,7 @@ export class UI {
       const L = STAFF_LEVELS[d.level - 1];
       const up = g.staff.upgradeCost(d);
       return `<div class="card staff">
-        <div class="portrait role-${d.role}">${icon(ROLE_ICON[d.role])}</div>
+        <div class="portrait role-${d.role}">${icon(ROLE_ICON[d.role])}<button class="restyle" data-staff-style="${d.id}" title="Change their look" aria-label="Change their look">${icon('shirt')}</button></div>
         <div class="c-name">${esc(d.name)}</div>
         <div class="c-role">${T.name} · <span class="lvl">${L.label}</span></div>
         <div class="pips">${[1, 2, 3].map((i) => `<i class="${i <= d.level ? 'on' : ''}"></i>`).join('')}</div>
@@ -603,8 +688,15 @@ export class UI {
         <div class="c-meta"><b>${badge('coin')}${T.hire}</b> + ${formatMoney(T.wage)}/day</div>
         <div class="c-desc">${esc(T.desc)}</div>
       </button>`).join('');
+    const you = `<div class="card staff you">
+        <div class="portrait role-you">${icon('chefhat')}</div>
+        <div class="c-name">You</div>
+        <div class="c-role">Head chef</div>
+        <div class="c-meta">Hats, hair, outfits and more</div>
+        <div class="row"><button class="mini-btn" data-act="avatar">${icon('shirt')}Change your look</button></div>
+      </div>`;
     return `<div class="card-label">Your team, ${roster.length} of ${MAX_STAFF}</div>
-      <div class="cards">${cards || '<div class="empty">No staff yet. It’s just you and the stove.</div>'}</div>
+      <div class="cards">${you}${cards || '<div class="empty">No staff yet. It’s just you and the stove.</div>'}</div>
       <div class="card-label">Hire</div><div class="cards">${hires}</div>`;
   }
 
@@ -695,6 +787,8 @@ export class UI {
       this.renderDock();
       return;
     }
+    if (b.dataset.staffStyle) { this.editStaffLook(b.dataset.staffStyle); return; }
+    if (b.dataset.act === 'avatar') { this.editPlayerLook(); return; }
     if (b.dataset.staffFire) {
       const d = g.state.staff.find((x) => x.id === b.dataset.staffFire);
       this.confirm(`Let ${d.name} go?`, 'They leave right away, and their training isn’t refunded.', 'Let go', () => { g.staff.fire(d.id); this.renderDock(); });
@@ -806,6 +900,8 @@ export class UI {
             <li>Showpieces and some decor add a bonus for the whole restaurant, like bigger tips or more guests. Each kind counts once.</li>
             <li>As your rating climbs, new shops and sights open around town.</li>
             <li>Food critics wear a gold crown. Serve them quickly for a big bonus.</li>
+            <li>Celebrities in sunglasses pay triple but won't wait long. Each day also brings three goals with cash rewards: tap the pips under the clock to see them.</li>
+            <li>Build a drive-thru window on the right-hand wall and cars will queue outside to order.</li>
           </ul></div>
       </div>
       ${touch
@@ -876,6 +972,7 @@ export class UI {
           ${row('cloche', 'Food sales', money(rep.revenue))}
           ${row('heart', 'Tips', money(rep.tips))}
           ${rep.criticBonus ? row('crown', 'Critic bonus', money(rep.criticBonus), 'gold') : ''}
+          ${rep.goalCash ? row('check', 'Goal rewards', money(rep.goalCash), 'gold') : ''}
           ${row('crate', 'Ingredients', money(-rep.ingredients), rep.ingredients ? 'neg' : '')}
           ${rep.wages ? row('people', 'Staff wages', money(-rep.wages), 'neg') : ''}
           ${row('floor', 'Rent', money(-rep.rent), rep.rent ? 'neg' : '')}
@@ -883,6 +980,7 @@ export class UI {
       </div>
       <div class="r-total">${badge('coin')}<b class="${rep.net >= 0 ? 'pos' : 'neg'}">${money(rep.net)}</b></div>
       ${critic ? `<div class="r-note ${critic[0]}">${critic[1]}<span>${critic[2]}</span></div>` : ''}
+      ${rep.goals?.length ? `<div class="res-goals">${rep.goals.map((x) => `<div class="rg ${x.state}">${icon(x.state === 'done' ? 'check' : 'x')}<span>${esc(x.text)}</span><b>${x.state === 'done' ? `+${formatMoney(x.reward)}` : ''}</b></div>`).join('')}</div>` : ''}
       ${unlocks}
       <div class="m-actions"><button class="big-btn primary" data-a="go">Continue</button></div>`, 'results');
     w.onclick = (ev) => {
