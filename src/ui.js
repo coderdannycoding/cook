@@ -278,6 +278,7 @@ export class UI {
       pips.classList.toggle('hidden', !list.length);
       pips.innerHTML = list.map((x) => `<i class="${x.state}">${icon(x.state === 'done' ? 'check' : x.state === 'failed' ? 'x' : x.icon)}</i>`).join('');
       if (!list.length) this.goalsOpenT = 0;
+      this.renderGoalsPop();
     }
     if (this.goalsOpenT > 0) {
       this.goalsOpenT -= dt;

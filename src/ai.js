@@ -882,7 +882,7 @@ export class ChefBrain extends Brain {
         let found = null;
         for (const st of this.grid.stations()) {
           if (used.has(st) || !st.item || st.fire > 0 || !this.free(st)) continue;
-          if (!['counter', 'board', 'cooker', 'conveyor'].includes(st.kind)) continue;
+          if (!['counter', 'pass', 'board', 'cooker', 'conveyor'].includes(st.kind)) continue;
           if (itemKey(st.item) !== part) continue;
           if (st.kind === 'cooker' && !isCookOutput(st.cookType, st.item)) continue;
           if (!found || this.dist(st) < this.dist(found)) found = st;

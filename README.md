@@ -111,11 +111,16 @@ sear, boil, fry or bake), plus a patience bar that runs from green through yello
   on the grid. Placement is validated so a layout can never wall off a station, seat or the door.
   There are seven kinds of seating (bistro, family, round, parasol, diner counter, booth and a
   velvet lounge), over twenty décor pieces, fifteen showpieces, nine floors and ten wallpapers.
-- **Staff:** hire and level up Sous-Chefs, Waiters and Dishwashers (they use A* pathfinding):
-  - Sous-chefs prep and cook what open orders need, rescue food before it burns and fight fires.
-    At level 3 they also plate full dishes onto the Serving Pass.
+- **Staff:** hire up to ten workers and level them up (they use A* pathfinding):
+  - Sous-chefs prep and cook what open orders need, most urgent first, rescue food before it
+    burns and fight fires. At level 3 they also plate full dishes onto the Serving Pass.
+  - Platers assemble finished dishes on plates and set them on the Serving Pass.
   - Waiters deliver dishes from the Pass, clear tables and collect cash.
+  - Drive-thru operators hand orders through the drive-thru window (and plate them if needed).
+  - Bussers clear tables and the drive-thru sill and carry plates to the sink.
   - Dishwashers wash plates and restock the racks.
+  - Hosts greet guests at the door: the queue outside waits longer and fits more groups.
+  - Every worker (and your own chef) can be restyled: hats, hair, skin, outfits and extras.
 - **Upgrades:** turbo sneakers (dash), sharper knives, faster burners, smart timers, fireproof
   stoves, more plates, marketing (capacity), patience, and a bigger floor.
 - **Menu:** reach star thresholds to unlock cuisines (Diner → Pizzeria → Japanese → Taqueria →
@@ -129,6 +134,13 @@ guests, and booths make guests more patient still.
 statue and more) unlock with your rating and each add a bonus for the whole restaurant: bigger
 tips, more patience, a longer queue, more guests, better reviews or a larger critic bonus. Each
 kind of item counts once, and every bonus has a cap.
+
+**Drive-thru.** Put a Drive-Thru Window on the right-hand wall and a lane appears outside. Cars
+queue up, order at the window and pay when you hand their dish through (or honk and leave).
+
+**Daily goals and celebrities.** Each day brings three goals (serve so many guests, sell so much
+food, keep the kitchen fire-free...) with cash rewards and a bonus for all three. Celebrities in
+sunglasses sometimes drop in: they pay triple but don't wait long.
 
 **The town grows with you.** Every time your rating crosses a milestone, something new opens
 around the shop overnight: a cottage, a bakery, a flower market, a park with a duck pond, an ice
@@ -156,6 +168,9 @@ src/
   models.js           Procedural meshes: characters, appliances, furniture, every food state, plates, street props; static mesh merging
   decor.js            Décor and showpiece models (plants, pets, arcade, piano, fireplace, statue…), several animated
   town.js             The neighbourhood around the shop, built up in stages as the rating grows
+  drivethru.js        Drive-thru cars: lane paths, queueing, ordering at the window, paying, leaving
+  goals.js            Three daily goals with cash rewards
+  avatar.js           Avatar editor for your chef and every worker, with a live 3D preview
   textures.js         Procedural canvas textures (floors, wallpapers, gingham, rug, signage, road)
   particles.js        GPU point sprites (steam, smoke, fire, foam, dust, sparks), instanced chunks (crumbs, confetti, coins), DOM floaters
   audio.js            Web Audio synth: all SFX, ambient loops (sizzle, fryer, boil, fire, spray), alarm, procedural music sequencer

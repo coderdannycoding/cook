@@ -8,7 +8,7 @@ import { pick } from './utils.js';
 
 const SKINS = ['#ffe3cc', '#ffd9b8', '#f5c49c', '#e0a878', '#c68a5a', '#9a6440', '#6e4428'];
 const HAIRS = ['#2b1d14', '#4a2f1e', '#8a5a2b', '#d6a24a', '#e8d3a0', '#b03a2e', '#1c1c24', '#7d7d86', '#5a2d6e', '#2f6fd6', '#ff6fae', '#2fbf5f'];
-const COLORS = ['#fbfbf8', '#e8343f', '#ff8a3a', '#ffbb1f', '#2fbf5f', '#3fb6c8', '#2f8cf0', '#2b2d5c', '#9b5cf6', '#ff6fae', '#8d99ae', '#1d1a2f', '#6b4f3a'];
+const COLORS = ['#fbfbf8', '#e8343f', '#ff8a3a', '#ffbb1f', '#2fbf5f', '#2f8cf0', '#2b2d5c', '#9b5cf6', '#ff6fae', '#8d99ae', '#1d1a2f', '#6b4f3a'];
 const HAIR_STYLES = [['short', 'Short'], ['bob', 'Bob'], ['bun', 'Bun'], ['pony', 'Ponytail'], ['spiky', 'Spiky'], ['curly', 'Curly'], ['long', 'Long'], ['afro', 'Afro'], ['bald', 'Bald']];
 const HATS = [
   [null, 'None'], ['chef', 'Chef'], ['cap', 'Cap'], ['beanie', 'Beanie'], ['beret', 'Beret'], ['bandana', 'Bandana'], ['fedora', 'Fedora'],
