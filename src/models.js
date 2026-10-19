@@ -258,6 +258,18 @@ export const C = {
 const steelMat = () => mat(C.steel, { r: 0.32, m: 0.75 });
 const darkSteelMat = () => mat(C.steelDark, { r: 0.4, m: 0.6 });
 
+const shadeHex = (c, k) => `#${new THREE.Color(c).multiplyScalar(k).getHexString()}`;
+
+// A bar handle on two little posts, along x (or upright)
+function barHandle(root, x, y, z, len, upright = false) {
+  const brass = mat(C.brass, { r: 0.3, m: 0.8 });
+  const bar = mesh(cyl(0.016, 0.016, len, 8), brass, x, y, z + 0.035);
+  if (!upright) bar.rotation.z = Math.PI / 2;
+  root.add(bar);
+  for (const s of [-1, 1]) root.add(mesh(cyl(0.012, 0.012, 0.035, 6), brass, x + (upright ? 0 : s * len * 0.38), y + (upright ? s * len * 0.38 : 0), z + 0.017).rotateX(Math.PI / 2));
+}
+
+// Kitchen cabinet base: plinth, body, a drawer over two shaker doors (or an oven front), worktop
 export function cabinet(root, o = {}) {
   const h = o.h ?? S;
   const body = o.body ?? C.cab;
@@ -265,11 +277,26 @@ export function cabinet(root, o = {}) {
   root.add(mesh(box(0.86, 0.08, 0.86), mat(C.plinth), 0, 0.04, 0));
   const bh = h - 0.12;
   root.add(mesh(rbox(0.94, bh, 0.94, 0.035), mat(body, { r: 0.6 }), 0, 0.06 + bh / 2, 0));
-  if (!o.noDoors) {
-    root.add(mesh(rbox(0.38, bh - 0.14, 0.03, 0.012), mat(panel, { r: 0.55 }), -0.21, 0.06 + bh / 2, 0.465));
-    root.add(mesh(rbox(0.38, bh - 0.14, 0.03, 0.012), mat(panel, { r: 0.55 }), 0.21, 0.06 + bh / 2, 0.465));
-    root.add(mesh(box(0.03, 0.14, 0.03), mat(C.brass, { r: 0.3, m: 0.8 }), -0.05, h - 0.24, 0.49));
-    root.add(mesh(box(0.03, 0.14, 0.03), mat(C.brass, { r: 0.3, m: 0.8 }), 0.05, h - 0.24, 0.49));
+  const pm = mat(panel, { r: 0.55 }), inset = mat(shadeHex(panel, 0.9), { r: 0.6 });
+  const drawerY = h - 0.07 - 0.085;
+  if (o.front === 'oven') {
+    // Oven door with a tinted window and a long handle, a shallow drawer underneath
+    const doorH = drawerY - 0.12 - 0.2;
+    const doorY = 0.2 + doorH / 2;
+    root.add(mesh(rbox(0.84, doorH, 0.035, 0.014), mat(shadeHex(body, 0.82), { r: 0.45, m: 0.3 }), 0, doorY, 0.462));
+    root.add(mesh(rbox(0.6, doorH * 0.5, 0.012, 0.02), mat('#1a1c22', { r: 0.08, m: 0.3, e: '#ff7a2a', ei: 0.18 }), 0, doorY - 0.02, 0.482, false));
+    barHandle(root, 0, doorY + doorH / 2 - 0.05, 0.48, 0.62);
+    root.add(mesh(rbox(0.84, 0.1, 0.03, 0.012), pm, 0, 0.13, 0.465));
+    barHandle(root, 0, 0.13, 0.48, 0.22);
+  } else if (!o.noDoors) {
+    root.add(mesh(rbox(0.84, 0.13, 0.03, 0.012), pm, 0, drawerY, 0.465));
+    barHandle(root, 0, drawerY, 0.48, 0.2);
+    const doorTop = drawerY - 0.085, doorH = doorTop - 0.12, doorY = 0.12 + doorH / 2;
+    for (const x of [-0.21, 0.21]) {
+      root.add(mesh(rbox(0.4, doorH, 0.03, 0.012), pm, x, doorY, 0.465));
+      root.add(mesh(rbox(0.3, doorH - 0.1, 0.012, 0.01), inset, x, doorY, 0.482, false));
+      barHandle(root, x > 0 ? x - 0.15 : x + 0.15, doorTop - 0.12, 0.48, 0.12, true);
+    }
   }
   const top = o.top ?? 'butcher';
   let topMat;
@@ -392,7 +419,7 @@ BUILDERS.cooker = (def) => {
   const parts = {};
   const type = def.cook;
   if (type === 'stove') {
-    cabinet(r, { body: '#3b3f46', panel: '#4b5058', top: '#1f2125' });
+    cabinet(r, { body: '#3b3f46', panel: '#4b5058', top: '#1f2125', front: 'oven' });
     const burnerMat = umat('#333', { e: '#ff5a1a', ei: 0 });
     const burner = dyn(mesh(torus(0.2, 0.022, 6, 28), burnerMat, 0, S + 0.01, 0, false));
     burner.rotation.x = Math.PI / 2;
@@ -415,7 +442,7 @@ BUILDERS.cooker = (def) => {
     return finish(r, [0, S + 0.1, 0], { parts });
   }
   if (type === 'pot') {
-    cabinet(r, { body: '#3b3f46', panel: '#4b5058', top: '#1f2125' });
+    cabinet(r, { body: '#3b3f46', panel: '#4b5058', top: '#1f2125', front: 'oven' });
     const burnerMat = umat('#333', { e: '#ff5a1a', ei: 0 });
     const burner = dyn(mesh(torus(0.22, 0.02, 6, 28), burnerMat, 0, S + 0.01, 0, false));
     burner.rotation.x = Math.PI / 2;
@@ -506,6 +533,9 @@ BUILDERS.autowasher = () => {
   r.add(win);
   const ring = mesh(torus(0.25, 0.03, 8, 24), steelMat(), 0, 0.45, 0.48);
   r.add(ring);
+  r.add(mesh(rbox(0.84, 0.13, 0.03, 0.012), mat('#d9e0e6', { r: 0.4 }), 0, S - 0.14, 0.465));
+  r.add(mesh(box(0.2, 0.06, 0.01), mat('#16323f', { r: 0.1, e: '#3fd4ff', ei: 0.35 }), -0.18, S - 0.14, 0.483, false));
+  for (const x of [0.05, 0.13, 0.21]) r.add(mesh(cyl(0.022, 0.022, 0.02, 10), mat(x > 0.2 ? '#e8343f' : '#8d99ae'), x, S - 0.14, 0.485).rotateX(Math.PI / 2));
   const lightMat = umat('#8affc1', { e: '#00ff88', ei: 0.2 });
   const light = dyn(mesh(sph(0.035, 8, 6), lightMat, 0.32, 0.82, 0.48, false));
   r.add(light);
@@ -550,16 +580,33 @@ BUILDERS.platerack = () => {
 BUILDERS.trash = () => {
   const r = new THREE.Group();
   const parts = {};
-  r.add(mesh(cyl(0.3, 0.25, 0.8, 22), mat('#5b8a72', { r: 0.4, m: 0.4 }), 0, 0.4, 0));
-  for (const y of [0.2, 0.6]) {
-    const band = mesh(torus(0.29, 0.018, 6, 24), mat('#46705b', { r: 0.4, m: 0.4 }), 0, y, 0);
+  const bin = mat('#5b8a72', { r: 0.4, m: 0.4 }), binDark = mat('#46705b', { r: 0.4, m: 0.4 });
+  r.add(mesh(cyl(0.3, 0.25, 0.8, 22), bin, 0, 0.4, 0));
+  // vertical flutes
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * TAU;
+    const f = mesh(box(0.03, 0.62, 0.02), binDark, Math.sin(a) * 0.285, 0.4, Math.cos(a) * 0.285);
+    f.rotation.set(0.0625, a, 0, 'YXZ');
+    r.add(f);
+  }
+  for (const y of [0.06, 0.74]) {
+    const band = mesh(torus(y < 0.4 ? 0.255 : 0.295, 0.022, 6, 24), binDark, 0, y, 0);
     band.rotation.x = Math.PI / 2;
     r.add(band);
   }
-  r.add(mesh(box(0.18, 0.04, 0.12), mat('#2f3a3f'), 0, 0.03, 0.3));
+  // recycling label and the foot pedal
+  r.add(mesh(rbox(0.2, 0.2, 0.02, 0.06), mat('#f7f6f1', { r: 0.6 }), 0, 0.44, 0.285));
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * TAU;
+    const ar = mesh(box(0.08, 0.02, 0.01), mat('#2fbf5f'), Math.sin(a) * 0.045, 0.44 + Math.cos(a) * 0.045, 0.3, false);
+    ar.rotation.z = -a + Math.PI / 2;
+    r.add(ar);
+  }
+  r.add(mesh(rbox(0.2, 0.04, 0.14, 0.015), mat('#2f3a3f', { r: 0.4, m: 0.5 }), 0, 0.03, 0.3));
   const lid = dyn(new THREE.Group());
   lid.add(mesh(cyl(0.32, 0.32, 0.05, 22), mat('#4c7b63', { r: 0.4, m: 0.4 }), 0, 0, 0.3));
-  lid.add(mesh(sph(0.05, 10, 6), mat('#2f3a3f'), 0, 0.04, 0.3));
+  lid.add(mesh(cyl(0.26, 0.3, 0.05, 22), mat('#4c7b63', { r: 0.4, m: 0.4 }), 0, 0.045, 0.3));
+  lid.add(mesh(rbox(0.16, 0.04, 0.05, 0.015), mat('#2f3a3f'), 0, 0.085, 0.42));
   lid.position.set(0, 0.82, -0.3);
   r.add(lid);
   parts.lid = lid;
@@ -605,7 +652,13 @@ BUILDERS.conveyor = () => {
 BUILDERS.grabber = () => {
   const r = new THREE.Group();
   const parts = {};
-  r.add(mesh(cyl(0.32, 0.36, 0.55, 20), mat('#3b4048', { r: 0.5, m: 0.4 }), 0, 0.275, 0));
+  r.add(mesh(rbox(0.82, 0.06, 0.82, 0.02), mat('#5c6670', { r: 0.45, m: 0.6 }), 0, 0.03, 0));
+  for (const [x, z] of [[-0.33, -0.33], [0.33, -0.33], [-0.33, 0.33], [0.33, 0.33]]) r.add(mesh(cyl(0.03, 0.03, 0.03, 8), steelMat(), x, 0.07, z));
+  r.add(mesh(cyl(0.32, 0.36, 0.5, 20), mat('#3b4048', { r: 0.5, m: 0.4 }), 0, 0.3, 0));
+  r.add(mesh(cyl(0.33, 0.33, 0.04, 20), steelMat(), 0, 0.55, 0));
+  r.add(mesh(rbox(0.16, 0.1, 0.03, 0.02), mat('#1d2228'), 0, 0.3, 0.34));
+  r.add(mesh(sph(0.025, 8, 6), mat('#7dff8a', { e: '#36ff5a', ei: 0.8 }), -0.04, 0.3, 0.36, false));
+  r.add(mesh(sph(0.025, 8, 6), mat('#ffd23f', { e: '#ffb020', ei: 0.6 }), 0.04, 0.3, 0.36, false));
   for (let i = 0; i < 8; i++) {
     const s = mesh(box(0.1, 0.08, 0.02), mat(i % 2 ? '#f1c40f' : '#222'), Math.sin((i / 8) * TAU) * 0.335, 0.48, Math.cos((i / 8) * TAU) * 0.335);
     s.rotation.y = (i / 8) * TAU;
@@ -618,8 +671,14 @@ BUILDERS.grabber = () => {
   turret.add(mesh(sph(0.07, 10, 8), mat('#f1c40f'), 0, 0.6, 0));
   const arm = mesh(rbox(0.07, 0.07, 0.42, 0.02), steelMat(), 0, 0.6, 0.21);
   turret.add(arm);
-  turret.add(mesh(box(0.03, 0.12, 0.03), mat('#222'), -0.05, 0.53, 0.4));
-  turret.add(mesh(box(0.03, 0.12, 0.03), mat('#222'), 0.05, 0.53, 0.4));
+  turret.add(mesh(cyl(0.025, 0.025, 0.3, 8), mat('#f1c40f', { r: 0.4 }), 0, 0.45, 0.12).rotateX(0.9));
+  turret.add(mesh(cyl(0.05, 0.05, 0.05, 10), mat('#222'), 0, 0.6, 0.42));
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * TAU;
+    const f = mesh(box(0.025, 0.13, 0.025), mat('#222'), Math.sin(a) * 0.05, 0.52, 0.42 + Math.cos(a) * 0.05);
+    f.rotation.set(Math.cos(a) * 0.35, 0, -Math.sin(a) * 0.35);
+    turret.add(f);
+  }
   const hold = new THREE.Group();
   hold.position.set(0, 0.35, 0.42);
   turret.add(hold);
@@ -1606,25 +1665,36 @@ export function randomCustomerLook() {
     hat: Math.random() < 0.18 ? pick(['cap', 'beanie', 'beret']) : null,
     hatColor: pick(SHIRTS),
     glasses: Math.random() < 0.2,
+    pants: pick(PANTS),
+    vest: Math.random() < 0.18 ? pick(SHIRTS) : null,
+    scarf: Math.random() < 0.2 ? pick(SHIRTS) : null,
     scale: 0.88 + Math.random() * 0.14,
   };
 }
+const PANTS = ['#2b2d5c', '#3a3f4a', '#6b4f3a', '#1d1a2f', '#4a6fa5', '#4a6fa5', '#8d99ae', '#c9b28a'];
 
 export function criticLook() {
   return {
     skin: pick(SKINS), shirt: '#2c2f4a', hair: '#d9d9d9', hairStyle: 'short', hat: 'fedora', hatColor: '#3a2d2a',
-    bowtie: '#c0392b', vest: '#f2f2f2', monocle: true, scale: 1.0,
+    bowtie: '#c0392b', vest: '#f2f2f2', monocle: true, pants: '#1d1a2f', scale: 1.0,
   };
 }
 
 export function vipLook() {
   return {
     skin: pick(SKINS), shirt: '#ffd23f', vest: pick(['#ff6fae', '#9b5cf6', '#2b2d5c']), hair: pick(HAIRS), hairStyle: pick(['long', 'bob', 'afro', 'pony']),
-    hat: Math.random() < 0.5 ? 'fedora' : null, hatColor: '#1d1a2f', shades: true, scarf: '#ffffff', scale: 1.02,
+    hat: Math.random() < 0.5 ? 'fedora' : null, hatColor: '#1d1a2f', shades: true, scarf: '#ffffff', pants: '#1d1a2f', scale: 1.02,
   };
 }
 
+// Work clothes come with dark trousers (the mascot suit has none)
 export function staffLook(role, seed = 0) {
+  const l = roleLook(role, seed);
+  if (!l.costume) l.pants ??= role === 'drive' || role === 'busser' ? '#3a3f4a' : '#2b2d5c';
+  return l;
+}
+
+function roleLook(role, seed) {
   const r = seeded(seed + 7);
   const skin = SKINS[Math.floor(r() * SKINS.length)];
   const hair = HAIRS[Math.floor(r() * 7)];
@@ -1642,7 +1712,7 @@ export function staffLook(role, seed = 0) {
 }
 
 export function playerLook(color = '#e74c3c') {
-  return { skin: '#ffd9b8', shirt: '#fbfbf8', apron: color, hair: '#4a2f1e', hairStyle: 'short', hat: 'chef', scarf: color, scale: 1.0, buttons: true };
+  return { skin: '#ffd9b8', shirt: '#fbfbf8', apron: color, pants: '#2b2d5c', hair: '#4a2f1e', hairStyle: 'short', hat: 'chef', scarf: color, scale: 1.0, buttons: true };
 }
 
 // Outline hulls only need the silhouette, so rounded parts use a coarser copy of their geometry
@@ -1676,6 +1746,15 @@ export function buildCharacter(look) {
   // Torso
   const torso = OL(mesh(capsule(0.25, 0.26), shirtM, 0, 0.47, 0));
   pivot.add(torso);
+  if (look.pants) {
+    // Trousers: the lower half of the body in its own colour, with a belt line
+    const pm = mat(look.pants, { r: 0.75, ...ch });
+    pivot.add(OL(mesh(sph(0.256, 18, 10, 0, TAU, Math.PI / 2, Math.PI / 2), pm, 0, 0.34, 0)));
+    pivot.add(mesh(cyl(0.256, 0.256, 0.07, 18, true), pm, 0, 0.375, 0));
+    const belt = mesh(torus(0.257, 0.016, 6, 22), mat(shadeHex(look.pants, 0.55), { r: 0.6, ...ch }), 0, 0.41, 0);
+    belt.rotation.x = Math.PI / 2;
+    pivot.add(belt);
+  }
   if (look.apron) {
     const ap = OL(mesh(rbox(0.36, 0.42, 0.06, 0.03), mat(look.apron, { r: 0.8, ...ch }), 0, 0.38, 0.21));
     ap.rotation.x = -0.12;
@@ -1733,7 +1812,22 @@ export function buildCharacter(look) {
       sd.scale.set(1, 0.5, 1.7);
       head.add(sd);
     }
-  } else head.add(OL(mesh(sph(0.27, 18, 12), skinM, 0, 0, 0)));
+  } else {
+    head.add(OL(mesh(sph(0.27, 18, 12), skinM, 0, 0, 0)));
+    for (const x of [-0.262, 0.262]) {
+      const ear = mesh(sph(0.065, 10, 8), skinM, x, -0.005, -0.01);
+      ear.scale.set(0.55, 0.9, 0.7);
+      head.add(ear);
+    }
+    // eyebrows in a darker shade of the hair
+    const browM = mat(shadeHex(look.hair || '#4a2f1e', 0.75), { r: 0.8, ...ch });
+    for (const x of [-0.1, 0.1]) {
+      const b = mesh(capsule(0.014, 0.05), browM, x, 0.118, 0.236, false);
+      b.rotation.z = Math.PI / 2 + (x < 0 ? -0.12 : 0.12);
+      b.rotation.y = x < 0 ? 0.25 : -0.25;
+      head.add(b);
+    }
+  }
   const eyeM = mat('#1b1b22', { r: 0.3, ...ch });
   const hiM = mat('#ffffff', { r: 0.3, ...ch });
   const eyes = new THREE.Group();

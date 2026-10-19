@@ -16,7 +16,7 @@ const HATS = [
 ];
 const TINTED_HATS = new Set(['cap', 'beanie', 'beret', 'bandana', 'fedora', 'tophat', 'cowboy', 'party']);
 const EXTRAS = [['glasses', 'Glasses'], ['shades', 'Sunglasses'], ['mustache', 'Mustache']];
-const KEYS = ['skin', 'hair', 'hairStyle', 'hat', 'hatColor', 'shirt', 'apron', 'vest', 'scarf', 'bowtie', 'glasses', 'shades', 'mustache'];
+const KEYS = ['skin', 'hair', 'hairStyle', 'hat', 'hatColor', 'shirt', 'pants', 'apron', 'vest', 'scarf', 'bowtie', 'glasses', 'shades', 'mustache'];
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
@@ -46,6 +46,7 @@ export function openAvatarEditor(game, opts) {
     ${row('Hat', chips('hat', HATS))}
     ${TINTED_HATS.has(cur.hat) ? row('Hat colour', swatches('hatColor', COLORS)) : ''}
     ${row('Shirt', swatches('shirt', COLORS))}
+    ${row('Trousers', swatches('pants', COLORS))}
     ${row('Apron', swatches('apron', COLORS, true))}
     ${row('Vest', swatches('vest', COLORS, true))}
     ${row('Scarf', swatches('scarf', COLORS, true))}
@@ -114,7 +115,7 @@ export function openAvatarEditor(game, opts) {
       const hat = pick(HATS)[0];
       cur = {
         ...cur,
-        skin: pick(SKINS), hair: pick(HAIRS), hairStyle: pick(HAIR_STYLES)[0], hat, hatColor: pick(COLORS), shirt: pick(COLORS),
+        skin: pick(SKINS), hair: pick(HAIRS), hairStyle: pick(HAIR_STYLES)[0], hat, hatColor: pick(COLORS), shirt: pick(COLORS), pants: pick(COLORS),
         apron: Math.random() < 0.6 ? pick(COLORS) : null, vest: Math.random() < 0.25 ? pick(COLORS) : null,
         scarf: Math.random() < 0.35 ? pick(COLORS) : null, bowtie: Math.random() < 0.25 ? pick(COLORS) : null,
         glasses: Math.random() < 0.2, shades: false, mustache: Math.random() < 0.2,
