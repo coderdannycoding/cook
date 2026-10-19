@@ -120,7 +120,6 @@ export class Station {
   }
 }
 
-// ---------------------------------------------------------------------------
 export class CounterStation extends Station {}
 
 export class PassStation extends Station {
@@ -135,7 +134,6 @@ export class PassStation extends Station {
   }
 }
 
-// ---------------------------------------------------------------------------
 export class BoardStation extends Station {
   constructor(obj, game) {
     super(obj, game);
@@ -205,7 +203,6 @@ export class BoardStation extends Station {
   }
 }
 
-// ---------------------------------------------------------------------------
 export class CookerStation extends Station {
   constructor(obj, game) {
     super(obj, game);
@@ -317,7 +314,6 @@ export class CookerStation extends Station {
   }
 }
 
-// ---------------------------------------------------------------------------
 export class CrateStation extends Station {
   constructor(obj, game) {
     super(obj, game);
@@ -341,7 +337,6 @@ export class CrateStation extends Station {
   clearForDay() { super.clearForDay(); }
 }
 
-// ---------------------------------------------------------------------------
 export class PlateRackStation extends Station {
   constructor(obj, game) {
     super(obj, game);
@@ -380,7 +375,6 @@ export class PlateRackStation extends Station {
   }
 }
 
-// ---------------------------------------------------------------------------
 function plateStack(n, dirty) {
   const g = new THREE.Group();
   for (let i = 0; i < n; i++) {
@@ -486,7 +480,6 @@ export class SinkStation extends Station {
   }
 }
 
-// ---------------------------------------------------------------------------
 export class TrashStation extends Station {
   constructor(obj, game) {
     super(obj, game);
@@ -511,7 +504,6 @@ export class TrashStation extends Station {
   }
 }
 
-// ---------------------------------------------------------------------------
 export class ExtinguisherStation extends Station {
   constructor(obj, game) {
     super(obj, game);
@@ -535,7 +527,6 @@ export class ExtinguisherStation extends Station {
   syncView() { if (this.parts.ext) this.parts.ext.visible = this.has; }
 }
 
-// ---------------------------------------------------------------------------
 function frontDir(rot) {
   const th = rot * (Math.PI / 2);
   return [Math.round(Math.sin(th)), Math.round(Math.cos(th))];
@@ -661,7 +652,6 @@ export class GrabberStation extends Station {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Drive-thru window: the car waiting outside takes a matching plated dish through it. The food
 // goes home in a paper bag, so the empty plate stays on the sill until someone clears it.
 export class DriveThruStation extends Station {
@@ -890,7 +880,6 @@ export class TableStation extends Station {
   }
 }
 
-// ---------------------------------------------------------------------------
 export function createStation(obj, game) {
   switch (obj.def.station) {
     case 'counter': return new CounterStation(obj, game);
@@ -911,7 +900,6 @@ export function createStation(obj, game) {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Fire: ignites from burnt food, grows, spreads to neighbouring flammable stations,
 // and is beaten back by extinguisher foam.
 export class FireSystem {

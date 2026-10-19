@@ -93,7 +93,6 @@ export const CUISINES = {
 
 export const CUISINE_ORDER = ['diner', 'pizzeria', 'japanese', 'taqueria', 'fryshack', 'patisserie'];
 
-// ---------------------------------------------------------------------------
 // Item factories
 
 export function makeIngredient(id) {
@@ -119,7 +118,6 @@ export function itemFromKey(key) {
 
 export function bump(item) { if (item) item.ver++; }
 
-// ---------------------------------------------------------------------------
 // Keys & naming
 
 export const baseKey = (item) => `${item.id}:${item.state}`;
@@ -158,7 +156,6 @@ export function itemLabel(item) {
   return ingredientName(item);
 }
 
-// ---------------------------------------------------------------------------
 // Processing rules
 
 export function chopInfo(item) {
@@ -195,7 +192,6 @@ export function isHotFood(item) {
   return item && item.kind === 'ing' && ['cooked', 'boiled', 'fried', 'baked'].includes(item.state);
 }
 
-// ---------------------------------------------------------------------------
 // Plates, toppings & dish matching
 
 const DISH_BY_SIG = new Map();
@@ -263,7 +259,6 @@ export function plateProgressToward(plate, dishId) {
   return n;
 }
 
-// ---------------------------------------------------------------------------
 // Production chains (used by staff AI, menu availability & tickets)
 
 // Returns { ing, chop, cooker, toppings: [ingredient ids] }

@@ -17,7 +17,7 @@ import { icon } from './icons.js';
 import { HomePanel } from './home-ui.js';
 import { HOME_ITEMS, ITEM_GROUPS, buildHomeItem } from './home-items.js';
 
-// ---------------------------------------------------------------- catalogs
+// catalogs
 export const HOME_TIERS = {
   tent: { level: 0, name: 'Camping Tent', price: 0, desc: 'A snug tent and a crackling campfire. Everyone starts somewhere.' },
   cabin: { level: 1, name: 'Cosy Cabin', price: 1500, perk: { tips: 0.02 }, desc: 'A log cabin with a porch, a rocking chair and a smoking chimney.' },
@@ -224,7 +224,7 @@ export function homePerks(home, day = 0) {
   return out;
 }
 
-// ---------------------------------------------------------------- layout (plot coordinates)
+// layout (plot coordinates)
 const OX = 300, OZ = 0; // the plot sits far away from the restaurant
 const HOME_HOUR = 18.3;
 const ZOOM = 0.8; // default framing: a little closer than the whole plot
@@ -272,7 +272,7 @@ const MAILBOX = { x: GATE.x1 + 0.55, z: PLOT.z1 + 0.5 };
 const POOL = { x0: -8.6, x1: -5.4, z0: 1.15, z1: 3.45 };
 const FOUNTAIN = { x: -3.4, z: 3.1, r: 1.15 };
 
-// ---------------------------------------------------------------- tiny modelling helpers
+// tiny modelling helpers
 const PI = Math.PI;
 const E = (c, r = 0.8) => mat(c, { kind: 'env', r });
 const C = (c, r = 0.7) => mat(c, { kind: 'char', r });
@@ -393,7 +393,7 @@ function stones(g, pts, gap = 0.48, r = 0.2, col = '#eadcc0') {
   }
 }
 
-// ---------------------------------------------------------------- materials shared by water & fire
+// materials shared by water & fire
 let causticTex = null;
 function caustics() {
   if (causticTex) return causticTex;
@@ -434,7 +434,7 @@ function stillWater() {
 }
 const FLAME = () => mat('#ffcc4a', { e: '#ff7a10', ei: 1.6, r: 0.6 });
 
-// ---------------------------------------------------------------- pets
+// pets
 function petEyes(hd, h, o = {}) {
   const black = C('#1b1b22', 0.3), white = C('#ffffff', 0.3), blush = C('#ff9aa8', 0.85);
   const ex = o.x ?? 0.4, ey = o.y ?? 0.14, ez = o.ez ?? 0.84, k = o.k ?? 1;
@@ -703,7 +703,7 @@ function buildPet(id) {
   return p;
 }
 
-// ---------------------------------------------------------------- cars (all face +z, sit on y = 0)
+// cars (all face +z, sit on y = 0)
 const TYRE = () => P('#1d1d22', 0.85);
 const CHROME = () => P('#dfe4ea', 0.25, 0.85);
 const GLASS = () => P('#24324a', 0.12, 0.5);
@@ -876,7 +876,7 @@ export function buildLuxuryCar(id, paint = null) {
   }
 }
 
-// ---------------------------------------------------------------- houses (front faces +z)
+// houses (front faces +z)
 function tent(c) {
   const g = new THREE.Group();
   const pt = c.paint || {};
@@ -1124,7 +1124,7 @@ function mansion(c) {
 
 const HOUSE_BUILDERS = [tent, cabin, house, villa, mansion];
 
-// ---------------------------------------------------------------- plot dressing per tier
+// plot dressing per tier
 function picketFence(g, x0, z0, x1, z1, col = '#ffffff') {
   const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 0.22)), ang = Math.atan2(z1 - z0, x1 - x0);
   for (let i = 0; i <= n; i++) {
@@ -1516,7 +1516,7 @@ function buildSurroundings(own) {
   return g;
 }
 
-// ---------------------------------------------------------------- yard decor
+// yard decor
 const DECOR_MODELS = {
   gnomes: () => {
     const g = new THREE.Group();
@@ -1644,7 +1644,7 @@ function rectHits(list, q) {
   return false;
 }
 
-// ---------------------------------------------------------------- geometry helpers for the yard
+// geometry helpers for the yard
 function inRect(o, x, z, pad) { return x > o.x0 - pad && x < o.x1 + pad && z > o.z0 - pad && z < o.z1 + pad; }
 function blocked(list, x, z, pad) {
   for (const o of list) {
@@ -1688,7 +1688,7 @@ function pathLength(w, path) {
   return n;
 }
 
-// ---------------------------------------------------------------- thumbnails (baked once, lazily)
+// thumbnails (baked once, lazily)
 const THUMBS = {};
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 function thumbJobs() {
@@ -1701,7 +1701,7 @@ function thumbJobs() {
   return jobs.filter(([k]) => !THUMBS[k]);
 }
 
-// ---------------------------------------------------------------- the mode
+// the mode
 const _v = new THREE.Vector3();
 const _w = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
@@ -1729,7 +1729,7 @@ export class HomeMode {
   get busy() { return !!(this.placing || this.sel); }
   thumb(key) { return THUMBS[key] || BLANK; }
 
-  // ------------------------------------------------------------ enter / exit
+  // enter / exit
   enter() {
     if (this._active) return;
     const g = this.game, r = g.renderer;
@@ -1820,7 +1820,7 @@ export class HomeMode {
     if (this._active) this.exit();
   }
 
-  // ------------------------------------------------------------ scene
+  // scene
   buildScene() {
     this.root = grp(OX, 0, OZ);
     this.own = [];
@@ -1916,7 +1916,7 @@ export class HomeMode {
     this.obstacles = list;
   }
 
-  // ------------------------------------------------------------ yard furniture
+  // yard furniture
   // Is there room for this piece with its low corner on cell (c, r)? `ignore` is the item being moved.
   canPlace(id, c, r, rot, ignore = null) {
     const [w, d] = footprint(id, rot);
@@ -2352,7 +2352,7 @@ export class HomeMode {
     }
   }
 
-  // ------------------------------------------------------------ purchases
+  // purchases
   confirmBuy(price, title, text, ok, run) {
     if (price >= 2000) this.game.ui.confirm(title, text, ok, run);
     else run();
@@ -2441,7 +2441,7 @@ export class HomeMode {
     });
   }
 
-  // ------------------------------------------------------------ paint jobs
+  // paint jobs
   paintHouse(part, col) {
     const h = this.home;
     if (!['wall', 'roof'].includes(part) || (col && !PAINT[part].includes(col))) return;
@@ -2482,7 +2482,7 @@ export class HomeMode {
     this.afterPurchase();
   }
 
-  // ------------------------------------------------------------ pet care
+  // pet care
   petJoy(i, n) {
     const c = this.home.care[i];
     if (!c) return;
@@ -2533,7 +2533,7 @@ export class HomeMode {
     return out;
   }
 
-  // ------------------------------------------------------------ little effects
+  // little effects
   fx(name, x, ...a) {
     const p = this.game.particles;
     if (name === 'dust') p.dust(OX + x, OZ + a[0], a[1], a[2]);
@@ -2573,7 +2573,7 @@ export class HomeMode {
     this.chef.timer = 1.6;
   }
 
-  // ------------------------------------------------------------ frame
+  // frame
   update(dt) {
     if (!this._active) return;
     const g = this.game;
@@ -2826,7 +2826,7 @@ export class HomeMode {
     if (!this.thumbQueue.length) { this.baker.dispose(); this.baker = null; }
   }
 
-  // ------------------------------------------------------------ cars
+  // cars
   updateCars(dt) {
     const turn = this.home.favCar;
     const plate = this.tt.userData.plate;
@@ -2856,7 +2856,7 @@ export class HomeMode {
     }
   }
 
-  // ------------------------------------------------------------ pets
+  // pets
   setPetState(p, s, timer) {
     p.state = s;
     p.timer = timer;
@@ -3042,7 +3042,7 @@ export class HomeMode {
     }
   }
 
-  // ------------------------------------------------------------ the chef
+  // the chef
   chefGoTo(x, z, user = false) {
     const c = this.chef;
     if (!c) return false;
@@ -3241,7 +3241,7 @@ export class HomeMode {
     if (c.blink < -0.12) c.blink = rand(2, 5);
   }
 
-  // ------------------------------------------------------------ things to do at home
+  // things to do at home
   // Item-local point [x, z] in yard coordinates (and the item's turn)
   itemPoint(it, x, z) {
     const g = this.itemObjs.get(it);
@@ -3563,7 +3563,7 @@ export class HomeMode {
     this.game.save();
   }
 
-  // ------------------------------------------------------------ the mailbox
+  // the mailbox
   goToMail() {
     const c = this.chef;
     if (!c) return;
@@ -3653,7 +3653,7 @@ export class HomeMode {
     for (const [it, coin] of M.coins) if (!want.has(it)) { M.group.remove(coin); M.coins.delete(it); }
   }
 
-  // ------------------------------------------------------------ helpers (gardener, pet sitter, butler)
+  // helpers (gardener, pet sitter, butler)
   toggleHelper(id) {
     const D = HOME_STAFF[id], h = this.home, ui = this.game.ui;
     if (!D) return;

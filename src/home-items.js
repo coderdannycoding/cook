@@ -54,7 +54,7 @@ export const HOME_ITEMS = {
 };
 export const ITEM_GROUPS = [['garden', 'Garden'], ['relax', 'Relax'], ['play', 'Play'], ['pets', 'Pets'], ['fancy', 'Fancy']];
 
-// ---------------------------------------------------------------- helpers
+// helpers
 const P = (c, r = 0.6, m = 0) => mat(c, { r, m });
 function put(parent, geo, m, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) {
   const o = mesh(geo, typeof m === 'string' ? P(m) : m, x, y, z);
@@ -92,7 +92,7 @@ const METAL = () => P('#4a505a', 0.35, 0.6);
 const GOLD = () => P('#e8b830', 0.3, 0.85);
 const glow = (c, e, ei = 1.4) => umat(c, { e, ei });
 
-// ---------------------------------------------------------------- builders
+// builders
 const B = {};
 
 B.flamingos = () => {

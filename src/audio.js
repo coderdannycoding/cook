@@ -206,7 +206,7 @@ export class AudioEngine {
     return true;
   }
 
-  // ---------------------------------------------------------------- loops
+  // loops
   _initLoops() {
     const ctx = this.ctx;
     const mk = (type, freq, q, extra) => {
@@ -265,7 +265,7 @@ export class AudioEngine {
 
   setAlarm(on) { this.alarmOn = on; }
 
-  // ---------------------------------------------------------------- sfx
+  // sfx
   chop() {
     if (!this._ok('chop', 0.05)) return;
     const p = 0.85 + Math.random() * 0.3;
@@ -436,7 +436,7 @@ export class AudioEngine {
     this._tone({ type: 'triangle', freq: 523, dur: 1.0, vol: 0.1, delay: 0.25, reverb: 0.5 });
   }
 
-  // ---------------------------------------------------------------- music
+  // music
   startMusic(mode) {
     if (!this.ctx) return;
     if (this.song === SONGS[mode]) return;

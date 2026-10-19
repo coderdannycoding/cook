@@ -1,5 +1,5 @@
 // Procedural 3D models: characters, appliances, furniture, decor, food at every stage, plates
-// and street props. Everything is built from primitives — no external assets.
+// and street props. Everything is built from primitives, with no external assets.
 
 import * as THREE from '../vendor/three-0.169.0.module.min.js';
 import { SURFACE_Y } from './config.js';
@@ -12,12 +12,11 @@ import { DECOR2_BUILDERS } from './decor2.js';
 
 const S = SURFACE_Y;
 
-// ---------------------------------------------------------------------------
 // Material & geometry caches
 
 const matCache = new Map();
-// kind: 'prop' (default: appliances, furniture, food) and 'char' get the hit-game grade — a little
-// extra chroma plus a warm sky rim so they pop — while 'env' keeps the authored colour, no rim.
+// kind: 'prop' (default: appliances, furniture, food) and 'char' get the hit-game grade: a little
+// extra chroma plus a warm sky rim so they pop, while 'env' keeps the authored colour, no rim.
 export function mat(color, o = {}) {
   const kind = o.kind ?? 'prop';
   const key = `${color}|${o.r ?? ''}|${o.m ?? ''}|${o.e ?? ''}|${o.ei ?? ''}|${o.op ?? ''}|${o.flat ? 1 : 0}|${o.mapKey ?? ''}|${o.side ?? ''}|${kind}`;
@@ -137,7 +136,6 @@ function seeded(seed) {
   };
 }
 
-// ---------------------------------------------------------------------------
 // Static mesh merging: collapses all non-dynamic meshes in a group into one mesh per
 // material, dramatically cutting draw calls for furniture.
 
@@ -246,7 +244,6 @@ export function mergeStatic(root, kind = 'prop') {
   return root;
 }
 
-// ---------------------------------------------------------------------------
 // Palette
 
 export const C = {
@@ -318,7 +315,6 @@ export function dyn(obj) {
   return obj;
 }
 
-// ---------------------------------------------------------------------------
 // Appliances
 
 const BUILDERS = {};
@@ -688,7 +684,7 @@ BUILDERS.grabber = () => {
   return finish(r, [0, 0.9, 0], { parts });
 };
 
-// Chairs & tables ------------------------------------------------------------
+// Chairs & tables
 function chair(root, x, z, faceX, faceZ, color = '#a0612f', seatColor = '#c47a3c') {
   const g = new THREE.Group();
   const wood = mat(color, { r: 0.7 });
@@ -826,7 +822,7 @@ BUILDERS.table = (def) => {
   return finish(r, [tx, topY + 0.02, tz], { tableTop: topY });
 };
 
-// Decor ----------------------------------------------------------------------
+// Decor
 BUILDERS.plant = () => {
   const r = new THREE.Group();
   r.add(mesh(cyl(0.26, 0.2, 0.42, 16), mat('#c96a43', { r: 0.8 }), 0, 0.21, 0));
@@ -989,7 +985,6 @@ export function buildAppliance(def) {
   return finish(r, [0, S, 0]);
 }
 
-// ---------------------------------------------------------------------------
 // Food
 
 const FOODC = {
@@ -1649,7 +1644,6 @@ export function buildDishPreview(dishId) {
   return g;
 }
 
-// ---------------------------------------------------------------------------
 // Characters
 
 const SKINS = ['#ffd9b8', '#f5c49c', '#e0a878', '#c68a5a', '#9a6440', '#6e4428', '#ffe3cc'];
@@ -2083,7 +2077,6 @@ export function buildCharacter(look) {
   return { root, pivot, head, eyes, handL, handR, footL, footR, held, hat, mouths: { smile, frown, open } };
 }
 
-// ---------------------------------------------------------------------------
 // Street props
 
 export const envMats = {

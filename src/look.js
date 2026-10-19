@@ -17,7 +17,6 @@ export const LOOK = {
   wind: { value: 1 },
 };
 
-// ---------------------------------------------------------------------------
 // Colour grade
 
 const _rgb = { r: 0, g: 0, b: 0 };
@@ -44,7 +43,6 @@ export function gradeCanvas(ctx, w, h, chroma = 0.85, light = 1, warm = 0) {
   ctx.putImageData(img, 0, 0);
 }
 
-// ---------------------------------------------------------------------------
 // Stylised rim: a warm sky-light fresnel on the edges of characters & props (strongest on
 // upward-facing edges) so they separate from the floor without an extra light or pass.
 
@@ -67,7 +65,6 @@ export function addRim(material, strength) {
   return material;
 }
 
-// ---------------------------------------------------------------------------
 // Ink outline (inverted hull). Thickness is in world units and kept at a constant on-screen
 // width by the renderer. Only used for characters, so it only costs their vertices.
 
@@ -91,8 +88,7 @@ export const outlineMaterial = new THREE.ShaderMaterial({
   side: THREE.BackSide,
 });
 
-// ---------------------------------------------------------------------------
-// Soft contact shadow (radial gradient decal) — pinned to the ground even when the owner sits.
+// Soft contact shadow (radial gradient decal), pinned to the ground even when the owner sits.
 
 function gradientCanvas(w, h, paint) {
   const c = document.createElement('canvas');
@@ -133,9 +129,8 @@ export function makeBlobShadow(size = 0.9) {
   return m;
 }
 
-// ---------------------------------------------------------------------------
 // Fake ambient occlusion: dark gradient strips along the creases where walls meet the floor.
-// strips: [{ o: [x,y,z], along: [x,y,z], across: [x,y,z] }] — `o` is on the crease line.
+// strips: [{ o: [x,y,z], along: [x,y,z], across: [x,y,z] }]; `o` is on the crease line.
 
 let aoMat = null;
 export function buildAOStrips(strips) {
@@ -173,7 +168,6 @@ export function buildAOStrips(strips) {
   return m;
 }
 
-// ---------------------------------------------------------------------------
 // Painted ground: a tiling detail texture modulated by a big, soft colour-variation map
 // sampled in world space (one extra texture fetch, no extra geometry or passes).
 
@@ -213,7 +207,6 @@ export function makeGroundMaterial(detail, cx, cz, span = 128) {
   return m;
 }
 
-// ---------------------------------------------------------------------------
 // Garden: lush rounded trees, bushes, flowers and grass tufts in two batched meshes
 
 function seeded(seed) {

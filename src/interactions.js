@@ -13,7 +13,7 @@ export class Interactions {
     this.game = game;
   }
 
-  // ------------------------------------------------------------- checks
+  // checks
   canTransfer(st, item) {
     if (!st || !item || st.fire > 0) return false;
     if (st.kind === 'grabber') return false;
@@ -39,7 +39,7 @@ export class Interactions {
     return false;
   }
 
-  // ------------------------------------------------------------- mutations
+  // mutations
   // Move `item` into station. Returns false if impossible, otherwise what remains in hand (null or item).
   transferInto(st, item, actor = null) {
     if (!this.canTransfer(st, item)) return false;
@@ -103,7 +103,7 @@ export class Interactions {
     }
   }
 
-  // ------------------------------------------------------------- actor actions
+  // actor actions
   // The "E" action. Returns { ok, kind, msg }
   pickDrop(actor, st) {
     const held = actor.held;

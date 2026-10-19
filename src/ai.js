@@ -8,7 +8,6 @@ import {
 import { clamp, rand, pick } from './utils.js';
 import { icon } from './icons.js';
 
-// ---------------------------------------------------------------------------
 // A*
 
 class MinHeap {
@@ -121,7 +120,6 @@ export function findPath(grid, sx, sz, goals, opts = {}) {
   return out;
 }
 
-// ---------------------------------------------------------------------------
 // Demand analysis
 
 export function openOrders(game) {
@@ -193,7 +191,6 @@ export function computeNeeds(game, exclude = null) {
   return needs;
 }
 
-// ---------------------------------------------------------------------------
 // Brains
 
 class JobFail extends Error {}
@@ -475,7 +472,6 @@ class Brain {
   has(role) { return this.g.staff.members.some((m) => m.role === role); }
 }
 
-// ---------------------------------------------------------------------------
 export class WaiterBrain extends Brain {
   home() {
     const pass = this.grid.stations('pass')[0];
@@ -524,7 +520,6 @@ export class WaiterBrain extends Brain {
 
 }
 
-// ---------------------------------------------------------------------------
 export class DishwasherBrain extends Brain {
   home() {
     const sink = this.grid.stations('sink')[0];
@@ -588,7 +583,6 @@ export class DishwasherBrain extends Brain {
 
 }
 
-// ---------------------------------------------------------------------------
 export class ChefBrain extends Brain {
   constructor(staff, game) {
     super(staff, game);
@@ -622,7 +616,7 @@ export class ChefBrain extends Brain {
       if (ck.fire > 0) continue;
       const mine = this.tending.has(ck);
       const other = ck.reservedBy && ck.reservedBy !== this.s ? ck.reservedBy : null;
-      // A colleague who is busy elsewhere can't save it in time — step in
+      // A colleague who is busy elsewhere can't save it in time, so step in
       const otherBusy = !other || !other.brain || other.brain.taskName !== 'rescue';
       const done = isCookOutput(ck.cookType, it);
       if (it.state === 'burnt' && otherBusy) return this.rescue(ck);
@@ -727,7 +721,7 @@ export class ChefBrain extends Brain {
   }
 
   // A loose item somewhere (counter / finished board) that can become `key`.
-  // Items already in their final form only count when we want them as-is (e.g. pizza toppings) —
+  // Items already in their final form only count when we want them as-is (e.g. pizza toppings);
   // otherwise they're already counted as supply and moving them achieves nothing.
   findLooseFor(key, allowFinal = false) {
     let best = null, bestScore = Infinity;
@@ -820,7 +814,7 @@ export class ChefBrain extends Brain {
       s.status = 'pan';
       yield* this.walkTo(ck);
       if (!this.act(ck)) fail('cook put');
-      // keep the reservation while it cooks — we'll be back
+      // keep the reservation while it cooks; we'll be back
       this.claims = this.claims.filter((x) => x !== ck);
       this.tending.add(ck);
       return;
@@ -933,7 +927,6 @@ export class ChefBrain extends Brain {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Plater: assembles finished dishes onto plates and sets them on the serving pass, and pulls
 // cooked food off the heat so it doesn't burn while waiting to be plated.
 export class PlaterBrain extends ChefBrain {

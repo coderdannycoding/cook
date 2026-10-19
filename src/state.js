@@ -1,12 +1,12 @@
 // Persistent game state + localStorage save / load.
 
-import { SAVE_KEY, SETTINGS_KEY, START } from './config.js';
+import { SAVE_KEY, SETTINGS_KEY, OLD_KEYS, START, GAME_TITLE } from './config.js';
 import { STARTER_LAYOUT } from './catalog.js';
 
 export function newGameState() {
   return {
     v: 1,
-    name: 'Pandemonium Bistro',
+    name: GAME_TITLE,
     day: 1,
     cash: START.cash,
     rating: START.rating,
@@ -29,6 +29,7 @@ function migrate(s) {
   return {
     ...d,
     ...s,
+    name: d.name,
     upgrades: { ...d.upgrades, ...(s.upgrades || {}) },
     stats: { ...d.stats, ...(s.stats || {}) },
     settings: { ...d.settings, ...(s.settings || {}) },
@@ -39,6 +40,7 @@ function migrate(s) {
 export function saveGame(state) {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    localStorage.removeItem(OLD_KEYS.save);
     return true;
   } catch {
     return false;
@@ -47,7 +49,7 @@ export function saveGame(state) {
 
 export function loadGame() {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    const raw = localStorage.getItem(SAVE_KEY) ?? localStorage.getItem(OLD_KEYS.save);
     if (!raw) return null;
     const s = JSON.parse(raw);
     if (!s || s.v !== 1 || !Array.isArray(s.objects)) return null;
@@ -59,7 +61,7 @@ export function loadGame() {
 
 export function loadSettings() {
   try {
-    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || localStorage.getItem(OLD_KEYS.settings) || '{}');
     return { color: '#c8442b', muted: false, volume: { master: 0.8, sfx: 0.9, music: 0.55 }, ...s };
   } catch {
     return { color: '#c8442b', muted: false, volume: { master: 0.8, sfx: 0.9, music: 0.55 } };
@@ -69,7 +71,8 @@ export function loadSettings() {
 export function saveSettings(settings) {
   try {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    localStorage.removeItem(OLD_KEYS.settings);
   } catch {
-    /* storage unavailable (private mode) — settings just won't persist */
+    /* storage unavailable (private mode): settings just won't persist */
   }
 }

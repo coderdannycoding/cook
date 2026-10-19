@@ -82,7 +82,7 @@ function see(m) { m.userData.noMerge = true; return m; }
 export const DECOR_BUILDERS = {};
 const D = DECOR_BUILDERS;
 
-// ---------------------------------------------------------------------------- small decor
+// small decor
 
 D.cactus = () => {
   const r = new THREE.Group();
@@ -565,7 +565,7 @@ D.clock = () => {
   return finish(r, [0, 2.3, 0], { animate(t) { pend.rotation.z = Math.sin(t * Math.PI) * 0.2; } });
 };
 
-// ---------------------------------------------------------------------------- showpieces
+// showpieces
 
 D.cat = () => {
   const r = new THREE.Group();
@@ -1135,7 +1135,7 @@ D.statue = () => {
   });
 };
 
-// ---------------------------------------------------------------------------- rugs
+// rugs
 
 function roundRugTex() {
   return paintTex('rug-round', 512, 512, (g, w) => {
@@ -1201,7 +1201,7 @@ D.runner = () => {
   return finish(r, [0, 0.02, 0]);
 };
 
-// ---------------------------------------------------------------------------- drive-thru
+// drive-thru
 
 // Built facing +z, which is outdoors once it is turned to face through the right-hand wall
 D.drivethru = () => {

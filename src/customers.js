@@ -132,7 +132,7 @@ export class CustomerManager {
     g.renderer.setDoorOpen(near);
   }
 
-  // ------------------------------------------------------------- spawning
+  // spawning
   pickDish(critic) {
     const g = this.game;
     const dishes = g.availableDishes();
@@ -191,7 +191,7 @@ export class CustomerManager {
     return tables[0];
   }
 
-  // ------------------------------------------------------------- movement
+  // movement
   steer(c, x, z, dt, speed = c.speed) {
     const dx = x - c.pos.x, dz = z - c.pos.z;
     const d = Math.hypot(dx, dz);
@@ -550,7 +550,7 @@ export class CustomerManager {
     if (wasSeated) g.audio.doorClose();
   }
 
-  // ------------------------------------------------------------- ambience
+  // ambience
   updatePassers(dt) {
     const g = this.game;
     this.passT -= dt;

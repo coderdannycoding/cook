@@ -594,7 +594,7 @@ export function grassTexture() {
     const [c, g] = makeCanvas(S, S);
     g.fillStyle = '#80ad58';
     g.fillRect(0, 0, S, S);
-    // soft mottling, then little blade strokes (light tips, dark roots) — reads as lawn, not felt
+    // soft mottling, then little blade strokes (light tips, dark roots) so it reads as lawn, not felt
     for (let i = 0; i < 60; i++) {
       g.fillStyle = Math.random() < 0.5 ? 'rgba(120,180,80,0.18)' : 'rgba(100,160,70,0.16)';
       g.beginPath();

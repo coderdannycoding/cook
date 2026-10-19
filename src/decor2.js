@@ -890,7 +890,7 @@ D.cuckoo = () => {
   });
 };
 
-// ---------------------------------------------------------------------------- neon signs
+// neon signs
 
 function neonBacker(r, w, h, cy, rad = 0.06) {
   r.add(mesh(rbox(w, h, 0.03, rad), mat('#1b2440', { r: 0.45 }), 0, cy, 0.03));
@@ -1623,7 +1623,7 @@ D.eggchair = () => {
   });
 };
 
-// ---------------------------------------------------------------------------- showpieces
+// showpieces
 
 function signGlow(key, text, bg, fg, w = 256, h = 80) {
   return glowMat(paintTex(key, w, h, (g) => {

@@ -222,7 +222,6 @@ export class Character {
   }
 }
 
-// ---------------------------------------------------------------------------
 export class Player extends Character {
   constructor(game, color, look = null) {
     super(game, look || playerLook(color));
@@ -417,7 +416,6 @@ export class Player extends Character {
   }
 }
 
-// ---------------------------------------------------------------------------
 export class Customer extends Character {
   constructor(game, group, critic = false, vip = false) {
     super(game, critic ? criticLook() : vip ? vipLook() : randomCustomerLook());
@@ -456,7 +454,6 @@ export class Customer extends Character {
   }
 }
 
-// ---------------------------------------------------------------------------
 export class Staff extends Character {
   constructor(game, data) {
     super(game, { ...staffLook(data.role, data.seed), ...(data.look || {}) });

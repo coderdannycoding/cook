@@ -78,7 +78,7 @@
 .dash-ring span .ic { width: 19px; height: 19px; }
 .dash-ring.ready span { background: linear-gradient(var(--sun), var(--sun-2)); color: var(--line); }
 
-/* ---------------------------------------------------------------- order cards */
+/* order cards */
 #tickets {
   flex: 1;
   min-width: 0;
@@ -171,7 +171,7 @@
   100% { translate: 0 60%; rotate: 14deg; opacity: 0; }
 }
 
-/* ---------------------------------------------------------------- world overlays */
+/* world overlays */
 #world-ui, #floaters { position: fixed; inset: 0; pointer-events: none; z-index: 10; overflow: hidden; }
 #floaters { z-index: 12; }
 #world-ui > div, .floater { position: absolute; left: 0; top: 0; will-change: transform; }
@@ -291,7 +291,7 @@
 .f-warn { background: linear-gradient(var(--berry), var(--berry-2)); color: #fff; font: 400 15px var(--display); text-shadow: var(--ol-sm); padding: 4px 11px 6px; border-radius: 99px; border: var(--edge); }
 .f-info { background: var(--navy); color: #fff; font: 800 14px var(--font); padding: 4px 11px; border-radius: 99px; border: var(--edge); }
 
-/* ---------------------------------------------------------------- prompt / hint / toasts */
+/* prompt / hint / toasts */
 #prompt {
   position: fixed;
   left: 50%;

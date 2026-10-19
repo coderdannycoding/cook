@@ -76,7 +76,8 @@ Firefox, and Safari 15 or later. Gamepads also work.
 | Chop · wash · spray extinguisher | `F` or right-click (press once and it keeps working while you stand still) |
 | Pause / settings | `Esc` |
 | Zoom | mouse wheel |
-| Build mode (night) | click to place · `R` rotate · click a placed item to move it · right-click or `X` to sell · `WASD` pans |
+| Build mode (night) | click to place · `R` rotate · click a placed item to move it · `C` to store it · right-click or `X` to sell · `WASD` pans |
+| Home | click the lawn to walk · click pets to pat them and furniture to use it · on the Yard tab: click a green square to place, `R` turn, `M` move, `Esc` close |
 
 **On phones and tablets** (detected automatically, best played in landscape):
 
@@ -87,7 +88,8 @@ Firefox, and Safari 15 or later. Gamepads also work.
 | Chop · wash · spray | **Use** button (tap once and it keeps working while you stand still) |
 | Dash | **Dash** button |
 | Camera (night) | drag to pan · pinch to zoom |
-| Build mode | tap a card, tap the floor to preview, tap again or press **Place here** · tap a placed item to move it · the toolbar rotates, sells and cancels |
+| Build mode | tap a card, tap the floor to preview, tap again or press **Place here** · tap a placed item to move it · the toolbar rotates, stores, sells and cancels |
+| Home | tap the lawn to walk, pets to pat them, furniture to use it · the Yard tab's toolbar turns, moves, stores and sells furniture |
 
 ## How to play
 
@@ -110,8 +112,11 @@ sear, boil, fry or bake), plus a patience bar that runs from green through yello
 - **Build:** buy, place, rotate, move and sell stations, tables, décor, showpieces and automation
   on the grid. Placement is validated so a layout can never wall off a station, seat or the door.
   There are seven kinds of seating (bistro, family, round, parasol, diner counter, booth and a
-  velvet lounge), over twenty décor pieces, fifteen showpieces, nine floors and ten wallpapers.
-- **Staff:** hire up to ten workers and level them up (they use A* pathfinding):
+  velvet lounge), over thirty floor décor pieces, twenty-one wall pieces that hang on the back
+  and left walls (posters, neon signs, shelves, a cuckoo clock...), twenty-one showpieces, nine
+  floors and ten wallpapers. Anything placed can go into **storage** and be placed again later
+  for free.
+- **Staff:** hire up to twelve workers and level them up (they use A* pathfinding):
   - Sous-chefs prep and cook what open orders need, most urgent first, rescue food before it
     burns and fight fires. At level 3 they also plate full dishes onto the Serving Pass.
   - Platers assemble finished dishes on plates and set them on the Serving Pass.
@@ -120,6 +125,9 @@ sear, boil, fry or bake), plus a patience bar that runs from green through yello
   - Bussers clear tables and the drive-thru sill and carry plates to the sink.
   - Dishwashers wash plates and restock the racks.
   - Hosts greet guests at the door: the queue outside waits longer and fits more groups.
+  - Musicians play guitar in the dining room: seated guests wait longer and tip more.
+  - The Mascot dances on the pavement in a burger suit and pulls in more guests.
+  - Managers make the rounds with a clipboard and speed up everyone else.
   - Every worker (and your own chef) can be restyled: hats, hair, skin, outfits and extras.
 - **Upgrades:** turbo sneakers (dash), sharper knives, faster burners, smart timers, fireproof
   stoves, more plates, marketing (capacity), patience, and a bigger floor.
@@ -146,6 +154,25 @@ sunglasses sometimes drop in: they pay triple but don't wait long.
 around the shop overnight: a cottage, a bakery, a flower market, a park with a duck pond, an ice
 cream corner, a row of townhouses, a windmill and finally a Ferris wheel.
 
+**Home.** The Home button in the night menu takes you to your own plot. Buy your way up from a
+camping tent to a cabin, a suburban house, a modern villa and a hilltop mansion, and paint the
+walls and roof.
+
+- **Yard:** 36 pieces of furniture in five groups (garden, relax, play, pets, fancy) go on a grid
+  in front of the house; turn, move, store or sell them. Everything adds **comfort**, and each
+  comfort level gives the restaurant a little more patience and tips.
+- **Things to do:** click furniture and your chef uses it: naps on the lounger or hammock, soaks
+  in the hot tub, bounces on the trampoline, swings, grills, shoots hoops, stargazes, slides.
+  A rest leaves you **well rested** for the next day. Pick the veggie patch and apple tree once a
+  day, and check the mailbox for fan mail, gifts and treats.
+- **Pets:** ten pets with names and a happiness bar. Happiness drops a little each working day
+  and comes back with pats and treats; only happy pets give their bonus. They use beds, bowls,
+  the pet house, the cat tree and agility hurdles.
+- **Garage:** eight cars up to a golden hypercar. Your ride sits on a turntable, can be repainted
+  and parks beside the restaurant.
+- **Helpers:** a gardener (picks crops you miss), a pet sitter (pets never miss you) and a butler
+  (always well rested), each paid daily.
+
 Progress autosaves to `localStorage` every night.
 
 ## Architecture
@@ -167,6 +194,11 @@ src/
   renderer.js         Three.js renderer: iso ortho camera, shadows, day/night sky, pooled point lights, room shell, street, thumbnail baker
   models.js           Procedural meshes: characters, appliances, furniture, every food state, plates, street props; static mesh merging
   decor.js            Décor and showpiece models (plants, pets, arcade, piano, fireplace, statue…), several animated
+  decor2.js           The second décor batch: wall pieces, floor décor and more showpieces
+  catalog-extra.js    Catalog entries for that batch
+  home.js             Home mode: houses, pets, cars, the yard grid, things to do, helpers, its own camera and scene
+  home-items.js       Yard furniture catalog and models
+  home-ui.js          The Home panel (tabs, shop cards, storage, the furniture toolbar)
   town.js             The neighbourhood around the shop, built up in stages as the rating grows
   drivethru.js        Drive-thru cars: lane paths, queueing, ordering at the window, paying, leaving
   goals.js            Three daily goals with cash rewards
@@ -182,7 +214,7 @@ src/
   customers.js        Arrivals, queue, seating, ordering & patience, eating, paying & tipping, reviews, critics, passers-by
   staff.js            Hiring, firing, levelling and daily wages
   orders.js           Order tickets
-  build.js            Night build mode (ghost previews, validation, move, sell)
+  build.js            Night build mode (ghost previews, wall snapping, validation, move, store, sell)
   ui.js               HUD, tickets, world-anchored bubbles & progress bars, prompts, toasts, dock panels, modals
   icons.js            The interface's single SVG icon set (no emoji, so it looks the same on every device)
   boot-guard.js       Tiny classic script that shows an error if a game file fails to download
@@ -192,7 +224,8 @@ src/
   state.js            Save/load (localStorage) and settings
 ```
 
-Debugging hook: `window.__game` exposes the running game instance in the browser console.
+Debugging hook: on `localhost` (or with `?debug` in the address) `window.__game` exposes the
+running game instance in the browser console.
 
 Three.js is MIT-licensed (see `vendor/THREE-LICENSE`). The Lilita One and Nunito fonts are licensed
 under the SIL Open Font License (see `vendor/fonts/OFL.txt`).

@@ -1,8 +1,10 @@
 // Global tuning constants. Balance lives here so it can be tweaked in one place.
 
-export const GAME_TITLE = 'Pandemonium Bistro';
-export const SAVE_KEY = 'pandemonium-bistro-save-v1';
-export const SETTINGS_KEY = 'pandemonium-bistro-settings-v1';
+export const GAME_TITLE = 'Sizzle Shack';
+export const SAVE_KEY = 'sizzle-shack-save-v1';
+export const SETTINGS_KEY = 'sizzle-shack-settings-v1';
+// Saves from before the rename are picked up once and moved to the new keys
+export const OLD_KEYS = { save: 'pandemonium-bistro-save-v1', settings: 'pandemonium-bistro-settings-v1' };
 
 export const DAY = {
   length: 240,            // real seconds from opening to closing time

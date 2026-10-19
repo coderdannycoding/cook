@@ -9,7 +9,7 @@
 const W = (o) => ({ cat: 'wall', layer: 'wall', solid: false, ...o });
 
 export const EXTRA_ITEMS = [
-  // --- Wall decor ---------------------------------------------------------------
+  // Wall decor
   ['bunting', W({ name: 'Party Bunting', price: 25, decor: 2, size: [3, 1], mount: 1.95, desc: 'Bright paper flags strung along the wall.' })],
   ['macrame', W({ name: 'Macramé Hanging', price: 35, decor: 3, mount: 1.4, desc: 'Knotted cotton on a driftwood stick. Very cosy.' })],
   ['art_poster', W({ name: 'Retro Food Poster', price: 40, decor: 3, mount: 1.38, desc: 'A sunburst burger poster in a black frame.' })],
@@ -32,7 +32,7 @@ export const EXTRA_ITEMS = [
   ['neon_yum', W({ name: 'Neon YUM', price: 150, decor: 8, size: [2, 1], mount: 1.55, light: true, flammable: false, stars: 2, desc: 'Big pink letters that buzz and flicker.' })],
   ['greenwall', W({ name: 'Living Wall', price: 160, decor: 9, size: [2, 1], mount: 1.3, deep: true, stars: 2.2, perk: { patience: 0.03 }, desc: 'A lush panel of moss and ferns. Calming to sit near.' })],
 
-  // --- Floor decor --------------------------------------------------------------
+  // Floor decor
   ['pampas', { name: 'Pampas Vase', cat: 'decor', price: 35, decor: 3, desc: 'Fluffy plumes in a tall clay vase.' }],
   ['beanbags', { name: 'Bean Bags', cat: 'decor', price: 60, decor: 4, size: [2, 1], desc: 'Two squashy bean bags. Everyone wants one.' }],
   ['monstera', { name: 'Monstera', cat: 'decor', price: 65, decor: 5, desc: 'Big split leaves on a mid-century stand.' }],
@@ -47,7 +47,7 @@ export const EXTRA_ITEMS = [
   ['teddy', { name: 'Giant Teddy', cat: 'decor', price: 140, decor: 8, desc: 'A huge, huggable bear with a red bow.' }],
   ['eggchair', { name: 'Egg Chair', cat: 'decor', price: 150, decor: 8, desc: 'A hanging rattan chair that sways a little.' }],
 
-  // --- Showpieces ---------------------------------------------------------------
+  // Showpieces
   ['clawmachine', { name: 'Claw Machine', cat: 'show', price: 190, decor: 10, stars: 1.5, light: true, flammable: false, perk: { arrivals: 0.03 }, desc: 'Win a plushie! Kids drag their families in.' }],
   ['recordplayer', { name: 'Record Player', cat: 'show', price: 210, decor: 10, stars: 1.8, perk: { tips: 0.03 }, desc: 'Vinyl spinning on a walnut cabinet. Good tunes, good tips.' }],
   ['photobooth', { name: 'Photo Booth', cat: 'show', price: 240, decor: 11, stars: 2, light: true, perk: { review: 0.05 }, desc: 'Guests post their photo strips and rave about you.' }],

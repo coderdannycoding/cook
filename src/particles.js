@@ -324,7 +324,7 @@ export class Particles {
     this.floaters.clear();
   }
 
-  // ------------------------------------------------------------ emitters
+  // emitters
   steam(x, y, z, strength = 1) {
     this.soft.spawn({
       x: x + rand(-0.12, 0.12), y, z: z + rand(-0.12, 0.12),
@@ -487,7 +487,7 @@ export class Particles {
     }
   }
 
-  // ------------------------------------------------------------ floaters
+  // floaters
   cashText(x, y, z, amount) {
     this.floaters.spawn(x, y, z, `+$${Math.round(amount)}`, 'f-cash', { vy: 1.4, life: 1.7 });
   }

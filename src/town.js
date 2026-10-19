@@ -29,7 +29,7 @@ const C = {
 const PETALS = ['#ff7a9a', '#ffd23f', '#ffffff', '#b98cff', '#ff9a4d', '#7ec8ff'];
 const LIT = '#ffffff', DIM = '#7e8cab';
 
-// ---------------------------------------------------------------- plots
+// plots
 // Each stage: lot (kept clear of the random garden) and site [cx, cz, w, d] (the footprint the
 // "coming soon" stakes mark and the celebration aims at). Trees listed per lot are always there.
 function layout(W, H, doorX) {
@@ -60,7 +60,7 @@ export function townStagePos(W, H, doorX, stage) {
   return { x: p.site[0], z: p.site[1] };
 }
 
-// ---------------------------------------------------------------- shared materials & signs
+// shared materials & signs
 const E = (c, r = 0.75) => mat(c, { kind: 'env', r });
 
 // Glowing bits (windows, bulbs) carry per-vertex colours that also tint their emissive light, so
@@ -230,7 +230,7 @@ function signPlane(cell, w, h) {
   return geo;
 }
 
-// ---------------------------------------------------------------- building helpers
+// building helpers
 function grp(x = 0, z = 0, ry = 0, y = 0) {
   const g = new THREE.Group();
   g.position.set(x, y, z);
@@ -389,7 +389,7 @@ function aoRing(c, x, z, r, w = 0.5, n = 10) {
 
 function addFlowers(c, x, z, n = 6) { c.garden.flowers.push({ x, z, n }); }
 
-// ---------------------------------------------------------------- 1: cottage
+// 1: cottage
 function cottage(c) {
   const [cx, cz] = c.site, { lot } = c;
   const g = grp(cx, cz);
@@ -428,7 +428,7 @@ function cottage(c) {
   return g;
 }
 
-// ---------------------------------------------------------------- 2: bakery
+// 2: bakery
 function bakery(c) {
   const [cx, cz] = c.site;
   const g = grp(cx, cz);
@@ -482,7 +482,7 @@ function bakery(c) {
   return g;
 }
 
-// ---------------------------------------------------------------- 3: flower market (faces +x)
+// 3: flower market (faces +x)
 function flowerStall(g, x, z, a, b, seed) {
   const s = grp(x, z);
   put(s, box(1.25, 0.08, 0.75), C.wood, 0, 0.72, 0);
@@ -536,7 +536,7 @@ function flowerMarket(c) {
   return g;
 }
 
-// ---------------------------------------------------------------- 4: duck pond park
+// 4: duck pond park
 function duck(parent, a, r, s, body) {
   const d = grp(Math.cos(a) * r, Math.sin(a) * r, PI / 2 - a);
   d.scale.setScalar(s);
@@ -670,7 +670,7 @@ function lampPost(g, x, z) {
   put(g, cone(0.17, 0.14, 8), C.iron, x, 1.97, z);
 }
 
-// ---------------------------------------------------------------- 5: ice cream corner (across the road)
+// 5: ice cream corner (across the road)
 function umbrella(g, x, z, a, b, h = 1.6, r = 0.75) {
   put(g, cyl(0.025, 0.025, h, 5), C.white, x, h / 2, z);
   for (let i = 0; i < 8; i++) put(g, cyl(0, r, 0.32, 2, false, (i / 8) * TAU, TAU / 8), i % 2 ? b : a, x, h, z);
@@ -755,7 +755,7 @@ function iceCream(c) {
   return g;
 }
 
-// ---------------------------------------------------------------- 6: townhouse row (faces the street)
+// 6: townhouse row (faces the street)
 function townhouse(row, hx, w, d, floors, wall, roofC, o = {}) {
   const fh = 1.3, g0 = o.shop ? 1.95 : 1.45, H = g0 + (floors - 1) * fh + 0.1;
   put(row, rbox(w, H, d, 0.05, 1), wall, hx, H / 2, -d / 2);
@@ -819,7 +819,7 @@ function townhouses(c) {
   return g;
 }
 
-// ---------------------------------------------------------------- 7: windmill
+// 7: windmill
 function windmill(c) {
   const [cx, cz] = c.site;
   const g = grp(cx, cz, FACE_CAM);
@@ -871,7 +871,7 @@ function windmill(c) {
   return g;
 }
 
-// ---------------------------------------------------------------- 8: Ferris wheel
+// 8: Ferris wheel
 const _m4 = new THREE.Matrix4();
 function ferrisWheel(c) {
   const [cx, cz] = c.site;
@@ -959,7 +959,7 @@ function ferrisWheel(c) {
   return g;
 }
 
-// ---------------------------------------------------------------- empty plots
+// empty plots
 function seeded(seed) {
   let s = seed >>> 0 || 1;
   return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
@@ -1004,7 +1004,7 @@ function emptyPlot(c, i, next) {
 
 const BUILDERS = [cottage, bakery, flowerMarket, park, iceCream, townhouses, windmill, ferrisWheel];
 
-// ---------------------------------------------------------------- town
+// town
 // Everything for stages 1..level (plus "coming soon" stakes on the rest) in one group.
 // userData: animate(t, dt), setNight(level01), lights (≤ 2 warm night lights), dispose().
 export function buildTown(W, H, doorX, level = 0) {

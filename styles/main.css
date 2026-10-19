@@ -63,7 +63,7 @@ html, body {
 
 .hidden { display: none !important; }
 
-/* ---------------------------------------------------------------- surfaces */
+/* surfaces */
 .paper {
   background: var(--cream);
   color: var(--text);
@@ -111,7 +111,7 @@ kbd {
 button { font-family: var(--font); cursor: pointer; }
 button:focus-visible, .card:focus-visible, .swatch:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 
-/* ---------------------------------------------------------------- buttons */
+/* buttons */
 .big-btn {
   --b1: var(--sky);
   --b2: var(--sky-2);
@@ -180,7 +180,7 @@ button:focus-visible, .card:focus-visible, .swatch:focus-visible { outline: 3px 
 .icon-btn:hover { transform: translateY(-1px); }
 .icon-btn:active { transform: translateY(3px); box-shadow: var(--gloss), 0 1px 0 var(--line); }
 
-/* ---------------------------------------------------------------- loading */
+/* loading */
 #loading {
   position: fixed;
   inset: 0;
@@ -201,7 +201,7 @@ button:focus-visible, .card:focus-visible, .swatch:focus-visible { outline: 3px 
 
 @keyframes toss { 0%, 100% { transform: rotate(-8deg); } 50% { transform: translateY(-8px) rotate(6deg); } }
 
-/* ---------------------------------------------------------------- title */
+/* title */
 #title-screen {
   position: fixed;
   inset: 0;
@@ -278,7 +278,7 @@ button:focus-visible, .card:focus-visible, .swatch:focus-visible { outline: 3px 
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-/* ---------------------------------------------------------------- modals */
+/* modals */
 #modal-root { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
 .modal-wrap {
   position: absolute;

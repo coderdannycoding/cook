@@ -81,7 +81,7 @@ export class UI {
     this.bind();
   }
 
-  // ------------------------------------------------------------- setup
+  // setup
   bind() {
     const g = this.game;
     g.events.on('ticket:add', (t) => this.addTicket(t));
@@ -142,7 +142,7 @@ export class UI {
 
   thumb(key) { return this.thumbs[key] || ''; }
 
-  // ------------------------------------------------------------- title
+  // title
   showTitle() {
     const g = this.game;
     const save = g.peekSave();
@@ -247,7 +247,7 @@ export class UI {
     this.e.title.classList.add('hidden');
   }
 
-  // ------------------------------------------------------------- HUD
+  // HUD
   showHUD(v) { this.e.hud.classList.toggle('hidden', !v); }
 
   updateHUD(dt) {
@@ -308,7 +308,7 @@ export class UI {
     s.classList.add('pulse');
   }
 
-  // ------------------------------------------------------------- tickets
+  // tickets
   addTicket(t) {
     const d = DISHES[t.dish];
     const parts = ticketParts(t.dish);
@@ -354,7 +354,7 @@ export class UI {
     }
   }
 
-  // ------------------------------------------------------------- world overlays
+  // world overlays
   w(key, cls, html) {
     let node = this.worldEls.get(key);
     if (!node) {
@@ -454,7 +454,7 @@ export class UI {
     this.worldEls.clear();
   }
 
-  // ------------------------------------------------------------- prompt
+  // prompt
   updatePrompt() {
     const g = this.game;
     const P = this.e.prompt;
@@ -476,7 +476,7 @@ export class UI {
     toggle(P, 'hidden', !html);
   }
 
-  // ------------------------------------------------------------- toasts
+  // toasts
   // Short messages down the right edge. A repeat of a message already on screen just stays up
   // longer instead of stacking a copy, and at most three show at once.
   toast(text, type = 'info', ic = '') {
@@ -506,7 +506,7 @@ export class UI {
     setTimeout(() => node.remove(), 300);
   }
 
-  // ------------------------------------------------------------- hint (tutorial)
+  // hint (tutorial)
   // Rewrite keyboard instructions for touch players
   touchify(html) {
     if (!this.game.input.touchMode) return html;
@@ -554,7 +554,7 @@ export class UI {
     };
   }
 
-  // ------------------------------------------------------------- countdown
+  // countdown
   countdown(text, big = false) {
     const C = this.e.countdown;
     C.innerHTML = `<span class="${big ? 'go' : ''}">${text}</span>`;
@@ -571,7 +571,7 @@ export class UI {
     C.classList.add('show');
   }
 
-  // ------------------------------------------------------------- night dock
+  // night dock
   showDock(v) {
     this.e.dock.classList.toggle('hidden', !v);
     this.e.buildHelp.classList.toggle('hidden', !v || this.dockTab !== 'build');
@@ -864,7 +864,7 @@ export class UI {
     this.e.buildHelp.innerHTML = text;
   }
 
-  // ------------------------------------------------------------- modals
+  // modals
   modal(html, cls = '') {
     const wrap = el(`<div class="modal-wrap"><div class="modal ${cls}">${html}</div></div>`);
     this.e.modal.appendChild(wrap);

@@ -219,7 +219,7 @@ button.card:active { transform: translateY(2px); }
 /* placing an item on a phone: only the tab row stays up */
 #night-dock.peek .dock-panel { display: none; }
 
-/* ---------------------------------------------------------------- end-of-day results */
+/* end-of-day results */
 .modal.results { width: min(480px, 94vw); text-align: center; }
 .res-medal {
   position: relative;
@@ -291,7 +291,7 @@ button.card:active { transform: translateY(2px); }
 .portrait.role-drive { background: linear-gradient(var(--berry), var(--berry-2)); }
 .portrait.role-busser { background: linear-gradient(#b7c0cc, #6d7a8c); }
 .portrait.role-host { background: linear-gradient(var(--sun), var(--sun-2)); }
-.portrait.role-musician { background: linear-gradient(#c7a2ff, #8a5cf0); }
+.portrait.role-musician { background: linear-gradient(#5fd6c8, #2a9d8f); }
 .portrait.role-mascot { background: linear-gradient(#ffc06a, var(--orange-2)); }
 .portrait.role-manager { background: linear-gradient(#7fb0e8, #3f6fb8); }
 

@@ -34,7 +34,7 @@ function add(id, o) {
   };
 }
 
-// --- Prep -----------------------------------------------------------------
+// Prep
 add('counter', { name: 'Counter', cat: 'prep', price: 20, station: 'counter', desc: 'A trusty surface. Assemble plates & park ingredients.' });
 add('board', { name: 'Cutting Board', cat: 'prep', price: 40, station: 'board', desc: 'Chop, slice & knead ingredients. Hold F to work.' });
 add('platerack', { name: 'Plate Rack', cat: 'prep', price: 35, station: 'platerack', desc: 'Clean plates are stored here at the start of each day.' });
@@ -43,23 +43,23 @@ add('trash', { name: 'Trash Can', cat: 'prep', price: 15, station: 'trash', flam
 add('pass', { name: 'Serving Pass', cat: 'prep', price: 45, station: 'pass', desc: 'Heat-lamped hand-off point. Waiters deliver dishes left here.' });
 add('extinguisher', { name: 'Extinguisher Stand', cat: 'prep', price: 40, station: 'extinguisher', flammable: false, desc: 'Grab the extinguisher and hold F to blast fires.' });
 
-// --- Cooking --------------------------------------------------------------
+// Cooking
 add('stove', { name: 'Stove', cat: 'cooking', price: 90, station: 'cooker', cook: 'stove', desc: 'Sears patties and meat. Food left on it too long burns.' });
 add('pot', { name: 'Stock Pot', cat: 'cooking', price: 100, station: 'cooker', cook: 'pot', desc: 'Boils rice, noodles & eggs.' });
 add('oven', { name: 'Pizza Oven', cat: 'cooking', price: 180, station: 'cooker', cook: 'oven', desc: 'Bakes topped pizza bases & tarts.' });
 add('fryer', { name: 'Deep Fryer', cat: 'cooking', price: 160, station: 'cooker', cook: 'fryer', desc: 'Fries potatoes, fish & shrimp to golden perfection.' });
 
-// --- Supplies (one crate per ingredient) ----------------------------------
+// Supplies (one crate per ingredient)
 const CRATE_PRICES = { lettuce: 25, tomato: 25, bun: 25, meat: 35, cheese: 30, dough: 35, rice: 30, fish: 45, nori: 25, noodles: 35, egg: 25, tortilla: 30, potato: 25, shrimp: 45, berries: 40 };
 for (const [ing, def] of Object.entries(INGREDIENTS)) {
   add(`crate_${ing}`, {
     name: `${def.name} Crate`, cat: 'supplies', price: CRATE_PRICES[ing] || 30, station: 'crate', ing,
     req: def.cuisine === 'diner' ? null : def.cuisine,
-    desc: `Endless ${def.name.toLowerCase()} — $${def.cost} each.`,
+    desc: `Endless ${def.name.toLowerCase()} at $${def.cost} each.`,
   });
 }
 
-// --- Dining ---------------------------------------------------------------
+// Dining
 // cells: [cx, cz, role] in unrotated local coordinates
 add('table2', {
   name: 'Bistro Table', cat: 'dining', price: 60, size: [3, 1], station: 'table', flammable: false, decor: 1,
@@ -69,7 +69,7 @@ add('table2', {
 add('table4', {
   name: 'Family Table', cat: 'dining', price: 130, size: [3, 2], station: 'table', flammable: false, decor: 2,
   cells: [[0, 0, 'seat'], [1, 0, 'table'], [2, 0, 'seat'], [0, 1, 'seat'], [1, 1, 'table'], [2, 1, 'seat']], seats: 4,
-  desc: 'Seats four — lets bigger groups visit.',
+  desc: 'Seats four, so bigger groups can visit.',
 });
 add('booth', {
   name: 'Cozy Booth', cat: 'dining', price: 190, size: [3, 1], station: 'table', flammable: false, decor: 6,
@@ -101,7 +101,7 @@ add('lounge', {
   desc: 'Four armchairs around a marble top. Guests here are 25% more patient.',
 });
 
-// --- Decor ----------------------------------------------------------------
+// Decor
 // perk: a bonus the first copy of an item gives the whole restaurant (copies don't stack it).
 // stars: rating needed before it can be bought.
 add('cactus', { name: 'Cactus Pot', cat: 'decor', price: 20, decor: 2, desc: 'Low effort, high charm.' });
@@ -127,7 +127,7 @@ add('lantern', { name: 'Lantern Post', cat: 'decor', price: 120, decor: 7, light
 add('neon', { name: 'Neon Heart', cat: 'decor', price: 140, decor: 8, light: true, flammable: false, perk: { arrivals: 0.05 }, desc: 'A buzzing pink sign that pulls in passers-by.' });
 add('clock', { name: 'Grandfather Clock', cat: 'decor', price: 150, decor: 8, perk: { patience: 0.03 }, desc: 'Its slow tick makes waiting feel shorter.' });
 
-// --- Showpieces (big statement pieces with restaurant-wide perks) ----------
+// Showpieces (big statement pieces with restaurant-wide perks)
 add('cat', { name: 'Shop Cat', cat: 'show', price: 160, decor: 9, stars: 1.5, perk: { review: 0.1 }, desc: 'Naps in a basket all day. Everyone loves the cat.' });
 add('parrot', { name: 'Chatty Parrot', cat: 'show', price: 180, decor: 9, stars: 1.5, perk: { queue: 0.25 }, desc: 'Chats to the queue, so it waits longer.' });
 add('popcorn', { name: 'Popcorn Cart', cat: 'show', price: 190, decor: 9, stars: 1.8, perk: { arrivals: 0.05 }, desc: 'The smell drifts out into the street.' });
@@ -147,7 +147,7 @@ add('statue', { name: 'Golden Chef', cat: 'show', price: 650, decor: 26, stars: 
 // More décor and wall pieces live in catalog-extra.js
 for (const [id, o] of EXTRA_ITEMS) add(id, o);
 
-// --- Automation -----------------------------------------------------------
+// Automation
 add('conveyor', { name: 'Conveyor Belt', cat: 'auto', price: 70, station: 'conveyor', desc: 'Moves items forward onto the next station. Rotate with R.' });
 add('grabber', { name: 'Grabber Arm', cat: 'auto', price: 130, station: 'grabber', desc: 'Takes from the station behind it and places in front.' });
 add('autochopper', { name: 'Auto-Chopper', cat: 'auto', price: 240, station: 'board', auto: true, desc: 'Chops anything placed on it, hands-free.' });
@@ -172,7 +172,6 @@ export function perkText(perk) {
   return Object.entries(perk || {}).map(([k, v]) => PERKS[k].label(v)).join(', ');
 }
 
-// ---------------------------------------------------------------------------
 // Starting restaurant (12 x 9). Door is at (10, 8).
 export const STARTER_LAYOUT = [
   { type: 'plant', x: 0, z: 0, rot: 0 },
@@ -205,7 +204,6 @@ export const STARTER_LAYOUT = [
 
 export const PLAYER_SPAWN = { x: 3.5, z: 1.6 };
 
-// ---------------------------------------------------------------------------
 // Upgrades. `value` is the effect at that level; `base` is the effect at level 0.
 export const UPGRADES = {
   dash:      { name: 'Running Shoes', icon: 'wind', desc: 'Your dash recharges faster.', base: 1.1, levels: [{ price: 120, value: 0.8 }, { price: 260, value: 0.55 }, { price: 480, value: 0.35 }], fmt: (v) => `${v}s dash cooldown` },
@@ -220,7 +218,6 @@ export const UPGRADES = {
   floor:     { name: 'Knock Through a Wall', icon: 'floor', desc: 'More floor space.', base: 0, levels: [{ price: 600, value: 1 }, { price: 1300, value: 2 }, { price: 2400, value: 3 }], fmt: (v) => `${FLOOR_LEVELS[v].w} × ${FLOOR_LEVELS[v].h} floor` },
 };
 
-// ---------------------------------------------------------------------------
 // Staff
 export const STAFF_TYPES = {
   chef:   { name: 'Sous-Chef', hire: 150, wage: 20, desc: 'Fetches, chops and cooks ingredients for open orders, and pulls food off the heat before it burns. At level 3 they plate whole dishes onto the serving pass.' },
@@ -248,7 +245,6 @@ export const STAFF_LEVELS = [
 export const STAFF_UPGRADE_COST = [0, 300, 600];
 export const MAX_STAFF = 12;
 
-// ---------------------------------------------------------------------------
 // Cosmetic themes
 export const FLOOR_THEMES = {
   wood:       { name: 'Oak Planks', price: 0, decor: 0 },

@@ -387,7 +387,7 @@ class Game {
     this.renderer.setParkedCar(fav && CARS[fav] ? `${fav}:${paint ?? ''}` : null, () => buildLuxuryCar(fav, paint));
   }
 
-  // ---- home (night only): the restaurant is hidden while the player shops for houses, pets and cars
+  // home (night only): the restaurant is hidden while the player shops for houses, pets and cars
   enterHome() {
     if (this.phase !== 'night' || this.home.active) return;
     this.build.cancel();
@@ -707,7 +707,7 @@ class Game {
       p.slow = 0;
       const q = (this.renderer.quality ?? 2) - 1;
       this.renderer.setQuality(q);
-      console.info(`[perf] ${fps.toFixed(0)} fps — lowering render quality to ${q}`);
+      console.info(`[perf] ${fps.toFixed(0)} fps, render quality lowered to ${q}`);
     } else p.slow = 0;
   }
 
@@ -982,14 +982,15 @@ function start() {
     showFatal('The kitchen failed to open', `Your browser couldn't start the 3D renderer (${e.message}). Reloading the page often helps.`);
     return;
   }
-  window.__game = game;
+  // Test hook: only on a local dev server or with ?debug in the address
+  if (/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname) || /[?&]debug\b/.test(window.location.search)) window.__game = game;
   game.boot().catch((e) => {
     console.error(e);
     showFatal('Something went wrong', `${e.message}. Reloading the page often helps.`);
   });
 }
 
-// Inside a claude.ai artifact viewer, boot through its hot-update hook; elsewhere just start.
+// When the host page offers a hot-reload hook, boot through it; elsewhere just start.
 // Boot exactly once, and don't wait forever if the hook never calls back.
 let booted = false;
 const bootOnce = () => {

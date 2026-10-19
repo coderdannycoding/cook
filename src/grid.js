@@ -112,7 +112,7 @@ export class Grid {
 
   isWalkable(x, z) { return !this.isSolid(x, z); }
 
-  // ------------------------------------------------------------ placement
+  // placement
   canPlace(def, x, z, rot, ignore = null) {
     const fp = this.footprint(def, x, z, rot);
     const door = this.doorTile;
@@ -320,7 +320,7 @@ export class Grid {
     return this.objects.map((o) => ({ type: o.type, x: o.x, z: o.z, rot: o.rot }));
   }
 
-  // ------------------------------------------------------------ collision
+  // collision
   // Push a circle (pos.x, pos.z, r) out of solid tiles and the room bounds.
   collide(pos, r, allowOutside = false) {
     if (!allowOutside) {

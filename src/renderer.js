@@ -236,7 +236,7 @@ export class Renderer {
     return this.renderer.getContext().drawingBufferHeight / this.viewSize;
   }
 
-  // ---------------------------------------------------------------- room shell
+  // room shell
   buildRoom(W, H, doorX, floorTheme, wallTheme, name = 'Sizzle Shack') {
     this.W = W;
     this.H = H;
@@ -590,7 +590,7 @@ export class Renderer {
     this.setTownLevel(this.townLevel);
   }
 
-  // ---------------------------------------------------------------- town
+  // town
   // Show the town for stages 1..level (0 = only empty plots). Cheap to call every day: it only
   // rebuilds when the level or the floor size changed.
   // The car parked beside the shop (key changes rebuild the street; builder returns a car facing +z)
@@ -602,7 +602,7 @@ export class Renderer {
     if (this.W !== undefined) this._buildStreet(this.W, this.H, this.doorX);
   }
 
-  // ---------------------------------------------------------------- drive-thru
+  // drive-thru
   // Lane for a drive-thru window on cell (W - 1, wz); null removes it. Rebuilds the street only on change.
   setDriveThru(wz) {
     wz = wz ?? null;
@@ -767,7 +767,7 @@ export class Renderer {
 
   setGridVisible(v) { if (this.gridLines) this.gridLines.visible = v; }
 
-  // ---------------------------------------------------------------- lighting
+  // lighting
   setTimeOfDay(hour, dt = 1) {
     const s = sampleSky(hour);
     const k = Math.min(1, dt * 2.5);
@@ -841,7 +841,7 @@ export class Renderer {
     reqs.length = 0;
   }
 
-  // ---------------------------------------------------------------- camera
+  // camera
   setCameraTarget(x, z) { this.camTarget.set(x, 0, z); }
   snapCamera() { this.camSmooth.copy(this.camTarget); this.viewSize = this.targetView; this._updateProjection(); }
   // Portrait screens are narrow, so allow a taller view to show the same width of floor
@@ -905,7 +905,7 @@ export class Renderer {
     this.camera.lookAt(this.camSmooth.x + sx, 0, this.camSmooth.z + sz);
   }
 
-  // ---------------------------------------------------------------- helpers
+  // helpers
   project(x, y, z) {
     _v.set(x, y, z).project(this.camera);
     return { x: (_v.x + 1) * 0.5 * this.width, y: (1 - _v.y) * 0.5 * this.height, visible: _v.z > -1 && _v.z < 1 };
