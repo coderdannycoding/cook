@@ -4,9 +4,10 @@
 import { icon } from './icons.js';
 import * as THREE from '../vendor/three-0.169.0.module.min.js';
 import { CATALOG } from './catalog.js';
-import { ECON } from './config.js';
+import { ECON, WALL_HEIGHT } from './config.js';
 import { buildAppliance } from './models.js';
-import { formatMoney } from './utils.js';
+import { meshSpot } from './grid.js';
+import { formatMoney, clamp } from './utils.js';
 
 export class BuildMode {
   constructor(game) {
@@ -21,6 +22,7 @@ export class BuildMode {
     this.lastHelp = '';
     this.pending = null;
     this.toolsKey = '';
+    this.raycaster = new THREE.Raycaster();
   }
 
   enter() {
@@ -126,6 +128,64 @@ export class BuildMode {
     return { x: Math.floor(p.x - w / 2 + 0.5), z: Math.floor(p.z - d / 2 + 0.5) };
   }
 
+  rayAt(sx, sy) {
+    const r = this.game.renderer;
+    this.raycaster.setFromCamera(new THREE.Vector2((sx / r.width) * 2 - 1, -(sy / r.height) * 2 + 1), r.camera);
+    return this.raycaster;
+  }
+
+  // Wall pieces snap to the tall wall under the pointer (or the nearer one when pointing at the floor
+  // close to it) and turn to face the room. Out in the middle of the floor they just follow the pointer.
+  wallSpotAt(def, sx, sy) {
+    const grid = this.game.grid;
+    const { origin: o, direction: d } = this.rayAt(sx, sy).ray;
+    const w = def.size[0];
+    let best = null;
+    for (const side of [0, 1]) {
+      const dn = side ? d.x : d.z;
+      if (Math.abs(dn) < 1e-6) continue;
+      const t = -(side ? o.x : o.z) / dn;
+      const y = o.y + d.y * t, along = side ? o.z + d.z * t : o.x + d.x * t;
+      if (t > 0 && y > -0.05 && y < WALL_HEIGHT + 0.4 && along > -0.3 && along < (side ? grid.H : grid.W) + 0.3 && (!best || t < best.t)) best = { t, side, along };
+    }
+    if (!best) {
+      const p = this.game.renderer.screenToGround(sx, sy);
+      if (!p) return null;
+      const side = p.x < p.z ? 1 : 0;
+      if (Math.min(p.x, p.z) < 1.6) best = { side, along: side ? p.z : p.x };
+      else return side ? { x: Math.floor(p.x), z: Math.floor(p.z - w / 2 + 0.5), rot: 1 } : { x: Math.floor(p.x - w / 2 + 0.5), z: Math.floor(p.z), rot: 0 };
+    }
+    const i = clamp(Math.floor(best.along - w / 2 + 0.5), 0, Math.max(0, (best.side ? grid.H : grid.W) - w));
+    return best.side ? { x: 0, z: i, rot: 1 } : { x: i, z: 0, rot: 0 };
+  }
+
+  // Where a phone's first preview of a wall piece appears: the free stretch of wall nearest the
+  // middle of the back wall, as a screen point.
+  wallStart(def) {
+    const grid = this.game.grid;
+    const spots = [];
+    for (let i = 0; i + def.size[0] <= grid.W; i++) spots.push([i, 0, 0, Math.abs(i + def.size[0] / 2 - grid.W / 2)]);
+    for (let i = 0; i + def.size[0] <= grid.H; i++) spots.push([0, i, 1, grid.W / 2 + i]);
+    spots.sort((a, b) => a[3] - b[3]);
+    const s = spots.find(([x, z, rot]) => grid.canPlace(def, x, z, rot, this.moving).ok) || spots[0];
+    const p = meshSpot(def, grid.footprint(def, s[0], s[1], s[2]), s[2]);
+    return this.game.renderer.project(p.x + (s[2] ? 0.02 : 0), p.y + 0.3, p.z + (s[2] ? 0 : 0.02));
+  }
+
+  // A wall piece under the pointer, unless something standing in front of it is nearer.
+  pickWall(sx, sy) {
+    const objs = this.game.grid.objects;
+    const hung = objs.filter((o) => o.def.layer === 'wall');
+    if (!hung.length) return null;
+    const front = objs.filter((o) => o.def.layer !== 'wall' && o.def.layer !== 'floor' && o.cells.some((c) => c.x === 0 || c.z === 0));
+    for (const h of this.rayAt(sx, sy).intersectObjects([...hung, ...front].map((o) => o.mesh), true)) {
+      let p = h.object;
+      while (p && !p.userData.obj) p = p.parent;
+      if (p) return p.userData.obj.def.layer === 'wall' ? p.userData.obj : null;
+    }
+    return null;
+  }
+
   rotate() {
     this.rot = (this.rot + 1) % 4;
     this.game.audio.click();
@@ -146,37 +206,41 @@ export class BuildMode {
     if (placing) {
       const shown = this.pending; // where the preview stood last frame, before this tap moved it
       if (tap) this.aimed = true;
+      const def = this.moving ? this.moving.def : CATALOG[this.selectedType];
+      const wall = def.layer === 'wall';
       if (!this.aimed) {
         // follows the room centre while the camera settles (the dock folds away on phones)
-        const c = r.project(g.grid.W / 2, 0, g.grid.H / 2);
+        const c = wall ? this.wallStart(def) : r.project(g.grid.W / 2, 0, g.grid.H / 2);
         input.hover.x = c.x;
         input.hover.y = c.y;
       }
-      const def = this.moving ? this.moving.def : CATALOG[this.selectedType];
       if (def.edge === 'right') this.rot = 1; // faces out through the right-hand wall
-      const at = this.footprintAt(def, input.hover.x, input.hover.y);
+      const spotAt = (sx, sy) => (wall ? this.wallSpotAt(def, sx, sy) : this.footprintAt(def, sx, sy));
+      const at = spotAt(input.hover.x, input.hover.y);
       if (!at) { this.renderTools(null); return; }
       const { x, z } = at;
+      if (wall) this.rot = at.rot;
       const check = g.grid.canPlace(def, x, z, this.rot, this.moving);
       const afford = this.moving || g.state.cash >= def.price;
       const ok = check.ok && afford;
       const fp = check.fp;
-      this.ghost.position.set(fp.cx, 0.02 + Math.sin(g.time * 6) * 0.02, fp.cz);
+      const spot = meshSpot(def, fp, this.rot);
+      this.ghost.position.set(spot.x, spot.y + 0.02 + Math.sin(g.time * 6) * 0.02, spot.z);
       this.ghost.rotation.y = this.rot * (Math.PI / 2);
       this.ghost.visible = true;
       this.tint(ok);
       r.setTileMarkers(fp.cells, ok);
       r.hideHighlight();
       const reason = !check.ok ? check.reason : !afford ? 'Not enough cash' : '';
-      this.pending = { def, x, z, ok, reason };
+      this.pending = { def, x, z, rot: this.rot, ok, reason };
       const how = input.touchMode ? '<b>Tap again</b> to place' : '<b>Click</b> place · <kbd>R</kbd> rotate · <b>Right-click</b> cancel';
       this.help(`${this.moving ? 'Moving' : 'Placing'} <b>${def.name}</b>${this.moving ? '' : ` (${formatMoney(def.price)})`}${reason ? `: <span class="bad">${reason}</span>` : ''} · ${how}`);
       if (tap) {
         // A click places right away (the preview already follows the mouse). A touch tap on the
         // preview places it; a tap anywhere else only moves the preview there.
-        const t = this.footprintAt(def, tap.x, tap.y);
+        const t = spotAt(tap.x, tap.y);
         const target = tap.touch ? shown : this.pending;
-        if (t && target && t.x === target.x && t.z === target.z && target.def === def) this.tryCommit();
+        if (t && target && t.x === target.x && t.z === target.z && target.def === def && (!wall || t.rot === target.rot)) this.tryCommit();
       }
       if (input.mouse.clicked[2]) {
         this.cancel();
@@ -190,6 +254,8 @@ export class BuildMode {
     r.setTileMarkers([], true);
     this.pending = null;
     const pick = (sx, sy) => {
+      const w = this.pickWall(sx, sy);
+      if (w) return w;
       const p = r.screenToGround(sx, sy);
       if (!p) return null;
       const tx = Math.floor(p.x), tz = Math.floor(p.z);

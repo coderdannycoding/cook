@@ -9,6 +9,15 @@ import { clamp, uid, easeOutBack, DIRS4 } from './utils.js';
 
 const AUTOMATION_EXEMPT = new Set(['conveyor', 'grabber']);
 
+// Wall pieces (layer 'wall') hang on the two tall walls: rot 0 on the back wall (z = 0, facing +z),
+// rot 1 on the left wall (x = 0, facing +x). Their models are built with the origin on the wall
+// face at the piece's lowest point, so they sit flush at `def.mount` above the floor.
+export function meshSpot(def, fp, rot) {
+  if (def.layer !== 'wall') return { x: fp.cx, y: 0, z: fp.cz };
+  const a = rot * (Math.PI / 2);
+  return { x: fp.cx - Math.round(Math.sin(a)) * 0.5, y: def.mount, z: fp.cz - Math.round(Math.cos(a)) * 0.5 };
+}
+
 export class Grid {
   constructor(game) {
     this.game = game;
@@ -18,6 +27,7 @@ export class Grid {
     this.objects = [];
     this.occ = [];
     this.floorOcc = [];
+    this.wallOcc = [[], []];
     this.solid = new Uint8Array(0);
     this.group = new THREE.Group();
     game.renderer.scene.add(this.group);
@@ -64,8 +74,14 @@ export class Grid {
     const n = this.W * this.H;
     this.occ = new Array(n).fill(null);
     this.floorOcc = new Array(n).fill(null);
+    this.wallOcc = [new Array(this.W).fill(null), new Array(this.H).fill(null)];
     this.solid = new Uint8Array(n);
     for (const o of this.objects) {
+      if (o.def.layer === 'wall') {
+        const side = o.rot % 2;
+        for (const c of o.cells) if (this.inBounds(c.x, c.z)) this.wallOcc[side][side ? c.z : c.x] = o;
+        continue;
+      }
       for (const c of o.cells) {
         if (!this.inBounds(c.x, c.z)) continue;
         const i = this.idx(c.x, c.z);
@@ -102,6 +118,7 @@ export class Grid {
     const door = this.doorTile;
     if (def.max && !(ignore && ignore.def === def) && this.countType(def.id) >= def.max) return { ok: false, reason: def.max === 1 ? 'You already have one' : `Limit of ${def.max}`, fp };
     if (def.edge === 'right' && !fp.cells.some((c) => c.x === this.W - 1)) return { ok: false, reason: 'Goes against the right-hand wall', fp };
+    if (def.layer === 'wall') return { ...this.canHang(def, fp, rot, ignore), fp };
     for (const c of fp.cells) {
       if (!this.inBounds(c.x, c.z)) return { ok: false, reason: 'Out of bounds', fp };
       const i = this.idx(c.x, c.z);
@@ -119,6 +136,46 @@ export class Grid {
       if (blocked) return { ok: false, reason: blocked, fp };
     }
     return { ok: true, reason: '', fp };
+  }
+
+  // Wall pieces only clash with other wall pieces, the windows and clock built into the walls, and
+  // anything standing in front that is taller than the piece's lower edge.
+  canHang(def, fp, rot, ignore) {
+    const side = rot === 0 ? 0 : rot === 1 ? 1 : -1;
+    if (side < 0 || !fp.cells.every((c) => (side ? c.x : c.z) === 0)) return { ok: false, reason: 'Hang it on the back or left wall' };
+    for (const c of fp.cells) {
+      if (!this.inBounds(c.x, c.z)) return { ok: false, reason: 'Out of bounds' };
+      const i = side ? c.z : c.x;
+      const o = this.wallOcc[side][i];
+      if (o && o !== ignore) return { ok: false, reason: 'Space occupied' };
+      const fixture = this.wallFixture(side, i);
+      if (fixture) return { ok: false, reason: `The ${fixture} is in the way` };
+      const corner = i === 0 && this.wallOcc[1 - side][0];
+      if (def.deep && corner && corner !== ignore && corner.def.deep) return { ok: false, reason: 'Too close to the corner piece' };
+      const below = this.occ[this.idx(c.x, c.z)];
+      if (below && this.heightOf(below) > def.mount + 0.02) return { ok: false, reason: `The ${below.def.name} is in the way` };
+    }
+    return { ok: true, reason: '' };
+  }
+
+  // Windows and the clock that renderer.buildRoom puts on the tall walls (keep in sync with it).
+  wallFixture(side, i) {
+    const len = side ? this.H : this.W;
+    for (let p = 2.5; p < len - 1.5; p += 4) if (i === Math.floor(p)) return 'window';
+    if (!side && i === Math.floor(Math.min(this.W - 2, 7.5))) return 'clock';
+    return null;
+  }
+
+  heightOf(o) {
+    if (o.topY === undefined) {
+      const m = o.mesh, s = m.scale.x;
+      m.scale.setScalar(1);
+      m.updateMatrixWorld(true);
+      o.topY = new THREE.Box3().setFromObject(m).max.y;
+      m.scale.setScalar(s);
+      m.updateMatrixWorld(true);
+    }
+    return o.topY;
   }
 
   // Simulate placing `cells` and verify every station stays reachable from the door.
@@ -210,7 +267,8 @@ export class Grid {
     const fp = this.footprint(def, x, z, rot);
     const obj = { uid: uid(), type, def, x, z, rot, ...fp, popT: opts.silent ? 1 : 0 };
     obj.mesh = buildAppliance(def);
-    obj.mesh.position.set(fp.cx, 0, fp.cz);
+    const p = meshSpot(def, fp, rot);
+    obj.mesh.position.set(p.x, p.y, p.z);
     obj.mesh.rotation.y = rot * (Math.PI / 2);
     obj.mesh.userData.obj = obj;
     if (!opts.silent) obj.mesh.scale.setScalar(0.01);
@@ -224,7 +282,8 @@ export class Grid {
   move(obj, x, z, rot) {
     const fp = this.footprint(obj.def, x, z, rot);
     Object.assign(obj, { x, z, rot, ...fp });
-    obj.mesh.position.set(fp.cx, 0, fp.cz);
+    const p = meshSpot(obj.def, fp, rot);
+    obj.mesh.position.set(p.x, p.y, p.z);
     obj.mesh.rotation.y = rot * (Math.PI / 2);
     obj.popT = 0.3;
     obj.station?.onMoved?.();

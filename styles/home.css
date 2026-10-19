@@ -1,1 +1,192 @@
 /* Home mode: house, pets and garage panels */
+
+#home-dock {
+  position: fixed;
+  left: 50%;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  width: min(1100px, calc(100vw - 24px));
+  z-index: 25;
+  border-radius: 24px;
+  border: 4px solid var(--line);
+  background: var(--navy);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.12), 0 6px 0 var(--line), var(--drop);
+  padding: 10px 12px 6px;
+  animation: dockIn 0.4s cubic-bezier(0.2, 1.3, 0.4, 1);
+}
+#home-dock .dock-top { margin-bottom: 4px; }
+#home-dock .hm-note { min-width: 0; flex: 1; text-align: right; white-space: normal; line-height: 1.3; }
+#home-dock .hm-note b { color: var(--sun); }
+.hm-back { white-space: nowrap; }
+.hm-back .ic { width: 20px; height: 20px; filter: drop-shadow(0 1.5px 0 var(--line)); }
+.hm-short { display: none; }
+
+/* one sideways-scrolling row of shop tiles */
+.hm-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  padding: 10px 4px 10px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--navy-2) transparent;
+}
+.hm-row::-webkit-scrollbar { height: 10px; }
+.hm-row::-webkit-scrollbar-thumb { background: var(--navy-2); border: 2px solid var(--line); border-radius: 8px; }
+.hm-label {
+  flex: none;
+  align-self: center;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font: 400 14px/1 var(--display);
+  letter-spacing: 0.04em;
+  color: #fff;
+  text-shadow: var(--ol-sm);
+  padding: 8px 4px;
+  border-radius: 10px;
+  background: var(--navy-2);
+  border: 2.5px solid var(--line);
+}
+
+#home-dock .card.hm-card {
+  flex: none;
+  width: 222px;
+  flex-direction: row;
+  align-items: center;
+  text-align: left;
+  gap: 8px;
+  padding: 6px 8px 6px 6px;
+  border-radius: 16px;
+}
+#home-dock .hm-card img { flex: none; width: 74px; height: 74px; border-radius: 12px; }
+.hm-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+#home-dock .hm-card .c-name { font-size: 15px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#home-dock .hm-card .c-perk {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 10.5px;
+  line-height: 1.2;
+}
+#home-dock .hm-card .c-perk .ic { vertical-align: -1px; margin-right: 2px; }
+.hm-card .c-perk.hm-plain { background: #e9e3f2; color: var(--text-dim); }
+#home-dock .hm-card .c-meta { justify-content: flex-start; flex-wrap: nowrap; white-space: nowrap; }
+.hm-card.past { background: #ece6f3; }
+.hm-card.past img { filter: saturate(0.55); }
+.hm-card.locked { background: #d7d1e2; }
+.hm-after { display: inline-flex; align-items: center; gap: 2px; font: 800 11px var(--font); color: var(--text-dim); }
+.hm-after .bdg { width: 15px; height: 15px; }
+.hm-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 8px 2px 5px;
+  border-radius: 99px;
+  background: #e2dbec;
+  border: 2px solid var(--line);
+  font: 400 13px/1.2 var(--display);
+  color: var(--text);
+}
+.hm-tag.on { background: linear-gradient(var(--grass), var(--grass-2)); color: #fff; text-shadow: var(--ol-sm); }
+.card .c-meta .hm-tag .ic { width: 13px; height: 13px; color: currentColor; }
+.card .c-meta .hm-tag.on .ic { filter: drop-shadow(0 1px 0 var(--line)); }
+.hm-lux {
+  position: absolute;
+  top: -9px;
+  left: -8px;
+  z-index: 1;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--line);
+  background: linear-gradient(#fff3a8, var(--sun-2));
+  border: 2.5px solid var(--line);
+  box-shadow: 0 2px 0 var(--line);
+}
+.hm-lux .ic { width: 14px; height: 14px; }
+
+/* where you are: the current home, pets, cars and what they do for the restaurant */
+#home-title {
+  position: fixed;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 24;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 540px);
+  border-radius: 99px;
+  padding: 5px 18px 6px 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: hmTitleIn 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes hmTitleIn { from { transform: translate(-50%, -30px); opacity: 0; } }
+.hm-tt { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hm-tt > div { display: flex; align-items: center; gap: 10px; }
+#home-title b { font: 400 20px/1 var(--display); color: #fff; text-shadow: var(--ol-sm); }
+#home-title .hm-ic {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(var(--orange), var(--orange-2));
+  border: 2.5px solid var(--line);
+}
+#home-title .hm-ic .ic { width: 20px; height: 20px; stroke-width: 2.8; filter: drop-shadow(0 1.5px 0 var(--line)); }
+#home-title small { display: inline-flex; align-items: center; gap: 4px; font: 400 15px/1 var(--display); color: var(--sun); text-shadow: var(--ol-sm); }
+#home-title small .ic { width: 16px; height: 16px; color: #fff; filter: drop-shadow(0 1.5px 0 var(--line)); }
+#home-title small i { width: 6px; }
+.hm-perks { font: 800 12px/1.2 var(--font); color: rgba(255, 255, 255, 0.78); overflow: hidden; text-overflow: ellipsis; }
+.hm-perks em { font-style: normal; color: var(--sun); }
+
+@media (max-width: 900px) {
+  #home-dock .hm-note { display: none; }
+}
+
+/* Phones and short screens: a compact dock with smaller tiles */
+@media (max-height: 520px), (max-width: 640px) {
+  #home-dock { padding: 6px 8px 2px; border-radius: 20px; border-width: 3px; }
+  #home-dock .dock-top { margin-bottom: 0; flex-wrap: nowrap; gap: 6px; }
+  #home-dock .dock-tabs { flex-wrap: nowrap; gap: 5px; }
+  #home-dock .tab { min-height: 36px; padding: 5px 9px 6px; font-size: 14px; }
+  #home-dock .tab.collapse { margin-left: auto; }
+  #home-dock .open-btn { margin-left: 0; padding: 6px 11px 8px; font-size: 15px; }
+  .hm-long { display: none; }
+  .hm-short { display: inline; }
+  .hm-row { gap: 8px; padding: 9px 2px 7px; }
+  #home-dock .card.hm-card { width: 176px; padding: 4px 6px 4px 4px; gap: 6px; border-radius: 13px; }
+  #home-dock .hm-card img { width: 54px; height: 54px; border-radius: 9px; }
+  #home-dock .hm-card .c-name { font-size: 13px; }
+  #home-dock .hm-card .c-perk { font-size: 9.5px; padding: 1px 4px; }
+  .hm-txt { gap: 3px; }
+  #home-dock .hm-card .c-meta b { font-size: 12px; padding: 0 6px 1px 3px; }
+  #home-dock .hm-card .c-meta b .bdg { width: 13px; height: 13px; }
+  .hm-tag { font-size: 11.5px; padding: 0 6px 1px 4px; }
+  .hm-after { font-size: 10px; }
+  .hm-lux { top: -7px; left: -6px; width: 21px; height: 21px; }
+  .hm-lux .ic { width: 11px; height: 11px; }
+  .hm-label { font-size: 11px; padding: 6px 3px; }
+  #home-title { padding: 3px 12px 4px 4px; gap: 6px; max-width: calc(100vw - 360px); }
+  #home-title b { font-size: 16px; }
+  #home-title .hm-ic { width: 28px; height: 28px; }
+  #home-title .hm-ic .ic { width: 15px; height: 15px; }
+  #home-title small { font-size: 13px; }
+  #home-title small .ic { width: 14px; height: 14px; }
+  .hm-perks { display: none; }
+}
+
+/* Upright phones: no room up top for the badge (the HUD takes the corners) */
+@media (max-width: 640px) and (orientation: portrait) {
+  #home-title { display: none; }
+  #home-dock .tab:not(.collapse) .ic { display: none; }
+  #home-dock .card.hm-card { width: 168px; }
+}
