@@ -153,6 +153,7 @@ export class BuildMode {
         input.hover.y = c.y;
       }
       const def = this.moving ? this.moving.def : CATALOG[this.selectedType];
+      if (def.edge === 'right') this.rot = 1; // faces out through the right-hand wall
       const at = this.footprintAt(def, input.hover.x, input.hover.y);
       if (!at) { this.renderTools(null); return; }
       const { x, z } = at;

@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = join(ROOT, 'dist');
 const ESBUILD = 'esbuild@0.24.0';
-const CSS_FILES = ['styles/fonts.css', 'styles/main.css', 'styles/hud.css', 'styles/panels.css', 'styles/touch.css'];
+const CSS_FILES = ['styles/fonts.css', 'styles/main.css', 'styles/hud.css', 'styles/panels.css', 'styles/touch.css', 'styles/home.css'];
 
 function bundleJs() {
   const win = process.platform === 'win32';

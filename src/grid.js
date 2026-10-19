@@ -100,6 +100,8 @@ export class Grid {
   canPlace(def, x, z, rot, ignore = null) {
     const fp = this.footprint(def, x, z, rot);
     const door = this.doorTile;
+    if (def.max && !(ignore && ignore.def === def) && this.countType(def.id) >= def.max) return { ok: false, reason: def.max === 1 ? 'You already have one' : `Limit of ${def.max}`, fp };
+    if (def.edge === 'right' && !fp.cells.some((c) => c.x === this.W - 1)) return { ok: false, reason: 'Goes against the right-hand wall', fp };
     for (const c of fp.cells) {
       if (!this.inBounds(c.x, c.z)) return { ok: false, reason: 'Out of bounds', fp };
       const i = this.idx(c.x, c.z);

@@ -8,6 +8,7 @@ import { ginghamTexture, rugTexture, beltTexture, counterTopTexture } from './te
 import { pick, TAU } from './utils.js';
 import { LOOK, gradeColor, addRim, outlineMaterial, makeBlobShadow, buildGardenTree } from './look.js';
 import { DECOR_BUILDERS } from './decor.js';
+import { DECOR2_BUILDERS } from './decor2.js';
 
 const S = SURFACE_Y;
 
@@ -922,7 +923,7 @@ export function buildAppliance(def) {
   if (def.station === 'crate') return BUILDERS.crate(def);
   if (def.station === 'table') return BUILDERS.table(def);
   if (def.station === 'board') return BUILDERS.board(def);
-  const b = BUILDERS[def.id] || DECOR_BUILDERS[def.id];
+  const b = BUILDERS[def.id] || DECOR_BUILDERS[def.id] || DECOR2_BUILDERS[def.id];
   if (b) return b(def);
   const r = new THREE.Group();
   cabinet(r);

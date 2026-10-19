@@ -2,6 +2,7 @@
 
 import { SURFACE_Y, FLOOR_LEVELS } from './config.js';
 import { INGREDIENTS } from './recipes.js';
+import { EXTRA_ITEMS } from './catalog-extra.js';
 
 export const CATEGORIES = [
   { id: 'supplies', name: 'Supplies', icon: 'crate' },
@@ -10,6 +11,7 @@ export const CATEGORIES = [
   { id: 'dining', name: 'Dining', icon: 'cloche' },
   { id: 'decor', name: 'Decor', icon: 'plant' },
   { id: 'show', name: 'Showpieces', icon: 'crown' },
+  { id: 'wall', name: 'Wall Decor', icon: 'frame' },
   { id: 'auto', name: 'Automation', icon: 'conveyor' },
   { id: 'style', name: 'Style', icon: 'roller' },
 ];
@@ -137,6 +139,9 @@ add('piano', { name: 'Grand Piano', cat: 'show', price: 450, decor: 20, size: [2
 add('fireplace', { name: 'Stone Fireplace', cat: 'show', price: 480, decor: 20, size: [2, 1], stars: 3.2, light: true, flammable: false, perk: { patience: 0.06 }, desc: 'A crackling fire. Cosy and calming.' });
 add('sakura', { name: 'Blossom Tree', cat: 'show', price: 520, decor: 24, size: [2, 2], stars: 3.5, perk: { review: 0.15 }, desc: 'An indoor cherry tree in full bloom.' });
 add('statue', { name: 'Golden Chef', cat: 'show', price: 650, decor: 26, stars: 4, flammable: false, perk: { arrivals: 0.08, critic: 0.2 }, desc: 'A gleaming statue of you. People come just to see it.' });
+
+// More décor and wall pieces live in catalog-extra.js
+for (const [id, o] of EXTRA_ITEMS) add(id, o);
 
 // --- Automation -----------------------------------------------------------
 add('conveyor', { name: 'Conveyor Belt', cat: 'auto', price: 70, station: 'conveyor', desc: 'Moves items forward onto the next station. Rotate with R.' });
