@@ -18,6 +18,7 @@ export function newGameState() {
     upgrades: { dash: 0, speed: 0, knives: 0, burners: 0, timer: 0, fireproof: 0, plates: 0, capacity: 0, patience: 0, floor: 0 },
     objects: STARTER_LAYOUT.map((o) => ({ ...o })),
     staff: [],
+    storage: {},
     stats: { totalServed: 0, totalEarned: 0, bestDay: 0, criticsWowed: 0, daysPlayed: 0 },
     settings: { tutorialDone: false },
   };

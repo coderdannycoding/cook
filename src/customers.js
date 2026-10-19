@@ -81,7 +81,7 @@ export class CustomerManager {
     if (h > 11.5 && h < 13.5) t *= 0.72;
     if (h > 17.5 && h < 19.5) t *= 0.65;
     t *= 1 - 0.15 * g.ambience;
-    t /= 1 + g.perks.arrivals;
+    t /= 1 + g.perks.arrivals + g.staff.boost('mascot', 'arrivals');
     if (g.state.day === 1) t *= 1.3;
     else if (g.state.day === 2) t *= 1.1;
     return Math.max(5, t);
@@ -315,6 +315,7 @@ export class CustomerManager {
     if (c.critic) m *= 0.85;
     if (c.vip) m *= 0.8;
     if (c.table && this.hasHost()) m *= 1.08;
+    if (c.table) m *= 1 + g.staff.boost('musician', 'patience');
     for (const o of this.grid.objects) {
       if (o.type === 'lamp' && Math.hypot(o.cx - c.pos.x, o.cz - c.pos.z) < 2.6) { m *= 1.1; break; }
     }
@@ -442,7 +443,7 @@ export class CustomerManager {
         continue;
       }
       const price = DISHES[c.order].price * (c.vip ? 3 : 1);
-      const tipPct = clamp((c.review - 2.5) * 0.09 + g.ambience * 0.12 + (g.state.rating - 1) * 0.02 + g.perks.tips + (c.vip ? 0.2 : 0), 0, 0.8);
+      const tipPct = clamp((c.review - 2.5) * 0.09 + g.ambience * 0.12 + (g.state.rating - 1) * 0.02 + g.perks.tips + g.staff.boost('musician', 'tips') + (c.vip ? 0.2 : 0), 0, 0.8);
       const tip = Math.round(price * tipPct);
       total += price + tip;
       g.today.revenue += price;

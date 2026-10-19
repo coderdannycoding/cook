@@ -2,7 +2,7 @@
 
 import { Staff } from './entities.js';
 import { createBrain } from './ai.js';
-import { STAFF_TYPES, STAFF_UPGRADE_COST, MAX_STAFF } from './catalog.js';
+import { STAFF_TYPES, STAFF_UPGRADE_COST, MAX_STAFF, ROLE_BOOST } from './catalog.js';
 import { FIRST_NAMES, pick, randInt } from './utils.js';
 
 export class StaffManager {
@@ -30,6 +30,13 @@ export class StaffManager {
     const spot = this.game.freeTileNear(this.game.grid.W / 2, this.game.grid.H / 2);
     if (spot) s.setPos(spot.x + 0.5, spot.z + 0.5);
     return s;
+  }
+
+  // A support role's bonus (musician, mascot, manager), from the best-trained one on the team
+  boost(role, key) {
+    let lv = 0;
+    for (const d of this.roster) if (d.role === role) lv = Math.max(lv, d.level);
+    return lv ? ROLE_BOOST[role][key][lv - 1] : 0;
   }
 
   wage(d) {
@@ -133,7 +140,11 @@ export class StaffManager {
 
   update(dt, active) {
     const g = this.game;
+    const rush = 1 + this.boost('manager', 'speed');
     for (const m of this.members) {
+      const k = m.role === 'manager' ? 1 : rush;
+      m.speed = m.baseSpeed * k;
+      m.chopRate = m.washRate = m.baseWork * k;
       if (active) m.brain.update(dt);
       else {
         m.vel.set(0, 0, 0);

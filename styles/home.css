@@ -244,6 +244,8 @@
 .hm-mood .ic { width: 14px; height: 14px; }
 .hm-mypet.sad .hm-mood { color: var(--berry-2); }
 .hm-mypet .hm-sbtns { align-items: center; justify-content: space-between; width: 100%; }
+#home-title .hm-rest { display: inline-flex; align-items: center; gap: 3px; margin-left: 8px; font-style: normal; color: #bfe8ff; }
+#home-title .hm-rest .ic { color: #bfe8ff; }
 #home-title .hm-sad { display: inline-flex; align-items: center; gap: 2px; margin-left: 4px; font-style: normal; color: #ffb3c0; }
 #home-title .hm-sad .ic { color: #ffb3c0; }
 
@@ -345,3 +347,25 @@ body:not(.touch) .hm-tool[data-tool="place"] { display: none; }
   .hm-tools { flex-wrap: wrap; }
   .hm-thead { flex-basis: calc(100% - 70px); }
 }
+
+/* the daily letter */
+.modal.letter { max-width: 420px; background: #fffaf0; background-image: repeating-linear-gradient(transparent 0 27px, #e8dfcf 27px 28px); }
+.hm-letter { position: relative; padding: 4px 6px 0; text-align: left; }
+.hm-letter h2 { margin: 0 64px 10px 0; text-align: left; }
+.hm-letter p { font: 700 16px/1.75 var(--font); color: var(--text); margin: 0; }
+.hm-stamp {
+  position: absolute;
+  top: -6px;
+  right: 0;
+  width: 54px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: #ff8fb0;
+  border: 3px dashed #fff;
+  outline: 2.5px solid var(--line);
+  transform: rotate(6deg);
+  color: #fff;
+}
+.hm-stamp .ic { width: 28px; height: 28px; filter: drop-shadow(0 1.5px 0 var(--line)); }

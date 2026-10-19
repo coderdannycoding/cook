@@ -70,6 +70,29 @@ export const CARS = {
   hypercar: { name: 'Golden Hypercar', price: 40000, perk: { arrivals: 0.04, review: 0.03 }, lux: true, desc: 'Plated in gold. The whole town knows your name.' },
 };
 
+// Helpers you can hire for the home; wages are paid at the end of each working day
+export const HOME_STAFF = {
+  gardener: { name: 'Gardener', wage: 30, desc: 'Picks any crops you missed each day and keeps the garden neat (+10 comfort).' },
+  sitter: { name: 'Pet Sitter', wage: 25, desc: 'Plays with the pets while you work, so they never miss you.' },
+  butler: { name: 'Butler', wage: 45, desc: 'Tea, slippers and a hot bath: you start every day well rested.' },
+};
+const HELPER_LOOKS = {
+  gardener: { skin: '#e0a878', shirt: '#6fbf4a', apron: '#7a5538', hair: '#4a2f1e', hairStyle: 'short', hat: 'cap', hatColor: '#2f6f2a', scale: 0.95 },
+  sitter: { skin: '#ffe3cc', shirt: '#ff8fb0', hair: '#d6a24a', hairStyle: 'pony', scarf: '#ffd23f', scale: 0.93 },
+  butler: { skin: '#c68a5a', shirt: '#ffffff', vest: '#1d1a2f', bowtie: '#b0263a', hair: '#1c1c24', hairStyle: 'short', mustache: true, scale: 0.97 },
+};
+// Relaxing at home (or a butler) leaves you well rested for the next day
+export const REST_PERK = { tips: 0.03, patience: 0.03 };
+// Crops: pick once a day for coins
+const HARVEST = { veggies: 40, appletree: 30 };
+// The daily letter in the mailbox
+const FAN_LINES = [
+  'Your food made my whole week.', 'Best meal in town, no contest.', 'My kids still talk about your desserts.',
+  'Thanks for squeezing us in right before closing!', 'The service was lightning fast. Keep it up!',
+  'We celebrated our anniversary at your place. Perfect night.', 'I came for one dish and stayed for three.',
+];
+const FANS = ['Rosa from Maple Street', 'a very full trucker', 'the Nguyen family', 'Grandpa Joe', 'a tired nurse', 'the bakery next door', 'Coach Patel'];
+
 // Comfort: the house, every piece of yard furniture and the pets add to it. Each level gives the
 // restaurant a little more patience and tips. Extra copies of the same piece count for half.
 const TIER_COMFORT = [0, 10, 20, 35, 50];
@@ -79,7 +102,10 @@ export const COMFORT_LEVELS = [
 ];
 
 export function defaultHomeState() {
-  return { tier: 0, pets: [], cars: [], favCar: null, items: [], storage: {}, care: [], paint: { wall: null, roof: null }, carPaint: {} };
+  return {
+    tier: 0, pets: [], cars: [], favCar: null, items: [], storage: {}, care: [], paint: { wall: null, roof: null }, carPaint: {},
+    staff: [], rested: 0, mailDay: 0,
+  };
 }
 const isHex = (c) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
 function newPetName(home) {
@@ -96,7 +122,7 @@ function normalizeHome(h) {
   if (!h.cars.includes(h.favCar)) h.favCar = h.cars[0] ?? null;
   const int = (v) => Math.floor(Number(v) || 0);
   h.items = Array.isArray(h.items)
-    ? h.items.filter((it) => it && HOME_ITEMS[it.id]).map((it) => ({ id: it.id, c: int(it.c), r: int(it.r), rot: ((int(it.rot) % 4) + 4) % 4 }))
+    ? h.items.filter((it) => it && HOME_ITEMS[it.id]).map((it) => ({ id: it.id, c: int(it.c), r: int(it.r), rot: ((int(it.rot) % 4) + 4) % 4, ...(it.picked ? { picked: int(it.picked) } : {}) }))
     : [];
   const store = {};
   for (const [id, n] of Object.entries(h.storage && typeof h.storage === 'object' ? h.storage : {})) {
@@ -121,25 +147,44 @@ function normalizeHome(h) {
   const cp = h.carPaint && typeof h.carPaint === 'object' ? h.carPaint : {};
   h.carPaint = {};
   for (const [id, c] of Object.entries(cp)) if (CARS[id] && isHex(c)) h.carPaint[id] = c;
+  h.staff = Array.isArray(h.staff) ? [...new Set(h.staff.filter((id) => HOME_STAFF[id]))] : [];
+  h.rested = int(h.rested);
+  h.mailDay = int(h.mailDay);
   return h;
 }
 
 const happyAt = (home, i) => (Number.isFinite(home?.care?.[i]?.joy) ? home.care[i].joy : 80) >= PET_CARE.happy;
 
-// A working day has passed: pets miss you a little (less with pet furniture in the yard)
-export function homeNewDay(home) {
-  if (!home || !Array.isArray(home.care)) return;
+// Day `day` of work has ended: pets miss you a little (less with pet furniture, not at all with
+// a sitter), the gardener picks any crops you left, and the helpers are paid. Returns the money.
+export function homeNewDay(home, day) {
+  const out = { income: 0, wages: 0 };
+  if (!home || !Array.isArray(home.care)) return out;
+  const staff = Array.isArray(home.staff) ? home.staff : [];
   const kinds = new Set((home.items || []).filter((it) => HOME_ITEMS[it?.id]?.pet).map((it) => it.id)).size;
-  const drop = Math.max(6, PET_CARE.drop - kinds * 3);
+  const drop = staff.includes('sitter') ? 0 : Math.max(6, PET_CARE.drop - kinds * 3);
   for (const c of home.care) {
     c.joy = clamp((Number(c.joy) || 0) - drop, 0, 100);
     c.pats = 0;
   }
+  if (staff.includes('gardener')) {
+    for (const it of home.items || []) {
+      if (!HARVEST[it.id] || (it.picked || 0) >= day) continue;
+      it.picked = day;
+      out.income += HARVEST[it.id];
+    }
+  }
+  for (const id of staff) out.wages += HOME_STAFF[id]?.wage || 0;
+  return out;
 }
 export function sadPets(home) {
   return Array.isArray(home?.pets) ? home.pets.filter((id, i) => !happyAt(home, i)).length : 0;
 }
 export { normalizeHome };
+
+export function isRested(home, day) {
+  return !!home && ((Array.isArray(home.staff) && home.staff.includes('butler')) || (day > 0 && home.rested === day));
+}
 
 export function homeComfort(home) {
   if (!home) return 0;
@@ -152,6 +197,7 @@ export function homeComfort(home) {
     seen.add(it.id);
   }
   n += (Array.isArray(home.pets) ? home.pets.filter((id, i) => happyAt(home, i)).length : 0) * 2;
+  if (Array.isArray(home.staff) && home.staff.includes('gardener')) n += 10;
   return Math.round(n);
 }
 export function comfortLevel(comfort) {
@@ -161,7 +207,7 @@ export function comfortLevel(comfort) {
 }
 
 // Restaurant bonuses from the home (fractions, same keys as catalog PERKS). Pets count once per kind.
-export function homePerks(home) {
+export function homePerks(home, day = 0) {
   const out = {};
   if (!home) return out;
   const add = (perk) => { for (const [k, v] of Object.entries(perk || {})) out[k] = (out[k] || 0) + v; };
@@ -173,6 +219,7 @@ export function homePerks(home) {
   for (const id of new Set(Array.isArray(home.items) ? home.items.map((it) => it?.id) : [])) add(HOME_ITEMS[id]?.perk);
   const lv = comfortLevel(homeComfort(home));
   if (lv) add({ tips: lv * 0.01, patience: lv * 0.01 });
+  if (isRested(home, day)) add(REST_PERK);
   for (const k of Object.keys(out)) out[k] = Math.round(out[k] * 1000) / 1000;
   return out;
 }
@@ -196,6 +243,32 @@ const SPOTS = [
 // The yard grid: 1-unit cells in front of the house. Column GRID.path is the garden path to the gate
 // and always stays clear.
 const GRID = { x0: -8.9, z0: -0.3, cols: 11, rows: 6, path: 5 };
+// How the chef uses each piece: where (item-local, the item faces +z), seat height, facing.
+// Seat kinds (sit, lie, soak, bounce, swing, dig) hop onto the piece; the rest stand at `at`.
+const USE = {
+  lounger: { kind: 'lie', at: [0, -0.1], y: 0.42, face: 0 },
+  hammock: { kind: 'lie', at: [0, 0], y: 0.6, face: -Math.PI / 2, hang: [1.0, 0.4, 1.1, 0.12, 0], sway: true },
+  patio: { kind: 'sit', at: [-0.72, 0], y: 0.46, face: Math.PI / 2 },
+  swingbench: { kind: 'sit', at: [0.25, 0.02], y: 0.5, face: 0, hang: [1.6, 1.12, 1.1, 0.1, 0] },
+  firepit: { kind: 'sit', at: [0.75, 0.55], y: 0.4, face: Math.atan2(-0.75, -0.55) },
+  hottub: { kind: 'soak', at: [0, 0], y: 0.16, face: 0 },
+  trampoline: { kind: 'bounce', at: [0, 0], y: 0.5, face: 0 },
+  swingset: { kind: 'sit', at: [-0.55, 0], y: 0.45, face: 0, hang: [1.8, 1.37, 1.6, 0.35, 0] },
+  picnic: { kind: 'sit', at: [-0.15, 0.2], y: 0.06, face: 0 },
+  gazebo: { kind: 'sit', at: [0, -0.9], y: 0.52, face: 0 },
+  movie: { kind: 'sit', at: [0.45, 0.6], y: 0.26, face: Math.PI },
+  sandbox: { kind: 'dig', at: [0.3, 0.2], y: 0.16, face: Math.PI * 0.8 },
+  slide: { kind: 'slide', at: [0, -1.2], face: 0 },
+  bbq: { kind: 'grill', at: [0, 0.7], face: Math.PI },
+  pizzaoven: { kind: 'grill', at: [0, 0.9], face: Math.PI },
+  telescope: { kind: 'look', at: [0, -0.62], face: 0 },
+  hoop: { kind: 'shoot', at: [0, 1.6], face: Math.PI },
+  minigolf: { kind: 'putt', at: [-0.62, -0.3], face: Math.PI / 2 },
+  veggies: { kind: 'harvest', at: [0, 1.25], face: Math.PI },
+  appletree: { kind: 'harvest', at: [0, 0.8], face: Math.PI },
+};
+const SEATED = new Set(['sit', 'lie', 'soak', 'bounce', 'dig']);
+const MAILBOX = { x: GATE.x1 + 0.55, z: PLOT.z1 + 0.5 };
 const POOL = { x0: -8.6, x1: -5.4, z0: 1.15, z1: 3.45 };
 const FOUNTAIN = { x: -3.4, z: 3.1, r: 1.15 };
 
@@ -1527,6 +1600,28 @@ function buildDecor(id) {
 }
 const itemModel = (id) => (DECOR_MODELS[id] ? buildDecor(id) : buildHomeItem(id));
 
+// A home helper: a character with the tool of the job in the right hand
+function buildHelper(id) {
+  const m = buildCharacter(HELPER_LOOKS[id]);
+  const tool = new THREE.Group();
+  if (id === 'gardener') {
+    put(tool, rbox(0.2, 0.17, 0.12, 0.04, 1), P('#3fae5a', 0.5), 0, 0.02, 0.06);
+    put(tool, cyl(0.018, 0.026, 0.22, 6), P('#3fae5a', 0.5), 0, 0.06, 0.2, 1.1);
+    put(tool, torus(0.07, 0.014, 5, 10, PI), P('#2d8a47'), 0, 0.11, 0.04, 0, PI / 2);
+  } else if (id === 'butler') {
+    put(tool, cyl(0.17, 0.17, 0.02, 18), P('#dfe4ea', 0.25, 0.85), 0, 0.07, 0);
+    put(tool, cyl(0.045, 0.035, 0.07, 10), P('#ffffff', 0.4), -0.05, 0.12, 0.02);
+    put(tool, cyl(0.05, 0.06, 0.1, 10), P('#ffffff', 0.4), 0.07, 0.13, -0.03);
+    put(tool, cone(0.02, 0.06, 6), P('#ffffff', 0.4), 0.13, 0.15, -0.03, 0, 0, -1.2);
+  } else {
+    put(tool, sph(0.09, 12, 8), P('#ff4a5a', 0.5), 0, 0.04, 0.06);
+    put(tool, torus(0.09, 0.012, 5, 14), P('#ffffff'), 0, 0.04, 0.06, PI / 2);
+  }
+  mergeStatic(tool, 'char');
+  m.handR.add(tool);
+  return m;
+}
+
 // Yard grid maths. Items are stored by the cell of their footprint's low corner and a quarter turn.
 const footprint = (id, rot) => {
   const [w, d] = HOME_ITEMS[id].size;
@@ -1581,6 +1676,18 @@ function pushOut(list, p, pad) {
   }
 }
 
+// Walking along waypoints: the next point to head for (via = not the last one)
+function followPath(w) {
+  while (w.path && w.path.length > 1 && Math.hypot(w.path[0].x - w.x, w.path[0].z - w.z) < 0.22) w.path.shift();
+  const p = w.path?.[0] ?? { x: w.tx, z: w.tz };
+  return { x: p.x, z: p.z, via: !!w.path && w.path.length > 1 };
+}
+function pathLength(w, path) {
+  let n = 0, x = w.x, z = w.z;
+  for (const p of path) { n += Math.hypot(p.x - x, p.z - z); x = p.x; z = p.z; }
+  return n;
+}
+
 // ---------------------------------------------------------------- thumbnails (baked once, lazily)
 const THUMBS = {};
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
@@ -1590,6 +1697,7 @@ function thumbJobs() {
   for (const id of Object.keys(PETS)) jobs.push([`pet:${id}`, () => buildPet(id).root, { elevation: 0.35, yaw: 0.55, pad: 1.08 }]);
   for (const id of Object.keys(CARS)) jobs.push([`car:${id}`, () => buildLuxuryCar(id), { elevation: 0.5, yaw: 0.75, pad: 1.04 }]);
   for (const id of Object.keys(HOME_ITEMS)) jobs.push([`item:${id}`, () => itemModel(id), { elevation: 0.55, yaw: 0.6, pad: 1.08 }]);
+  for (const id of Object.keys(HOME_STAFF)) jobs.push([`helper:${id}`, () => buildHelper(id).root, { elevation: 0.22, yaw: 0.5, pad: 1.06 }]);
   return jobs.filter(([k]) => !THUMBS[k]);
 }
 
@@ -1607,11 +1715,12 @@ export class HomeMode {
     this.zoom = 1;
     this.panel = new HomePanel(this, {
       HOME_TIERS, TIER_IDS, PETS, CARS, HOME_ITEMS, ITEM_GROUPS, PET_LIMITS, PET_BONUS, PET_CARE, PAINT, COMFORT_LEVELS,
-      perkText, formatMoney, homePerks, homeComfort, comfortLevel, sadPets,
+      perkText, formatMoney, homePerks, homeComfort, comfortLevel, sadPets, isRested, HOME_STAFF, REST_PERK,
       sellBack: ECON.sellRefund,
     });
     this.placing = null; // { id, rot, c, r, from (a placed item being moved), stored, ok }
     this.sel = null; // the yard item picked for the item toolbar
+    this.helpers = [];
   }
 
   get active() { return this._active; }
@@ -1731,6 +1840,10 @@ export class HomeMode {
     this.pets = [];
     this.syncPets(false);
     this.chef = this.makeChef();
+    this.helpers = [];
+    this.syncHelpers(false);
+    this.marks = this.makeMarks();
+    this.root.add(this.marks.group);
   }
 
   disposeScene() {
@@ -1742,6 +1855,8 @@ export class HomeMode {
     this.root = null;
     this.tierObj = null;
     this.pets = [];
+    this.helpers = [];
+    this.marks = null;
     this.carObjs = null;
     this.itemObjs = null;
     this.overlay = null;
@@ -2211,7 +2326,8 @@ export class HomeMode {
     const g = this.game;
     const look = g.player?.look ?? playerLook(g.settings?.color);
     const m = buildCharacter(look);
-    const c = { m, x: SITE.x + 0.6, z: 1.0, face: 0.4, dir: 0.4, v: 0, phase: 0, t: 0, state: 'idle', timer: 1.5, tx: 0, tz: 0, blink: 2, target: null };
+    m.root.rotation.order = 'YXZ';
+    const c = { m, x: SITE.x + 0.6, z: 1.0, face: 0.4, dir: 0.4, v: 0, phase: 0, t: 0, state: 'idle', timer: 1.5, tx: 0, tz: 0, blink: 2, target: null, pending: null, use: null };
     m.root.position.set(c.x, 0, c.z);
     this.root.add(m.root);
     return c;
@@ -2489,8 +2605,10 @@ export class HomeMode {
     this.updateItems(dt);
     this.updateCars(dt);
     for (const p of this.pets) this.updatePet(p, dt);
+    for (const hp of this.helpers) this.updateHelper(hp, dt);
     this.separate();
     this.updateChef(dt);
+    this.updateMarks();
   }
 
   // Furniture animations, lights and little particle effects
@@ -2599,7 +2717,9 @@ export class HomeMode {
       const it = hit ? null : this.itemAt(tap.x, tap.y);
       if (hit?.pet) this.petTapped(hit.pet);
       else if (hit?.car) this.honkCar(hit.car.id);
-      else if (it) this.select(it === this.sel ? null : it);
+      else if (hit?.mail) this.goToMail();
+      else if (it && (this.panel.tab === 'yard' || this.sel)) this.select(it === this.sel ? null : it);
+      else if (it) this.chefUse(it);
       else if (this.sel) this.select(null);
       else {
         const p = r.screenToGround(tap.x, tap.y);
@@ -2626,6 +2746,8 @@ export class HomeMode {
       const d = Math.hypot(s.x - sx, s.y - sy) * 0.8;
       if (d < bd) { bd = d; best = { car: c }; }
     }
+    const mb = r.project(OX + MAILBOX.x, 0.9, OZ + MAILBOX.z);
+    if (Math.hypot(mb.x - sx, mb.y - sy) < bd) best = { mail: true };
     return best;
   }
 
@@ -2899,8 +3021,8 @@ export class HomeMode {
   }
 
   separate() {
-    const list = [...this.pets];
-    if (this.chef) list.push(this.chef);
+    const list = [...this.pets, ...this.helpers];
+    if (this.chef && this.chef.state !== 'use') list.push(this.chef);
     for (let i = 0; i < list.length; i++) {
       for (let j = i + 1; j < list.length; j++) {
         const a = list[i], b = list[j];
@@ -2913,7 +3035,7 @@ export class HomeMode {
       }
     }
     for (const a of list) {
-      const area = a === this.chef || a.state === 'follow' ? WALK : YARD;
+      const area = a === this.chef || a.state === 'follow' || a.role ? WALK : YARD;
       pushOut(this.obstacles, a, 0.22);
       a.x = clamp(a.x, area.x0, area.x1);
       a.z = clamp(a.z, area.z0, area.z1);
@@ -2924,19 +3046,99 @@ export class HomeMode {
   chefGoTo(x, z, user = false) {
     const c = this.chef;
     if (!c) return false;
+    if (c.state === 'use') this.endUse(c, true);
+    c.pending = null;
     const p = { x: clamp(x, WALK.x0, WALK.x1), z: clamp(z, WALK.z0, WALK.z1) };
     pushOut(this.obstacles, p, 0.3);
-    if (!user && !pathClear(this.obstacles, c.x, c.z, p.x, p.z, 0.2)) return false;
+    p.x = clamp(p.x, WALK.x0, WALK.x1);
+    p.z = clamp(p.z, WALK.z0, WALK.z1);
+    const path = this.findPath(c.x, c.z, p.x, p.z);
+    if (!path && !user) return false;
+    c.path = path || [p];
     c.tx = p.x;
     c.tz = p.z;
     c.state = 'walk';
-    c.timer = 10;
+    c.timer = 6 + pathLength(c, c.path) / 1.6;
     c.target = null;
     if (user) {
       this.fx('dust', p.x, p.z, 3, '#fff6dd');
       for (const pet of this.pets) if (pet.def.style === 'dog' && Math.random() < 0.6) this.setPetState(pet, 'follow', rand(4, 7));
     }
     return true;
+  }
+
+  // A* over a 0.25-unit grid of the walkable yard, then trimmed to the corners that matter.
+  // Returns waypoints ending at (x1, z1), or null when the spot can't be reached.
+  findPath(x0, z0, x1, z1) {
+    const obs = this.obstacles;
+    if (pathClear(obs, x0, z0, x1, z1, 0.2)) return [{ x: x1, z: z1 }];
+    const S = 0.25, W = Math.round((WALK.x1 - WALK.x0) / S) + 1, H = Math.round((WALK.z1 - WALK.z0) / S) + 1;
+    if (this._navFor !== obs) {
+      this._navFor = obs;
+      this._nav = new Uint8Array(W * H);
+      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) this._nav[j * W + i] = blocked(obs, WALK.x0 + i * S, WALK.z0 + j * S, 0.2) ? 1 : 0;
+    }
+    const nav = this._nav;
+    const cell = (x, z) => [clamp(Math.round((x - WALK.x0) / S), 0, W - 1), clamp(Math.round((z - WALK.z0) / S), 0, H - 1)];
+    const [si, sj] = cell(x0, z0);
+    let [gi, gj] = cell(x1, z1);
+    if (nav[gj * W + gi]) {
+      // nearest open cell to the goal
+      let best = null, bd = Infinity;
+      for (let j = Math.max(0, gj - 4); j <= Math.min(H - 1, gj + 4); j++) {
+        for (let i = Math.max(0, gi - 4); i <= Math.min(W - 1, gi + 4); i++) {
+          const d = (i - gi) ** 2 + (j - gj) ** 2;
+          if (!nav[j * W + i] && d < bd) { bd = d; best = [i, j]; }
+        }
+      }
+      if (!best) return null;
+      [gi, gj] = best;
+    }
+    const start = sj * W + si, goal = gj * W + gi;
+    const gs = new Float32Array(W * H).fill(Infinity), from = new Int32Array(W * H).fill(-1), done = new Uint8Array(W * H);
+    const open = [start];
+    gs[start] = 0;
+    const hs = (n) => Math.hypot((n % W) - gi, Math.floor(n / W) - gj);
+    while (open.length) {
+      let bi = 0;
+      for (let k = 1; k < open.length; k++) if (gs[open[k]] + hs(open[k]) < gs[open[bi]] + hs(open[bi])) bi = k;
+      const n = open[bi];
+      open[bi] = open[open.length - 1];
+      open.pop();
+      if (n === goal) break;
+      if (done[n]) continue;
+      done[n] = 1;
+      const ni = n % W, nj = Math.floor(n / W);
+      for (let dj = -1; dj <= 1; dj++) {
+        for (let di = -1; di <= 1; di++) {
+          if (!di && !dj) continue;
+          const i = ni + di, j = nj + dj;
+          if (i < 0 || j < 0 || i >= W || j >= H) continue;
+          const m = j * W + i;
+          if (nav[m] || done[m]) continue;
+          if (di && dj && (nav[nj * W + i] || nav[j * W + ni])) continue;
+          const g = gs[n] + (di && dj ? 1.414 : 1);
+          if (g < gs[m]) { gs[m] = g; from[m] = n; open.push(m); }
+        }
+      }
+    }
+    if (goal !== start && from[goal] < 0) return null;
+    const cells = [];
+    for (let n = goal; n !== start && n >= 0; n = from[n]) cells.push({ x: WALK.x0 + (n % W) * S, z: WALK.z0 + Math.floor(n / W) * S });
+    cells.reverse();
+    if (cells.length) cells[cells.length - 1] = { x: x1, z: z1 };
+    // keep only the turns: skip ahead while the straight line stays clear
+    const out = [];
+    let cx = x0, cz = z0, k = 0;
+    while (k < cells.length) {
+      let far = k;
+      for (let m = cells.length - 1; m > k; m--) if (pathClear(obs, cx, cz, cells[m].x, cells[m].z, 0.18)) { far = m; break; }
+      out.push(cells[far]);
+      cx = cells[far].x;
+      cz = cells[far].z;
+      k = far + 1;
+    }
+    return out.length ? out : [{ x: x1, z: z1 }];
   }
 
   chefVisit(p) {
@@ -2952,12 +3154,20 @@ export class HomeMode {
     const m = c.m;
     c.t += dt;
     c.timer -= dt;
+    if (c.state === 'use') {
+      this.updateUse(c, dt);
+      this.blinkChef(c, dt);
+      return;
+    }
     let speed = 0;
     if (c.state === 'walk') {
-      const dx = c.tx - c.x, dz = c.tz - c.z, d = Math.hypot(dx, dz);
-      if (d > 0.08) {
+      const wp = followPath(c);
+      const dx = wp.x - c.x, dz = wp.z - c.z, d = Math.hypot(dx, dz);
+      if (d > 0.08 || wp.via) {
         c.dir = Math.atan2(dx, dz);
-        speed = 2.2 * clamp(d / 0.35, 0.35, 1);
+        speed = 2.2 * (wp.via ? 1 : clamp(d / 0.35, 0.35, 1));
+      } else if (c.pending) {
+        this.startUse(c);
       } else if (c.target) {
         const p = c.target;
         c.dir = Math.atan2(p.x - c.x, p.z - c.z);
@@ -2976,8 +3186,9 @@ export class HomeMode {
       c.state = 'idle';
       c.timer = rand(2.5, 5);
       const r = Math.random();
-      if (this.pets.length && r < 0.4) this.chefVisit(pick(this.pets));
-      else if (this.home.favCar && r < 0.6) {
+      if (this.pets.length && r < 0.3) this.chefVisit(pick(this.pets));
+      else if (this.home.items.length && r < 0.55) this.chefUse(pick(this.home.items), true);
+      else if (this.home.favCar && r < 0.65) {
         if (this.chefGoTo(SPOTS[0].x - 0.6, SPOTS[0].z + 1.8)) c.admire = true;
       } else if (r < 0.9) {
         const s = this.freeSpot(WALK, 0.4);
@@ -2999,7 +3210,8 @@ export class HomeMode {
     if (moving > 0.05) c.phase += dt * (5 + c.v * 2.6);
     const bob = moving > 0.05 ? Math.abs(Math.sin(c.phase)) * 0.075 * moving : Math.sin(c.t * 2.4) * 0.012;
     m.root.position.set(c.x, 0, c.z);
-    m.root.rotation.y = c.face;
+    m.root.rotation.set(0, c.face, 0);
+    m.head.rotation.x = 0;
     m.pivot.position.y = bob;
     m.pivot.rotation.x = moving * 0.13 + (c.state === 'pat' ? 0.35 : 0);
     m.head.rotation.z = moving > 0.05 ? Math.sin(c.phase) * 0.05 : Math.sin(c.t * 1.3) * 0.03;
@@ -3020,8 +3232,567 @@ export class HomeMode {
       hl.set(-0.33, 0.5 + bob * 0.6, 0.05 - s2);
       hr.set(0.33, 0.5 + bob * 0.6, 0.05 + s2);
     }
+    this.blinkChef(c, dt);
+  }
+
+  blinkChef(c, dt) {
     c.blink -= dt;
-    m.eyes.scale.y = c.blink < 0 ? 0.15 : 1;
+    c.m.eyes.scale.y = c.blink < 0 ? 0.15 : 1;
     if (c.blink < -0.12) c.blink = rand(2, 5);
+  }
+
+  // ------------------------------------------------------------ things to do at home
+  // Item-local point [x, z] in yard coordinates (and the item's turn)
+  itemPoint(it, x, z) {
+    const g = this.itemObjs.get(it);
+    const rot = g ? g.rotation.y : -it.rot * (PI / 2);
+    const q = itemRect(it), cx = (q.x0 + q.x1) / 2, cz = (q.z0 + q.z1) / 2;
+    return { x: cx + x * Math.cos(rot) + z * Math.sin(rot), z: cz - x * Math.sin(rot) + z * Math.cos(rot), rot };
+  }
+
+  // Walk over and use a piece of furniture (sit, lie, soak, grill, shoot hoops...); auto when the
+  // chef is just pottering about (no harvest or rest bonus then)
+  chefUse(it, auto = false) {
+    const c = this.chef;
+    if (!c || !this.itemObjs.has(it)) return false;
+    const U = USE[it.id] ?? { kind: 'admire', face: PI };
+    const [w, d] = HOME_ITEMS[it.id].size, hx = w / 2, hz = d / 2;
+    const at = U.at ?? [0, hz + 0.55];
+    const seat = SEATED.has(U.kind) || !!U.hang;
+    // Where to stand: the usual spot, else the nearest open side of the piece
+    const cands = [];
+    if (!seat) cands.push({ p: this.itemPoint(it, at[0], at[1]), main: true });
+    for (const [dx, dz] of [[0, 1], [-1, 0], [1, 0], [0, -1]]) {
+      const lx = dx ? dx * (hx + 0.45) : seat ? at[0] : 0, lz = dz ? dz * (hz + 0.45) : seat ? at[1] : 0;
+      cands.push({ p: this.itemPoint(it, lx, lz), main: false });
+    }
+    let ap = null, main = false;
+    for (const k of cands) {
+      const { x, z } = k.p;
+      if (x < WALK.x0 || x > WALK.x1 || z < WALK.z0 || z > WALK.z1 || blocked(this.obstacles, x, z, 0.26)) continue;
+      if (!this.findPath(c.x, c.z, x, z)) continue;
+      ap = k.p;
+      main = k.main;
+      break;
+    }
+    if (!ap) {
+      if (!auto) {
+        this.game.ui.toast('No way through to that. Make a gap around it', 'warn', 'crate');
+        this.game.audio.error?.();
+      }
+      return false;
+    }
+    if (!this.chefGoTo(ap.x, ap.z, !auto)) return false;
+    const q = itemRect(it);
+    const spot = seat ? this.itemPoint(it, at[0], at[1]) : { x: c.tx, z: c.tz };
+    c.pending = { it, U, auto, spot, seat, face: seat || main ? null : Math.atan2((q.x0 + q.x1) / 2 - c.tx, (q.z0 + q.z1) / 2 - c.tz) };
+    return true;
+  }
+
+  startUse(c) {
+    const P0 = c.pending, it = P0.it;
+    c.pending = null;
+    if (P0.mail) { c.state = 'idle'; c.timer = 2; this.readMail(); return; }
+    const g = this.itemObjs.get(it);
+    if (!g) { c.state = 'idle'; c.timer = 1; return; }
+    const D = HOME_ITEMS[it.id];
+    const rest = !P0.auto && (D.group === 'relax' || it.id === 'gazebo' || it.id === 'movie');
+    c.use = {
+      it, g, U: P0.U, kind: P0.U.kind, from: { x: c.x, z: c.z }, spot: P0.seat ? P0.spot : { x: c.x, z: c.z }, seat: P0.seat, face: P0.face, t: 0, phase: P0.seat ? 'in' : 'on',
+      dur: P0.U.kind === 'slide' ? 2.6 : rest ? 9 : P0.auto ? 3.5 : 5, rest, auto: P0.auto, did: false, shot: -1,
+    };
+    c.state = 'use';
+    c.timer = 5;
+    if (P0.U.kind === 'harvest' && !P0.auto) this.harvest(it);
+    if (P0.U.kind === 'bounce' || P0.U.kind === 'slide') this.game.audio.swoosh?.();
+  }
+
+  endUse(c, now = false) {
+    const u = c.use;
+    c.use = null;
+    c.state = 'idle';
+    c.timer = rand(1.5, 3);
+    if (!u) return;
+    if (u.kind === 'slide') {
+      const e = this.itemPoint(u.it, 0, 1.35);
+      c.x = e.x;
+      c.z = e.z;
+    } else if (now && u.seat) this.fx('poof', c.x, 0.4, c.z, '#ffffff', 6);
+    const m = c.m;
+    m.root.rotation.set(0, c.face, 0);
+    m.head.rotation.x = 0;
+    m.pivot.rotation.x = 0;
+    if (this.ball) this.ball.visible = false;
+  }
+
+  updateUse(c, dt) {
+    const u = c.use, U = u.U, m = c.m, g = u.g;
+    if (!g.parent || !this.home.items.includes(u.it)) { this.endUse(c, true); return; }
+    u.t += dt;
+    const rot = g.rotation.y;
+    let face = u.face ?? (U.face ?? 0) + rot;
+    // Where the seat is right now (swings and hammocks move)
+    let sx = u.spot.x, sz = u.spot.z, sy = U.y ?? 0, tilt = 0;
+    if (U.hang) {
+      const [py, len, f, amp, ph] = U.hang;
+      const T = U.sway ? this.t : this.t + g.position.x * 0.37;
+      const a = Math.sin(T * f + (U.sway ? g.position.x : ph)) * amp;
+      const dz = -len * Math.sin(a);
+      sx += dz * Math.sin(rot);
+      sz += dz * Math.cos(rot);
+      sy = py - len * Math.cos(a) + (U.y - (py - len));
+      tilt = U.kind === 'lie' ? 0 : a;
+    }
+    // Hop on, stay, hop off
+    let x = sx, z = sz, y = sy, k = 1;
+    if (u.phase === 'in' || u.phase === 'out') {
+      const dist = Math.hypot(sx - u.from.x, sz - u.from.z), dur = Math.max(0.35, dist / 2.4);
+      k = Math.min(1, u.t / dur);
+      const e = k * k * (3 - 2 * k), a = u.phase === 'in' ? e : 1 - e;
+      x = u.from.x + (sx - u.from.x) * a;
+      z = u.from.z + (sz - u.from.z) * a;
+      y = sy * a + Math.sin(a * PI) * (dist < 1.4 ? 0.35 : 0.15);
+      if (u.phase === 'in') face = dampAngle(c.face, face, 14, dt);
+      if (k >= 1) {
+        if (u.phase === 'in') { u.phase = 'on'; u.t = 0; } else { c.x = u.from.x; c.z = u.from.z; this.endUse(c); return; }
+      }
+    } else if (u.t > u.dur) {
+      if (u.seat) { u.phase = 'out'; u.t = 0; } else { this.endUse(c); return; }
+    }
+    c.face = face;
+    const on = u.phase === 'on' || k > 0.6;
+    const t = u.t;
+    let rx = tilt, ry = face, bodyX = 0, headX = 0;
+    let fl = [-0.11, 0.06, 0.02], fr = [0.11, 0.06, 0.02], hl = [-0.33, 0.5, 0.05], hr = [0.33, 0.5, 0.05];
+    const sitPose = () => {
+      y -= 0.06;
+      fl = [-0.11, -0.22, 0.24];
+      fr = [0.11, -0.22, 0.24];
+      hl = [-0.2, 0.32, 0.22];
+      hr = [0.2, 0.32, 0.22];
+      if ((U.y ?? 0) < 0.12) { y -= 0.04; fl = [-0.12, 0.02, 0.42]; fr = [0.12, 0.02, 0.42]; }
+    };
+    switch (on ? u.kind : 'walk') {
+      case 'sit':
+        sitPose();
+        if (u.phase === 'on' && Math.random() < dt * 0.25) this.game.particles.emote(OX + x, y + 1.5, OZ + z, icon('heart'), 'love');
+        break;
+      case 'soak':
+        sitPose();
+        hl = [-0.42, 0.44, 0.02];
+        hr = [0.42, 0.44, 0.02];
+        headX = -0.2;
+        break;
+      case 'dig': {
+        sitPose();
+        const d = Math.abs(Math.sin(t * 7));
+        hl = [-0.15, 0.1 + d * 0.2, 0.4];
+        hr = [0.15, 0.3 - d * 0.2, 0.4];
+        bodyX = 0.3;
+        if (Math.random() < dt * 4) this.fx('dust', x + Math.sin(face) * 0.4, z + Math.cos(face) * 0.4, 2, '#f4d896');
+        break;
+      }
+      case 'lie': {
+        rx = -PI / 2;
+        ry = face + PI;
+        x -= Math.sin(face) * 0.55;
+        z -= Math.cos(face) * 0.55;
+        y += 0.25;
+        hl = [-0.14, 0.6, 0.24];
+        hr = [0.14, 0.6, 0.24];
+        if (u.phase === 'on' && Math.random() < dt * 0.4) this.game.particles.emote(OX + x + Math.sin(face) * 1.1, y + 0.7, OZ + z + Math.cos(face) * 1.1, icon('zzz'), 'meh');
+        break;
+      }
+      case 'bounce': {
+        const b = Math.abs(Math.sin(t * 4.2));
+        y += b * 0.95;
+        hl = [-0.36, 0.85 + b * 0.45, 0.05];
+        hr = [0.36, 0.85 + b * 0.45, 0.05];
+        fl = [-0.11, 0.06 + b * 0.14, 0.1];
+        fr = [0.11, 0.06 + b * 0.14, 0.1];
+        if (b < 0.08 && Math.random() < 0.5) this.fx('dust', x, z, 1, '#ffffff');
+        break;
+      }
+      case 'grill': {
+        const f = Math.abs(Math.sin(t * 5));
+        hl = [-0.16, 0.74, 0.4];
+        hr = [0.18, 0.76 + f * 0.2, 0.42];
+        bodyX = 0.12;
+        break;
+      }
+      case 'look':
+        headX = -0.45;
+        hl = [-0.1, 1.0, 0.32];
+        hr = [0.1, 1.0, 0.32];
+        if (Math.random() < dt * 1.5) this.fx('sparkle', x + Math.sin(face) * 3 + rand(-1, 1), 4 + rand(0, 1.5), z + Math.cos(face) * 3 + rand(-1, 1), '#fff3a0');
+        break;
+      case 'putt': {
+        const sw = Math.sin(t * 2.4) * 0.16;
+        hl = [-0.03 + sw, 0.4, 0.3];
+        hr = [0.03 + sw, 0.42, 0.3];
+        headX = 0.35;
+        bodyX = 0.2;
+        break;
+      }
+      case 'harvest': {
+        const f = Math.abs(Math.sin(t * 6));
+        hl = [-0.16, 0.7 + f * 0.25, 0.42];
+        hr = [0.16, 0.95 - f * 0.25, 0.42];
+        bodyX = 0.15;
+        break;
+      }
+      case 'shoot':
+        ({ hl, hr } = this.shootHoops(c, u, x, z, face, dt));
+        break;
+      case 'slide':
+        ({ x, y, z, hl, hr, fl, fr } = this.slidePose(u, sitPose));
+        break;
+      case 'walk':
+        break;
+      default: {
+        const cl = Math.abs(Math.sin(t * 10));
+        hl = [-0.06 - cl * 0.07, 0.78, 0.32];
+        hr = [0.06 + cl * 0.07, 0.78, 0.32];
+        if (Math.random() < dt * 0.5) this.game.particles.emote(OX + x, 1.6, OZ + z, icon('star'), 'good');
+      }
+    }
+    m.root.position.set(x, y, z);
+    m.root.rotation.set(rx, ry, 0);
+    m.pivot.position.y = 0;
+    m.pivot.rotation.x = bodyX;
+    m.head.rotation.x = headX;
+    m.head.rotation.z = Math.sin(c.t * 1.3) * 0.03;
+    m.footL.position.set(...fl);
+    m.footR.position.set(...fr);
+    m.handL.position.set(...hl);
+    m.handR.position.set(...hr);
+    // A rest on the furniture: well rested for tomorrow
+    if (u.rest && !u.did && u.phase === 'on' && u.t > 4) {
+      u.did = true;
+      const h = this.home, day = this.game.state.day;
+      if (h.rested !== day) {
+        h.rested = day;
+        this.game.ui.toast(`Well rested: ${perkText(REST_PERK)} tomorrow`, 'good', 'zzz');
+        this.game.audio.happy?.();
+        if (typeof this.game.updateAmbience === 'function') this.game.updateAmbience(true);
+        this.panel.render();
+        this.game.save();
+      }
+    }
+  }
+
+  // Dribble, jump shot, swish (most of the time)
+  shootHoops(c, u, x, z, face, dt) {
+    if (!this.ball) {
+      this.ball = mesh(sph(0.11, 14, 10), P('#ff8a3d', 0.6), 0, 0, 0);
+      this.root.add(this.ball);
+    }
+    const b = this.ball, cyc = u.t % 1.9, n = Math.floor(u.t / 1.9);
+    b.visible = true;
+    const hand = { x: x + Math.sin(face) * 0.35 + Math.cos(face) * 0.2, z: z + Math.cos(face) * 0.35 - Math.sin(face) * 0.2 };
+    let hl = [-0.25, 0.55, 0.2], hr;
+    if (cyc < 0.7) {
+      const d = Math.abs(Math.sin(cyc * 14));
+      hr = [0.25, 0.42 + d * 0.15, 0.32];
+      b.position.set(hand.x, 0.11 + d * 0.32, hand.z);
+    } else if (cyc < 0.85) {
+      hl = [-0.12, 1.15, 0.28];
+      hr = [0.12, 1.15, 0.28];
+      b.position.set(x + Math.sin(face) * 0.3, 1.45, z + Math.cos(face) * 0.3);
+    } else {
+      hl = [-0.12, 1.2, 0.3];
+      hr = [0.12, 1.2, 0.3];
+      const rim = this.itemPoint(u.it, 0, 0.3), k = Math.min(1, (cyc - 0.85) / 0.6);
+      const sx = x + Math.sin(face) * 0.3, sz = z + Math.cos(face) * 0.3;
+      if (u.shot !== n) {
+        u.shot = n;
+        u.make = Math.random() < 0.65;
+      }
+      const miss = u.make ? 0 : 0.28;
+      b.position.set(sx + (rim.x - sx + miss) * k, 1.45 + (2.3 - 1.45) * k + Math.sin(k * PI) * 1.1, sz + (rim.z - sz) * k);
+      if (k >= 1 && !u.scored) {
+        u.scored = true;
+        if (u.make) {
+          this.fx('confetti', rim.x, 2.2, rim.z, 10);
+          this.game.audio.ding?.();
+        } else this.game.audio.thud?.();
+      }
+      if (k < 1) u.scored = false;
+    }
+    return { hl, hr };
+  }
+
+  // Up the ladder, a moment at the top, whee down the chute
+  slidePose(u, sitPose) {
+    const t = Math.min(u.t, 2.5);
+    const L = (lx, ly, lz) => { const p = this.itemPoint(u.it, lx, lz); return [p.x, ly, p.z]; };
+    const lerp = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k);
+    let pos, sit = false;
+    const hl0 = [-0.2, 0.9, 0.2], hr0 = [0.2, 0.9, 0.2];
+    if (t < 1.0) pos = lerp(L(0, 0, -1.2), L(0, 1.28, -0.66), t / 1.0);
+    else if (t < 1.3) { pos = L(0, 1.32, -0.55); sit = true; }
+    else if (t < 2.0) { pos = lerp(L(0, 1.32, -0.45), L(0, 0.34, 0.68), (t - 1.3) / 0.7); sit = true; }
+    else { pos = lerp(L(0, 0.34, 0.68), L(0, 0, 1.3), (t - 2.0) / 0.5); }
+    const o = { x: pos[0], y: pos[1], z: pos[2], hl: hl0, hr: hr0, fl: [-0.11, 0.06, 0.02], fr: [0.11, 0.06, 0.02] };
+    if (t < 1.0) {
+      const c = Math.sin(t * 14);
+      o.hl = [-0.18, 0.95 + c * 0.1, 0.18];
+      o.hr = [0.18, 0.95 - c * 0.1, 0.18];
+    } else if (sit) {
+      o.fl = [-0.11, -0.22, 0.3];
+      o.fr = [0.11, -0.22, 0.3];
+      o.hl = [-0.36, 1.05, 0.05];
+      o.hr = [0.36, 1.05, 0.05];
+      o.y -= 0.06;
+    }
+    if (u.t > 1.35 && u.t < 1.4 && !u.wee) { u.wee = true; this.game.particles.emote(OX + o.x, o.y + 1.5, OZ + o.z, icon('heart'), 'love'); }
+    return o;
+  }
+
+  harvest(it) {
+    const g = this.itemObjs.get(it), day = this.game.state.day;
+    if ((it.picked || 0) >= day) {
+      this.game.ui.toast('Already picked today. More tomorrow', 'info', 'plant');
+      return;
+    }
+    it.picked = day;
+    const v = HARVEST[it.id];
+    this.game.addCash(v, OX + g.position.x, 1.5, OZ + g.position.z);
+    this.fx('confetti', g.position.x, 1.2, g.position.z, 18, it.id === 'appletree' ? ['#e8343f', '#7cc95e', '#ffd23f'] : ['#ff8a3a', '#7cc95e', '#e8343f']);
+    this.game.audio.pickup?.();
+    this.game.save();
+  }
+
+  // ------------------------------------------------------------ the mailbox
+  goToMail() {
+    const c = this.chef;
+    if (!c) return;
+    if (this.chefGoTo(MAILBOX.x, PLOT.z1 - 0.55, true)) c.pending = { mail: true, it: null };
+  }
+
+  readMail() {
+    const h = this.home, g = this.game, day = g.state.day;
+    if (this.chef) { this.chef.dir = 0; this.chef.state = 'cheer'; this.chef.timer = 1; }
+    if (h.mailDay >= day) {
+      g.ui.toast('No new mail. The post comes every morning', 'info', 'mail');
+      g.audio.click?.();
+      return;
+    }
+    h.mailDay = day;
+    const r = Math.random();
+    let title, body;
+    if (r < 0.2 && h.pets.length) {
+      h.care.forEach((c, i) => this.petJoy(i, 15));
+      for (const p of this.pets) { this.setPetState(p, 'happy', 1.5); p.vy = 2.4; }
+      title = 'A parcel for the pets';
+      body = 'A neighbour dropped off a box of treats. Every pet is a little happier.';
+    } else if (r < 0.4) {
+      const id = pick(['flowerbed', 'flamingos', 'gardenlamp', 'birdbath', 'topiary', 'gnomes']);
+      h.storage[id] = (h.storage[id] || 0) + 1;
+      title = 'A gift from the garden club';
+      body = `They sent you a ${HOME_ITEMS[id].name}. It is waiting in storage on the Yard tab.`;
+    } else {
+      const amt = Math.min(150, 20 + day * 3 + Math.round(rand(0, 20)));
+      g.addCash(amt, OX + MAILBOX.x, 1.4, OZ + MAILBOX.z);
+      title = 'Fan mail!';
+      body = `"${pick(FAN_LINES)}" Signed, ${pick(FANS)}. A ${formatMoney(amt)} tip was tucked inside.`;
+    }
+    g.audio.happy?.();
+    const w = g.ui.modal(`<div class="hm-letter"><div class="hm-stamp">${icon('mail')}</div><h2>${title}</h2><p>${body}</p></div>
+      <div class="m-actions"><button class="big-btn primary" data-a="ok">Lovely</button></div>`, 'letter');
+    w.onclick = (ev) => {
+      if (!ev.target.closest('[data-a="ok"]')) return;
+      g.audio.click?.();
+      g.ui.closeModal(w);
+    };
+    this.afterPurchase();
+  }
+
+  // Bobbing markers: a coin over crops ready to pick, an envelope over the mailbox
+  makeMarks() {
+    const group = new THREE.Group();
+    const coinGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.05, 20);
+    coinGeo.rotateX(PI / 2);
+    const coinMat = new THREE.MeshStandardMaterial({ color: '#ffcf3a', emissive: '#c88a00', emissiveIntensity: 0.6, metalness: 0.6, roughness: 0.3 });
+    const env = new THREE.Group();
+    const envMat = new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#ffffff', emissiveIntensity: 0.3, roughness: 0.6 });
+    const sealMat = new THREE.MeshStandardMaterial({ color: '#e8343f', roughness: 0.5 });
+    const envGeo = new THREE.BoxGeometry(0.42, 0.28, 0.04), sealGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.02, 12);
+    sealGeo.rotateX(PI / 2);
+    env.add(new THREE.Mesh(envGeo, envMat));
+    const seal = new THREE.Mesh(sealGeo, sealMat);
+    seal.position.z = 0.03;
+    env.add(seal);
+    env.position.set(MAILBOX.x, 1.7, MAILBOX.z);
+    group.add(env);
+    this.own.push(coinGeo, coinMat, envMat, sealMat, envGeo, sealGeo);
+    return { group, coinGeo, coinMat, env, coins: new Map() };
+  }
+
+  updateMarks() {
+    const M = this.marks, day = this.game.state.day, t = this.t;
+    M.env.visible = this.home.mailDay < day;
+    M.env.position.y = 1.7 + Math.sin(t * 3) * 0.1;
+    M.env.rotation.y = Math.sin(t * 1.5) * 0.5;
+    const want = new Set();
+    for (const it of this.home.items) {
+      if (!HARVEST[it.id] || (it.picked || 0) >= day) continue;
+      want.add(it);
+      let coin = M.coins.get(it);
+      const g = this.itemObjs.get(it);
+      if (!g) continue;
+      if (!coin) {
+        coin = new THREE.Mesh(M.coinGeo, M.coinMat);
+        M.group.add(coin);
+        M.coins.set(it, coin);
+        g.userData.top ??= new THREE.Box3().setFromObject(g).max.y;
+      }
+      coin.position.set(g.position.x, (g.userData.top ?? 1) + 0.45 + Math.sin(t * 3 + g.position.x) * 0.08, g.position.z);
+      coin.rotation.y = t * 2.5;
+    }
+    for (const [it, coin] of M.coins) if (!want.has(it)) { M.group.remove(coin); M.coins.delete(it); }
+  }
+
+  // ------------------------------------------------------------ helpers (gardener, pet sitter, butler)
+  toggleHelper(id) {
+    const D = HOME_STAFF[id], h = this.home, ui = this.game.ui;
+    if (!D) return;
+    if (h.staff.includes(id)) {
+      ui.confirm(`Let the ${D.name.toLowerCase()} go?`, 'You can hire them again any time.', 'Let them go', () => {
+        if (!this._active) return;
+        h.staff = h.staff.filter((x) => x !== id);
+        this.syncHelpers(true);
+        this.afterPurchase();
+      });
+      return;
+    }
+    ui.confirm(`Hire a ${D.name.toLowerCase()}?`, `${D.desc} Wages are ${formatMoney(D.wage)} a day, paid after each working day.`, `Hire for ${formatMoney(D.wage)} a day`, () => {
+      if (!this._active || h.staff.includes(id)) return;
+      h.staff.push(id);
+      this.syncHelpers(true);
+      this.game.audio.happy?.();
+      this.game.ui.toast(`Your ${D.name.toLowerCase()} starts today`, 'good', 'people');
+      this.afterPurchase();
+    });
+  }
+
+  syncHelpers(animate) {
+    for (const hp of [...this.helpers]) {
+      if (this.home.staff.includes(hp.role)) continue;
+      this.fx('poof', hp.x, 0.6, hp.z, '#ffffff', 12);
+      this.root.remove(hp.m.root);
+      disposeObject(hp.m.root);
+      this.helpers.splice(this.helpers.indexOf(hp), 1);
+    }
+    for (const role of this.home.staff) {
+      if (this.helpers.some((hp) => hp.role === role)) continue;
+      const m = buildHelper(role);
+      const sp = role === 'butler' ? { x: SITE.x + 1.0, z: 0.9 } : this.freeSpot(YARD, 0.4);
+      const hp = { role, m, x: sp.x, z: sp.z, face: 0, dir: 0, v: 0, phase: 0, t: rand(0, 5), state: 'idle', timer: rand(0.5, 2), tx: sp.x, tz: sp.z, pet: null };
+      m.root.position.set(hp.x, 0, hp.z);
+      this.root.add(m.root);
+      this.helpers.push(hp);
+      if (animate) {
+        this.fx('poof', hp.x, 0.6, hp.z, '#ffffff', 14);
+        this.fx('confetti', hp.x, 1.6, hp.z, 24);
+      }
+    }
+  }
+
+  helperNext(hp) {
+    const r = Math.random();
+    const go = (x, z, act) => {
+      const p = { x: clamp(x, WALK.x0, WALK.x1), z: clamp(z, WALK.z0, WALK.z1) };
+      pushOut(this.obstacles, p, 0.3);
+      hp.path = this.findPath(hp.x, hp.z, p.x, p.z) || [p];
+      hp.tx = p.x;
+      hp.tz = p.z;
+      hp.act = act;
+      hp.state = 'walk';
+      hp.timer = 6 + pathLength(hp, hp.path) / 1.4;
+    };
+    if (hp.role === 'gardener') {
+      const plants = this.home.items.filter((it) => HOME_ITEMS[it.id].group === 'garden');
+      if (plants.length && r < 0.75) {
+        const it = pick(plants), q = itemRect(it), half = (it.rot % 2 ? q.x1 - q.x0 : q.z1 - q.z0) / 2;
+        const p = this.itemPoint(it, 0, half + 0.5);
+        go(p.x, p.z, { water: { x: (q.x0 + q.x1) / 2, z: (q.z0 + q.z1) / 2 } });
+      } else {
+        const s = this.freeSpot(YARD, 0.4);
+        go(s.x, s.z, { water: { x: s.x + rand(-0.6, 0.6), z: s.z + 0.6 } });
+      }
+    } else if (hp.role === 'sitter' && this.pets.length && r < 0.8) {
+      const p = pick(this.pets);
+      go(p.x + rand(-0.5, 0.5), p.z + 0.6, { pet: p });
+    } else if (hp.role === 'butler') {
+      if (this.chef && r < 0.45) go(this.chef.x + 0.6, this.chef.z + 0.4, { serve: true });
+      else go(SITE.x + 1.0 + rand(-0.2, 0.2), Math.max(YARD.z0, SITE.z + this.tierObj.userData.front + 0.5), { wait: true });
+    } else {
+      const s = this.freeSpot(YARD, 0.4);
+      go(s.x, s.z, null);
+    }
+  }
+
+  updateHelper(hp, dt) {
+    const m = hp.m;
+    hp.t += dt;
+    hp.timer -= dt;
+    let speed = 0;
+    if (hp.state === 'walk') {
+      const wp = followPath(hp);
+      const dx = wp.x - hp.x, dz = wp.z - hp.z, d = Math.hypot(dx, dz);
+      if ((d > 0.1 || wp.via) && hp.timer > 0) {
+        hp.dir = Math.atan2(dx, dz);
+        speed = 1.7 * (wp.via ? 1 : clamp(d / 0.35, 0.35, 1));
+      } else {
+        hp.state = 'work';
+        hp.timer = hp.act?.wait ? rand(4, 7) : rand(2.5, 4.5);
+        const a = hp.act;
+        if (a?.water) hp.dir = Math.atan2(a.water.x - hp.x, a.water.z - hp.z);
+        if (a?.pet) {
+          hp.dir = Math.atan2(a.pet.x - hp.x, a.pet.z - hp.z);
+          this.setPetState(a.pet, 'happy', 1.6);
+          a.pet.vy = 2.2;
+          this.emote(a.pet, 'heart');
+        }
+        if (a?.serve && this.chef) {
+          hp.dir = Math.atan2(this.chef.x - hp.x, this.chef.z - hp.z);
+          this.game.particles.emote(OX + hp.x, 1.6, OZ + hp.z, icon('heart'), 'love');
+        }
+        if (a?.wait) hp.dir = 0;
+      }
+    } else if (hp.timer <= 0) this.helperNext(hp);
+    hp.v = damp(hp.v, speed, 10, dt);
+    hp.face = dampAngle(hp.face, hp.dir, 8, dt);
+    hp.x += Math.sin(hp.face) * hp.v * dt;
+    hp.z += Math.cos(hp.face) * hp.v * dt;
+    const moving = clamp(hp.v / 1.7, 0, 1);
+    if (moving > 0.05) hp.phase += dt * (5 + hp.v * 2.6);
+    const bob = moving > 0.05 ? Math.abs(Math.sin(hp.phase)) * 0.07 * moving : Math.sin(hp.t * 2.4) * 0.012;
+    m.root.position.set(hp.x, 0, hp.z);
+    m.root.rotation.y = hp.face;
+    m.pivot.position.y = bob;
+    m.pivot.rotation.x = moving * 0.12;
+    const sw = Math.sin(hp.phase) * 0.13 * moving;
+    m.footL.position.set(-0.11, 0.06 + Math.max(0, Math.cos(hp.phase)) * 0.06 * moving, 0.02 + sw);
+    m.footR.position.set(0.11, 0.06 + Math.max(0, -Math.cos(hp.phase)) * 0.06 * moving, 0.02 - sw);
+    const working = hp.state === 'work';
+    const s2 = Math.sin(hp.phase) * 0.14 * moving;
+    m.handL.position.set(-0.33, 0.5 + bob * 0.6, 0.05 - s2);
+    if (hp.role === 'butler') m.handR.position.set(0.3, 0.82 + bob * 0.3, 0.26);
+    else if (working && hp.act?.water) {
+      m.handR.position.set(0.28, 0.62, 0.4);
+      m.handR.rotation.x = 0.5;
+      if (Math.random() < dt * 8) this.fx('splash', hp.x + Math.sin(hp.face) * 0.7, 0.25, hp.z + Math.cos(hp.face) * 0.7, 1);
+    } else if (working && hp.act?.pet) {
+      const k = Math.abs(Math.sin(hp.t * 8)) * 0.08;
+      m.handL.position.set(-0.15, 0.42 + k, 0.45);
+      m.handR.position.set(0.15, 0.42 + (0.08 - k), 0.45);
+      m.pivot.rotation.x = 0.35;
+    } else {
+      m.handR.position.set(0.33, 0.5 + bob * 0.6, 0.05 + s2);
+      m.handR.rotation.x = 0;
+    }
+    if (hp.role !== 'gardener' || !working) m.handR.rotation.x = 0;
   }
 }

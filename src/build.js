@@ -41,9 +41,11 @@ export class BuildMode {
     r.hideHighlight();
   }
 
-  select(type) {
+  // stored: placing one of the items kept in storage (free)
+  select(type, stored = false) {
     this.cancelMove();
     this.selectedType = type;
+    this.fromStore = stored;
     this.makeGhost(CATALOG[type]);
     // Touch screens have no hover: the preview sits in the middle of the room until the first tap
     this.aimed = !this.game.input.touchMode;
@@ -53,6 +55,7 @@ export class BuildMode {
   cancel() {
     this.cancelMove();
     this.selectedType = null;
+    this.fromStore = false;
     this.removeGhost();
     this.game.renderer.setTileMarkers([], true);
   }
@@ -221,7 +224,7 @@ export class BuildMode {
       const { x, z } = at;
       if (wall) this.rot = at.rot;
       const check = g.grid.canPlace(def, x, z, this.rot, this.moving);
-      const afford = this.moving || g.state.cash >= def.price;
+      const afford = this.moving || this.fromStore || g.state.cash >= def.price;
       const ok = check.ok && afford;
       const fp = check.fp;
       const spot = meshSpot(def, fp, this.rot);
@@ -234,7 +237,8 @@ export class BuildMode {
       const reason = !check.ok ? check.reason : !afford ? 'Not enough cash' : '';
       this.pending = { def, x, z, rot: this.rot, ok, reason };
       const how = input.touchMode ? '<b>Tap again</b> to place' : '<b>Click</b> place · <kbd>R</kbd> rotate · <b>Right-click</b> cancel';
-      this.help(`${this.moving ? 'Moving' : 'Placing'} <b>${def.name}</b>${this.moving ? '' : ` (${formatMoney(def.price)})`}${reason ? `: <span class="bad">${reason}</span>` : ''} · ${how}`);
+      const cost = this.moving ? '' : this.fromStore ? ' (from storage)' : ` (${formatMoney(def.price)})`;
+      this.help(`${this.moving ? 'Moving' : 'Placing'} <b>${def.name}</b>${cost}${reason ? `: <span class="bad">${reason}</span>` : ''} · ${how}`);
       if (tap) {
         // A click places right away (the preview already follows the mouse). A touch tap on the
         // preview places it; a tap anywhere else only moves the preview there.
@@ -270,8 +274,9 @@ export class BuildMode {
     if (this.hover) {
       const o = this.hover;
       r.showHighlight(o.cx, 0.05, o.cz, o.w, o.d, '#9ad0ff');
-      this.help(`<b>${o.def.name}</b> · <b>Click</b> to move · <b>Right-click</b>/<kbd>X</kbd> sell for <b>${formatMoney(Math.round(o.def.price * ECON.sellRefund))}</b>`);
+      this.help(`<b>${o.def.name}</b> · <b>Click</b> to move · <kbd>C</kbd> store · <b>Right-click</b>/<kbd>X</kbd> sell for <b>${formatMoney(Math.round(o.def.price * ECON.sellRefund))}</b>`);
       if (input.mouse.clicked[2] || input.wasPressed('KeyX') || input.wasPressed('Delete')) this.sell(o);
+      else if (input.wasPressed('KeyC')) this.store(o);
     } else {
       r.hideHighlight();
       this.help();
@@ -309,7 +314,7 @@ export class BuildMode {
   // On-screen toolbar so placement never requires a keyboard or right mouse button.
   renderTools(st) {
     const T = this.game.ui.e.buildTools;
-    const key = st ? `${st.moving ? 'm' : 'p'}:${st.ok ? 1 : 0}:${st.moving ? st.moving.uid : ''}` : '';
+    const key = st ? `${st.moving ? 'm' : 'p'}:${st.ok ? 1 : 0}:${st.moving ? st.moving.uid : ''}:${this.fromStore ? 's' : ''}` : '';
     if (key === this.toolsKey) return;
     this.toolsKey = key;
     if (!st) {
@@ -320,6 +325,7 @@ export class BuildMode {
     const refund = st.moving ? formatMoney(Math.round(st.moving.def.price * ECON.sellRefund)) : '';
     T.innerHTML = `<button type="button" data-tool="rotate">${icon('rotate')}Rotate</button>
       <button type="button" class="ok" data-tool="place" ${st.ok ? '' : 'disabled'}>${icon('check')}Place here</button>
+      ${st.moving ? `<button type="button" data-tool="store">${icon('crate')}Store</button>` : ''}
       ${st.moving ? `<button type="button" class="bad" data-tool="sell">${icon('trash')}Sell for ${refund}</button>` : ''}
       <button type="button" data-tool="cancel">${icon('x')}Cancel</button>`;
     T.classList.remove('hidden');
@@ -332,6 +338,7 @@ export class BuildMode {
         if (tool === 'rotate') this.rotate();
         else if (tool === 'place') this.tryCommit();
         else if (tool === 'sell' && this.moving) this.sell(this.moving);
+        else if (tool === 'store' && this.moving) this.store(this.moving);
         else if (tool === 'cancel') { g.audio.click(); this.cancel(); g.ui.renderDock(); }
       };
     }
@@ -348,16 +355,40 @@ export class BuildMode {
       g.audio.place();
       g.particles.dust(o.cx, o.cz, 8);
     } else {
-      if (!g.spend(def.price)) return;
+      const st = g.state.storage;
+      if (this.fromStore) {
+        if (!st[def.id]) { this.cancel(); g.ui.renderDock(); return; }
+        st[def.id]--;
+        if (!st[def.id]) delete st[def.id];
+      } else if (!g.spend(def.price)) return;
       const o = g.grid.place(def.id, x, z, this.rot);
       g.audio.place();
       g.particles.poof(o.cx, 0.3, o.cz, '#fff6dd', 12);
       g.particles.dust(o.cx, o.cz, 8);
       g.renderer.addShake(0.08);
-      if (g.state.cash < def.price) {
+      if (this.fromStore ? !st[def.id] : g.state.cash < def.price) {
         this.cancel();
       }
     }
+    g.onLayoutChanged();
+    g.ui.renderDock();
+  }
+
+  // Put a placed item away; it can be placed again for free from the Storage tab
+  store(o) {
+    const g = this.game;
+    if (this.moving === o) {
+      this.moving = null;
+      this.removeGhost();
+      g.renderer.setTileMarkers([], true);
+    }
+    const st = g.state.storage;
+    st[o.def.id] = (st[o.def.id] || 0) + 1;
+    g.particles.poof(o.cx, 0.4, o.cz, '#ffffff', 14);
+    g.grid.remove(o);
+    g.audio.swoosh();
+    g.ui.toast(`${o.def.name} put in storage`, 'info', 'crate');
+    this.hover = null;
     g.onLayoutChanged();
     g.ui.renderDock();
   }

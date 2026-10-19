@@ -291,6 +291,9 @@ button.card:active { transform: translateY(2px); }
 .portrait.role-drive { background: linear-gradient(var(--berry), var(--berry-2)); }
 .portrait.role-busser { background: linear-gradient(#b7c0cc, #6d7a8c); }
 .portrait.role-host { background: linear-gradient(var(--sun), var(--sun-2)); }
+.portrait.role-musician { background: linear-gradient(#c7a2ff, #8a5cf0); }
+.portrait.role-mascot { background: linear-gradient(#ffc06a, var(--orange-2)); }
+.portrait.role-manager { background: linear-gradient(#7fb0e8, #3f6fb8); }
 
 /* avatar editor */
 .portrait { position: relative; }
@@ -361,3 +364,7 @@ button.card:active { transform: translateY(2px); }
 .hb-dot .ic { width: 14px; height: 14px; filter: none; }
 @keyframes hbPulse { 50% { transform: scale(1.15); } }
 @media (max-width: 1200px) { .dock-info { font-size: 12px; } }
+
+/* storage: count on the chip and the "free" tag on stored cards */
+.chip .chip-n { font-style: normal; min-width: 18px; padding: 1px 5px; border-radius: 99px; background: var(--sun); color: var(--line); text-shadow: none; font-size: 11px; line-height: 1.3; }
+.card .c-meta .free-tag { padding: 1px 8px 2px; border-radius: 99px; background: linear-gradient(var(--grass), var(--grass-2)); border: 2px solid var(--line); color: #fff; text-shadow: var(--ol-sm); font: 400 13px/1.2 var(--display); }

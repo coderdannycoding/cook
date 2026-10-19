@@ -199,6 +199,9 @@ class Game {
     if (s.townLevel === undefined) s.townLevel = this.townLevelFor(s.rating);
     this.renderer.setTownLevel(s.townLevel);
     s.home = normalizeHome(s.home ?? defaultHomeState());
+    const st = s.storage && typeof s.storage === 'object' ? s.storage : {};
+    s.storage = {};
+    for (const [id, n] of Object.entries(st)) if (CATALOG[id] && Math.floor(n) > 0) s.storage[id] = Math.min(99, Math.floor(n));
     this.syncParkedCar();
     const objs = Array.isArray(s.objects) && s.objects.length ? s.objects : STARTER_LAYOUT;
     const hardFail = new Set(['Out of bounds', 'Space occupied', 'Keep the doorway clear']);
@@ -356,7 +359,7 @@ class Game {
     let total = (FLOOR_THEMES[s.floorTheme]?.decor || 0) + (WALL_THEMES[s.wallTheme]?.decor || 0);
     const perks = blankPerks();
     // the house, pets and cars bought at home add their own small bonuses
-    for (const [k, v] of Object.entries(homePerks(s.home))) if (k in perks) perks[k] += v;
+    for (const [k, v] of Object.entries(homePerks(s.home, s.day))) if (k in perks) perks[k] += v;
     const counted = new Set();
     for (const o of this.grid.objects) {
       total += o.def.decor || 0;
@@ -598,8 +601,9 @@ class Game {
     s.cash -= wages + rent;
     const t = this.today;
     this.goals.finish();
-    homeNewDay(s.home);
-    const net = t.revenue + t.tips + t.criticBonus + t.goalCash - t.ingredients - wages - rent;
+    const home = homeNewDay(s.home, s.day);
+    s.cash += home.income - home.wages;
+    const net = t.revenue + t.tips + t.criticBonus + t.goalCash + home.income - t.ingredients - wages - rent - home.wages;
     const before = t.ratingStart;
     const newCuisines = CUISINE_ORDER.filter((id) => !s.cuisines[id] && before < CUISINES[id].stars && s.rating >= CUISINES[id].stars);
     const rep = {
@@ -607,6 +611,7 @@ class Game {
       revenue: t.revenue, tips: t.tips, criticBonus: t.criticBonus, ingredients: t.ingredients, wages, rent, net,
       ratingBefore: before, ratingAfter: s.rating, critic: t.critic, newCuisines,
       goals: this.goals.list.map((x) => ({ text: x.text, icon: x.icon, state: x.state, reward: x.reward })), goalCash: t.goalCash,
+      homeIncome: home.income, homeWages: home.wages,
     };
     this.goals.clear();
     s.stats.totalServed += t.served;
@@ -940,7 +945,7 @@ class Game {
         b.pos.x += nx * push * wb; b.pos.z += nz * push * wb;
       }
     }
-    for (const m of this.staff.members) this.grid.collide(m.pos, 0.24);
+    for (const m of this.staff.members) this.grid.collide(m.pos, 0.24, !!m.outside);
     this.grid.collide(this.player.pos, this.player.radius);
   }
 }

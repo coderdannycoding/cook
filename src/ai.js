@@ -6,6 +6,7 @@ import {
   DISHES, chainFor, itemKey, chopInfo, cookRule, isCookOutput, matchDish, canTop,
 } from './recipes.js';
 import { clamp, rand, pick } from './utils.js';
+import { icon } from './icons.js';
 
 // ---------------------------------------------------------------------------
 // A*
@@ -1053,7 +1054,126 @@ export class HostBrain extends Brain {
   }
 }
 
-const BRAINS = { chef: ChefBrain, waiter: WaiterBrain, dish: DishwasherBrain, plater: PlaterBrain, drive: DriveBrain, busser: BusserBrain, host: HostBrain };
+// Musician: strums in the dining room by a table, moving to another table now and then
+export class MusicianBrain extends Brain {
+  home() {
+    const t = this.grid.stations('table')[0];
+    return t ? { x: t.x, z: t.z } : null;
+  }
+
+  pickTask() { return null; }
+
+  idle(dt) {
+    const s = this.s, g = this.g;
+    this.moveT = (this.moveT ?? 0) - dt;
+    if (this.moveT <= 0 && !s.path) {
+      this.moveT = rand(14, 24);
+      const tables = this.grid.stations('table');
+      const t = tables.length ? pick(tables) : null;
+      const spot = t ? g.freeTileNear(t.x, t.z) : g.freeTileNear(this.grid.W / 2, this.grid.H / 2);
+      this.focus = t;
+      if (spot) {
+        const p = findPath(this.grid, s.pos.x, s.pos.z, [spot]);
+        if (p) s.setPath(p);
+      }
+    }
+    if (s.path) {
+      s.pose = null;
+      if (s.followPath(dt, s.speed * 0.7) !== 'moving') s.path = null;
+      return;
+    }
+    s.vel.set(0, 0, 0);
+    if (this.focus) s.faceTo(this.focus.x, this.focus.z);
+    s.pose = 'strum';
+    this.noteT = (this.noteT ?? 0) - dt;
+    if (this.noteT <= 0 && g.phase === 'day') {
+      this.noteT = rand(1.6, 3);
+      g.particles.emote(s.pos.x + rand(-0.3, 0.3), 1.9, s.pos.z, icon('music'), 'love');
+    }
+  }
+}
+
+// Mascot: walks out of the front door and dances on the pavement to pull people in
+export class MascotBrain extends Brain {
+  home() { return { x: this.grid.doorX + 0.5, z: this.grid.H - 1.5 }; }
+
+  pickTask() { return null; }
+
+  reset() {
+    super.reset();
+    this.s.outside = false;
+    this.s.pose = null;
+  }
+
+  idle(dt) {
+    const s = this.s, g = this.g, grid = this.grid;
+    const spot = { x: grid.doorX + 2.4, z: grid.H + 1.15 };
+    if (!s.outside && !s.path) {
+      const inn = { x: grid.doorX + 0.5, z: grid.H - 0.5 };
+      const p = findPath(grid, s.pos.x, s.pos.z, [{ x: grid.doorX, z: grid.H - 1 }], { endX: inn.x, endZ: inn.z });
+      if (!p) return;
+      this.exitI = p.length - 1;
+      s.setPath([...p, { x: inn.x, z: grid.H + 0.7 }, spot]);
+    }
+    if (s.path) {
+      s.pose = null;
+      if (s.pathI >= this.exitI) s.outside = true;
+      if (s.followPath(dt, s.speed * 0.8) !== 'moving') s.path = null;
+      return;
+    }
+    s.vel.set(0, 0, 0);
+    s.targetFacing = 0;
+    s.pose = 'dance';
+    this.shoutT = (this.shoutT ?? rand(2, 4)) - dt;
+    if (this.shoutT <= 0 && g.phase === 'day') {
+      this.shoutT = rand(4, 7);
+      g.particles.emote(s.pos.x, 2.4, s.pos.z, pick(['Come on in!', 'Hungry?', 'Burgers!', 'Fresh and hot!']), 'good');
+    }
+  }
+}
+
+// Manager: makes the rounds with a clipboard, cheering each worker on (the speed boost is in staff.js)
+export class ManagerBrain extends Brain {
+  home() { return { x: this.grid.W / 2, z: this.grid.H / 2 }; }
+
+  pickTask() { return null; }
+
+  idle(dt) {
+    const s = this.s, g = this.g;
+    this.roundT = (this.roundT ?? 0) - dt;
+    if (s.path) {
+      s.pose = null;
+      if (s.followPath(dt, s.speed * 0.75) !== 'moving') {
+        s.path = null;
+        const b = this.buddy;
+        if (b && Math.hypot(b.pos.x - s.pos.x, b.pos.z - s.pos.z) < 2.2) {
+          s.faceTo(b.pos.x, b.pos.z);
+          s.cheer = 0.6;
+          b.cheer = Math.max(b.cheer || 0, 0.8);
+          if (g.phase === 'day') g.particles.emote(s.pos.x, 2.0, s.pos.z, pick(['Great job!', 'Keep it up!', 'Nice work!', 'Teamwork!']), 'good');
+        }
+      }
+      return;
+    }
+    s.vel.set(0, 0, 0);
+    s.pose = 'clip';
+    if (this.roundT <= 0) {
+      this.roundT = rand(6, 10);
+      const others = g.staff.members.filter((m) => m !== s && !m.outside);
+      this.buddy = others.length ? pick(others) : null;
+      const near = this.buddy ? g.freeTileNear(this.buddy.pos.x, this.buddy.pos.z) : g.freeTileNear(rand(1, this.grid.W - 1), rand(1, this.grid.H - 1));
+      if (near) {
+        const p = findPath(this.grid, s.pos.x, s.pos.z, [near]);
+        if (p) s.setPath(p);
+      }
+    }
+  }
+}
+
+const BRAINS = {
+  chef: ChefBrain, waiter: WaiterBrain, dish: DishwasherBrain, plater: PlaterBrain, drive: DriveBrain, busser: BusserBrain, host: HostBrain,
+  musician: MusicianBrain, mascot: MascotBrain, manager: ManagerBrain,
+};
 export function createBrain(staff, game) {
   return new (BRAINS[staff.role] || DishwasherBrain)(staff, game);
 }

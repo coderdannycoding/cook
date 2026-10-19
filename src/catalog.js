@@ -230,6 +230,15 @@ export const STAFF_TYPES = {
   busser: { name: 'Busser', hire: 70, wage: 9, desc: 'Clears tables and the drive-thru window, carries plates to the sink and collects cash.' },
   dish:   { name: 'Dishwasher', hire: 60, wage: 8, desc: 'Washes dirty plates at the sink and refills the plate rack.' },
   host:   { name: 'Host', hire: 110, wage: 14, desc: 'Welcomes guests at the door. The queue outside waits 60% longer and fits two more groups, and seated guests are 8% more patient.' },
+  musician: { name: 'Musician', hire: 130, wage: 15, desc: 'Plays guitar in the dining room. Seated guests are 6% more patient and tip 2% more (12% and 5% when fully trained).' },
+  mascot: { name: 'Mascot', hire: 120, wage: 14, desc: 'Dances on the pavement in a giant burger suit, so 6% more guests walk in (12% when fully trained).' },
+  manager: { name: 'Manager', hire: 220, wage: 26, desc: 'Keeps the team on its toes: every other worker moves and works 8% faster (16% when fully trained).' },
+};
+// What the support roles add, by level (only the best of each role counts)
+export const ROLE_BOOST = {
+  musician: { patience: [0.06, 0.09, 0.12], tips: [0.02, 0.03, 0.05] },
+  mascot: { arrivals: [0.06, 0.09, 0.12] },
+  manager: { speed: [0.08, 0.12, 0.16] },
 };
 export const STAFF_LEVELS = [
   { speed: 3.0, work: 0.8, label: 'Trainee' },
@@ -237,7 +246,7 @@ export const STAFF_LEVELS = [
   { speed: 4.3, work: 1.45, label: 'Master' },
 ];
 export const STAFF_UPGRADE_COST = [0, 300, 600];
-export const MAX_STAFF = 10;
+export const MAX_STAFF = 12;
 
 // ---------------------------------------------------------------------------
 // Cosmetic themes

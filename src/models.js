@@ -1635,6 +1635,9 @@ export function staffLook(role, seed = 0) {
   if (role === 'drive') return { skin, shirt: '#e8343f', apron: '#ffd23f', hair, hairStyle: style, hat: 'cap', hatColor: '#ffd23f', scale: 0.95 };
   if (role === 'busser') return { skin, shirt: '#8d99ae', apron: '#6b4f3a', hair, hairStyle: 'short', hat: 'beanie', hatColor: '#2b2d5c', scale: 0.93 };
   if (role === 'host') return { skin, shirt: '#ffffff', vest: '#2b2d5c', bowtie: '#ffd23f', hair, hairStyle: ['bun', 'bob', 'short', 'pony'][Math.floor(r() * 4)], scale: 0.97 };
+  if (role === 'musician') return { skin, shirt: '#9b5cf6', scarf: '#ffd23f', hair, hairStyle: ['long', 'curly', 'spiky', 'afro'][Math.floor(r() * 4)], hat: r() < 0.5 ? 'fedora' : null, hatColor: '#1d1a2f', prop: 'guitar', scale: 0.95 };
+  if (role === 'mascot') return { skin, shirt: '#ffb03a', gloves: '#ffffff', hair, hairStyle: 'short', costume: 'burger', scale: 1.0 };
+  if (role === 'manager') return { skin, shirt: '#ffffff', vest: '#3f6fb8', bowtie: '#e8343f', hair, hairStyle: ['short', 'bob', 'bun'][Math.floor(r() * 3)], glasses: r() < 0.5, prop: 'clipboard', scale: 0.98 };
   return { skin, shirt: '#3a8fd6', apron: '#1f5f99', hair, hairStyle: 'short', hat: 'bandana', hatColor: '#f1c40f', gloves: '#ffd23f', scale: 0.93 };
 }
 
@@ -1708,7 +1711,29 @@ export function buildCharacter(look) {
   const head = new THREE.Group();
   head.position.set(0, 1.06, 0);
   pivot.add(head);
-  head.add(OL(mesh(sph(0.27, 18, 12), skinM, 0, 0, 0)));
+  const burger = look.costume === 'burger';
+  if (burger) {
+    // Mascot suit: a giant burger for a head, with big friendly eyes on the top bun
+    const bun = mat('#eda14a', { r: 0.55, ...ch });
+    head.add(OL(mesh(cyl(0.35, 0.33, 0.13, 22), bun, 0, -0.2, 0)));
+    head.add(mesh(cyl(0.39, 0.39, 0.1, 22), mat('#6b3a22', { r: 0.85, ...ch }), 0, -0.09, 0));
+    const cheese = mesh(box(0.62, 0.025, 0.62), mat('#ffcc33', { r: 0.5, ...ch }), 0, -0.035, 0);
+    cheese.rotation.y = Math.PI / 4;
+    head.add(cheese);
+    const lettuce = mesh(torus(0.37, 0.05, 6, 20), mat('#5fc24a', { r: 0.7, ...ch }), 0, -0.02, 0);
+    lettuce.rotation.x = Math.PI / 2;
+    head.add(lettuce);
+    const top = OL(mesh(sph(0.38, 22, 12, 0, TAU, 0, Math.PI / 2), bun, 0, 0.0, 0));
+    top.scale.y = 0.85;
+    head.add(top);
+    const seed = mat('#fff3d6', { r: 0.6, ...ch });
+    for (let i = 0; i < 7; i++) {
+      const a = i * 2.3, rr = 0.12 + (i % 3) * 0.07;
+      const sd = mesh(sph(0.025, 6, 4), seed, Math.sin(a) * rr, 0.3 - rr * 0.35, Math.cos(a) * rr - 0.04, false);
+      sd.scale.set(1, 0.5, 1.7);
+      head.add(sd);
+    }
+  } else head.add(OL(mesh(sph(0.27, 18, 12), skinM, 0, 0, 0)));
   const eyeM = mat('#1b1b22', { r: 0.3, ...ch });
   const hiM = mat('#ffffff', { r: 0.3, ...ch });
   const eyes = new THREE.Group();
@@ -1719,13 +1744,23 @@ export function buildCharacter(look) {
     eyes.add(mesh(sph(0.014, 6, 4), hiM, x + 0.014, 0.05, 0.255, false));
   }
   head.add(eyes);
-  const cheekM = mat('#ff9aa2', { r: 0.8, ...ch });
-  for (const x of [-0.16, 0.16]) {
-    const c = mesh(sph(0.04, 8, 6), cheekM, x, -0.04, 0.2, false);
-    c.scale.set(1, 0.6, 0.4);
-    head.add(c);
+  if (burger) {
+    eyes.position.set(0, 0.14, -0.04);
+    eyes.scale.setScalar(1.55);
+    for (const x of [-0.147, 0.147]) {
+      const w = mesh(sph(0.078, 12, 8), hiM, x, 0.187, 0.27, false);
+      w.scale.set(1, 1.15, 0.45);
+      head.add(w);
+    }
+  } else {
+    const cheekM = mat('#ff9aa2', { r: 0.8, ...ch });
+    for (const x of [-0.16, 0.16]) {
+      const c = mesh(sph(0.04, 8, 6), cheekM, x, -0.04, 0.2, false);
+      c.scale.set(1, 0.6, 0.4);
+      head.add(c);
+    }
+    head.add(mesh(sph(0.032, 8, 6), mat(look.skin, { r: 0.5, ...ch }), 0, -0.005, 0.27, false));
   }
-  head.add(mesh(sph(0.032, 8, 6), mat(look.skin, { r: 0.5, ...ch }), 0, -0.005, 0.27, false));
   const mouthM = mat('#5a2020', { r: 0.6, ...ch });
   const smile = mesh(torus(0.045, 0.012, 6, 12, Math.PI), mouthM, 0, -0.07, 0.245, false);
   smile.rotation.z = Math.PI;
@@ -1735,6 +1770,9 @@ export function buildCharacter(look) {
   frown.visible = false;
   open.visible = false;
   head.add(smile, frown, open);
+  if (burger) {
+    for (const m of [smile, frown, open]) { m.position.y += 0.15; m.position.z += 0.135; m.scale.multiplyScalar(1.3); }
+  }
   if (look.glasses) {
     const gm = mat('#222', { r: 0.3, ...ch });
     for (const x of [-0.095, 0.095]) head.add(mesh(torus(0.06, 0.012, 6, 14), gm, x, 0.03, 0.25, false));
@@ -1759,7 +1797,7 @@ export function buildCharacter(look) {
 
   // Hair
   const hairM = mat(look.hair, { r: 0.8, ...ch });
-  const hs = look.hairStyle;
+  const hs = burger ? 'bald' : look.hairStyle;
   if (hs && hs !== 'bald' && look.hat !== 'chef' && look.hat !== 'bandana' && look.hat !== 'fedora') {
     const cap = OL(mesh(sph(0.285, 20, 12, 0, TAU, 0, hs === 'bob' ? 1.75 : 1.25), hairM, 0, 0.0, -0.02));
     cap.rotation.x = -0.25;
@@ -1896,6 +1934,31 @@ export function buildCharacter(look) {
   const held = new THREE.Group();
   held.position.set(0, 0.6, 0.4);
   root.add(held);
+
+  // Props for the support roles: a guitar slung in front, a clipboard in the left hand
+  if (look.prop === 'guitar') {
+    const g = new THREE.Group();
+    const wood = mat('#c8783a', { r: 0.45, ...ch }), dark = mat('#3a2418', { r: 0.6, ...ch });
+    const lower = OL(mesh(sph(0.15, 14, 10), wood, 0, -0.06, 0));
+    lower.scale.set(1, 1, 0.38);
+    const upper = OL(mesh(sph(0.115, 14, 10), wood, 0, 0.1, 0));
+    upper.scale.set(1, 1, 0.38);
+    g.add(lower, upper, mesh(cyl(0.045, 0.045, 0.02, 14), dark, 0, 0.02, 0.055, false).rotateX(Math.PI / 2));
+    g.add(mesh(box(0.05, 0.42, 0.03), dark, 0, 0.38, 0.02), mesh(box(0.07, 0.1, 0.035), dark, 0, 0.62, 0.02));
+    g.add(mesh(box(0.11, 0.02, 0.03), dark, 0, -0.14, 0.055, false));
+    g.position.set(0.02, 0.5, 0.27);
+    g.rotation.z = 0.95;
+    pivot.add(g);
+  } else if (look.prop === 'clipboard') {
+    const c = new THREE.Group();
+    c.add(mesh(box(0.2, 0.26, 0.02), mat('#a8743f', { r: 0.6, ...ch }), 0, 0, 0));
+    c.add(mesh(box(0.17, 0.2, 0.005), mat('#ffffff', { r: 0.8, ...ch }), 0, -0.01, 0.012, false));
+    c.add(mesh(box(0.08, 0.035, 0.03), mat('#c9ccd2', { r: 0.3, m: 0.7, ...ch }), 0, 0.12, 0.01, false));
+    for (let i = 0; i < 3; i++) c.add(mesh(box(0.12, 0.008, 0.002), mat('#8d99ae', { r: 0.8, ...ch }), 0, 0.04 - i * 0.045, 0.016, false));
+    c.position.set(0.06, 0.05, 0.08);
+    c.rotation.set(-0.9, 0.3, 0);
+    handL.add(c);
+  }
 
   // Soft contact shadow under the feet so characters read as grounded
   root.add(makeBlobShadow(0.95));

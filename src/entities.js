@@ -144,6 +144,7 @@ export class Character {
     const bob = moving > 0.05 ? Math.abs(Math.sin(this.walkPhase)) * 0.075 * moving : Math.sin(this.t * 2.4) * 0.012;
     m.pivot.position.y = bob;
     m.pivot.rotation.x = moving * 0.13 + (this.workingT > 0 ? 0.12 : 0);
+    m.pivot.rotation.z = this.pose === 'dance' && spd < 0.3 ? Math.sin(this.t * 3.25) * 0.16 : 0;
     m.head.rotation.z = moving > 0.05 ? Math.sin(this.walkPhase) * 0.05 : Math.sin(this.t * 1.3) * 0.03;
 
     // feet
@@ -178,6 +179,17 @@ export class Character {
       const c = Math.abs(Math.sin(this.t * 6));
       hl.set(-0.25, 0.55, 0.32);
       hr.set(0.12, 0.65 + c * 0.35, 0.3 - c * 0.05);
+    } else if (this.pose === 'strum' && spd < 0.3) {
+      hl.set(-0.3, 0.7, 0.3);
+      hr.set(0.08 + Math.sin(this.t * 16) * 0.04, 0.5, 0.33);
+    } else if (this.pose === 'dance' && spd < 0.3) {
+      const a = this.t * 6.5;
+      hl.set(-0.4, 0.95 + Math.sin(a) * 0.32, 0.12);
+      hr.set(0.4, 0.95 - Math.sin(a) * 0.32, 0.12);
+      m.pivot.position.y += Math.abs(Math.sin(a)) * 0.12;
+    } else if (this.pose === 'clip' && spd < 0.3) {
+      hl.set(-0.16, 0.66, 0.34);
+      hr.set(0.1, 0.7 + Math.abs(Math.sin(this.t * 7)) * 0.04, 0.38);
     } else {
       const sw = Math.sin(this.walkPhase) * 0.14 * moving;
       hl.set(-0.33, 0.5 + bob * 0.6, 0.05 - sw);
@@ -457,9 +469,8 @@ export class Staff extends Character {
 
   applyLevel() {
     const L = STAFF_LEVELS[Math.max(0, Math.min(STAFF_LEVELS.length - 1, this.data.level - 1))];
-    this.speed = L.speed;
-    this.chopRate = L.work;
-    this.washRate = L.work;
+    this.speed = this.baseSpeed = L.speed;
+    this.chopRate = this.washRate = this.baseWork = L.work;
   }
 }
 

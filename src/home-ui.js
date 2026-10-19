@@ -85,7 +85,16 @@ export class HomePanel {
       const cls = `${cur ? 'selected' : ''} ${past ? 'past' : ''} ${locked ? 'locked' : ''} ${next && cash < t.price ? 'poor' : ''}`;
       return this.card(`data-tier="${id}"`, `tier:${id}`, t.name, t.desc, `${this.perkTag(t.perk, cur, 'Starter home')}<div class="c-meta">${meta}</div>`, cls);
     }).join('');
-    return `${tiers}${this.paintCard('house')}`;
+    return `${tiers}${this.paintCard('house')}<div class="hm-label">Helpers</div>${this.helperCards()}`;
+  }
+
+  helperCards() {
+    const { HOME_STAFF } = this.d, h = this.mode.home;
+    return Object.entries(HOME_STAFF).map(([id, t]) => {
+      const on = h.staff.includes(id);
+      const meta = `${on ? `<span class="hm-tag on">${icon('check')}Hired</span>` : ''}<b>${badge('coin')}${this.price(t.wage)}</b><span>a day</span>`;
+      return this.card(`data-helper="${id}"`, `helper:${id}`, t.name, t.desc, `<div class="c-perk hm-plain">${esc(t.desc)}</div><div class="c-meta">${meta}</div>`, on ? 'owned selected' : '');
+    }).join('');
   }
 
   // Swatch card: repaint the house (two rows) or your ride (one row)
@@ -209,20 +218,21 @@ export class HomePanel {
     if (this.tab === 'garage') return 'Tap a car you own to drive it: your ride takes the turntable. Luxury cars bring <b>more guests</b>.';
     if (this.tab === 'yard') {
       const { COMFORT_LEVELS, homeComfort, comfortLevel } = this.d, c = homeComfort(h), lv = comfortLevel(c), next = COMFORT_LEVELS[lv + 1];
-      return `Comfort <b>${c}</b>, ${COMFORT_LEVELS[lv].name}${lv ? ` (+${lv}% tips and patience)` : ''}.${next ? ` ${next.name} at ${next.at}.` : ''} Tap furniture to edit it.`;
+      return `Comfort <b>${c}</b>, ${COMFORT_LEVELS[lv].name}${lv ? ` (+${lv}% tips and patience)` : ''}.${next ? ` ${next.name} at ${next.at}.` : ''} On this tab, tap furniture to edit it.`;
     }
-    return 'Buy the next home to move in. Everything you own comes along. Tap the lawn to stroll around.';
+    return 'Tap furniture to use it, a nap or a soak leaves you <b>well rested</b> for tomorrow. Check the mailbox daily.';
   }
 
   render() {
     if (!this.el) return;
     const d = this.d, h = this.mode.home;
     const T = d.HOME_TIERS[d.TIER_IDS[h.tier]];
-    const perks = d.homePerks(h);
+    const day = this.mode.game.state.day;
+    const perks = d.homePerks(h, day);
     const perkLine = Object.keys(perks).length ? d.perkText(perks) : 'none yet';
     const comfort = d.homeComfort(h);
     const sad = d.sadPets(h);
-    this.top.innerHTML = `<span class="hm-ic">${icon('home')}</span><div class="hm-tt"><div><b>${esc(T.name)}</b><small>${icon('heart')}${comfort}<i></i>${icon('paw')}${h.pets.length}${sad ? `<em class="hm-sad">${icon('sad')}${sad}</em>` : ''}<i></i>${icon('car')}${h.cars.length}</small></div>
+    this.top.innerHTML = `<span class="hm-ic">${icon('home')}</span><div class="hm-tt"><div><b>${esc(T.name)}</b><small>${icon('heart')}${comfort}<i></i>${icon('paw')}${h.pets.length}${sad ? `<em class="hm-sad">${icon('sad')}${sad}</em>` : ''}<i></i>${icon('car')}${h.cars.length}${d.isRested(h, day) ? `<em class="hm-rest">${icon('zzz')}Rested</em>` : ''}</small></div>
       <span class="hm-perks">Restaurant bonus: <em>${esc(perkLine)}</em></span></div>`;
     const tools = !!(this.mode.placing || this.mode.sel);
     const row = this.el.querySelector('.hm-row');
@@ -291,6 +301,7 @@ export class HomePanel {
     else if (b.dataset.car) m.carClick(b.dataset.car);
     else if (b.dataset.item) m.itemCard(b.dataset.item);
     else if (b.dataset.treat !== undefined) m.treatPet(+b.dataset.treat);
+    else if (b.dataset.helper) m.toggleHelper(b.dataset.helper);
     else if (b.dataset.paintWall !== undefined) m.paintHouse('wall', b.dataset.paintWall || null);
     else if (b.dataset.paintRoof !== undefined) m.paintHouse('roof', b.dataset.paintRoof || null);
     else if (b.dataset.carpaint !== undefined) m.paintCar(b.dataset.carpaint || null);

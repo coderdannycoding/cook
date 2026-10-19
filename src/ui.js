@@ -48,10 +48,11 @@ function starsHTML(rating) {
   return `<span class="stars"><span class="stars-bg">★★★★★</span><span class="stars-fg" style="width:${pct}%">★★★★★</span></span>`;
 }
 
-const ROLE_ICON = { chef: 'chefhat', waiter: 'bowtie', dish: 'sponge', plater: 'cloche', drive: 'car', busser: 'broom', host: 'bell' };
+const ROLE_ICON = { chef: 'chefhat', waiter: 'bowtie', dish: 'sponge', plater: 'cloche', drive: 'car', busser: 'broom', host: 'bell', musician: 'music', mascot: 'megaphone', manager: 'clipboard' };
 const ROLE_BLURB = {
   chef: 'Preps and cooks', waiter: 'Serves and clears', dish: 'Washes plates', plater: 'Plates every dish',
   drive: 'Runs the drive-thru', busser: 'Clears tables', host: 'Greets guests',
+  musician: 'Plays for diners', mascot: 'Draws a crowd', manager: 'Speeds up the team',
 };
 
 export class UI {
@@ -621,10 +622,23 @@ export class UI {
   renderBuild() {
     const g = this.game;
     const s = g.state;
-    const cats = CATEGORIES.map((c) => `<button class="chip ${this.buildCat === c.id ? 'on' : ''}" data-cat="${c.id}">${icon(c.icon)}${c.name}</button>`).join('');
+    const stored = Object.entries(s.storage || {}).filter(([id, n]) => CATALOG[id] && n > 0);
+    const nStored = stored.reduce((a, [, n]) => a + n, 0);
+    const cats = CATEGORIES.map((c) => `<button class="chip ${this.buildCat === c.id ? 'on' : ''}" data-cat="${c.id}">${icon(c.icon)}${c.name}</button>`).join('')
+      + `<button class="chip ${this.buildCat === 'storage' ? 'on' : ''}" data-cat="storage">${icon('crate')}Storage${nStored ? ` <i class="chip-n">${nStored}</i>` : ''}</button>`;
     const decor = (n) => (n ? `<span title="Ambience">${icon('lamp')}+${n}</span>` : '');
     let cards = '';
-    if (this.buildCat === 'style') {
+    if (this.buildCat === 'storage') {
+      cards = stored.length ? stored.map(([id, n]) => {
+        const d = CATALOG[id];
+        const sel = g.build.selectedType === id && g.build.fromStore;
+        return `<button class="card ${sel ? 'selected' : ''}" data-stored="${id}" title="${esc(d.desc)}">
+          <img src="${this.thumb(`cat:${id}`)}" alt="">
+          <div class="c-name">${esc(d.name)}</div>
+          <div class="c-meta"><span class="free-tag">Free to place</span>${n > 1 ? `<span>×${n}</span>` : ''}</div>
+        </button>`;
+      }).join('') : `<div class="perk-sum">Nothing in storage yet. Pick up a placed item and press <b>Store</b> (or <kbd>C</kbd>) to keep it here, then place it again for free whenever you like.</div>`;
+    } else if (this.buildCat === 'style') {
       const theme = (kind, id, t, tall) => {
         const owned = s.ownedThemes.includes(`${kind}:${id}`);
         const on = (kind === 'floor' ? s.floorTheme : s.wallTheme) === id;
@@ -780,6 +794,7 @@ export class UI {
       return;
     }
     if (b.dataset.theme) { g.buyTheme(b.dataset.theme); this.renderDock(); return; }
+    if (b.dataset.stored) { g.build.select(b.dataset.stored, true); this.renderDock(); return; }
     if (b.dataset.hire) {
       const r = g.staff.hire(b.dataset.hire);
       if (!r.ok) { this.toast(r.msg, 'warn'); g.audio.error(); } else this.toast(`${r.member.name} joined the team`, 'good', 'people');
@@ -978,9 +993,11 @@ export class UI {
           ${row('heart', 'Tips', money(rep.tips))}
           ${rep.criticBonus ? row('crown', 'Critic bonus', money(rep.criticBonus), 'gold') : ''}
           ${rep.goalCash ? row('check', 'Goal rewards', money(rep.goalCash), 'gold') : ''}
+          ${rep.homeIncome ? row('plant', 'Garden crops', money(rep.homeIncome), 'gold') : ''}
           ${row('crate', 'Ingredients', money(-rep.ingredients), rep.ingredients ? 'neg' : '')}
           ${rep.wages ? row('people', 'Staff wages', money(-rep.wages), 'neg') : ''}
           ${row('floor', 'Rent', money(-rep.rent), rep.rent ? 'neg' : '')}
+          ${rep.homeWages ? row('home', 'Home helpers', money(-rep.homeWages), 'neg') : ''}
         </div>
       </div>
       <div class="r-total">${badge('coin')}<b class="${rep.net >= 0 ? 'pos' : 'neg'}">${money(rep.net)}</b></div>
