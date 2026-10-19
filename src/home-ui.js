@@ -7,6 +7,8 @@ import { icon, badge } from './icons.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const TABS = [['house', 'home', 'House'], ['yard', 'plant', 'Yard'], ['pets', 'paw', 'Pets'], ['garage', 'car', 'Garage']];
+// What the two paint rows recolour on each kind of home
+const PAINT_PARTS = [['Canvas', 'Stripe'], ['Logs', 'Roof'], ['Walls', 'Roof'], ['Walls', 'Trim'], ['Walls', 'Roof']];
 
 export class HomePanel {
   // data: catalogs and helpers from home.js (passed in to keep the modules free of import cycles)
@@ -45,8 +47,15 @@ export class HomePanel {
   }
 
   hide() {
+    clearTimeout(this._soon);
     this.el?.remove();
     this.top?.remove();
+  }
+
+  // Re-render shortly (several quick changes in a row, like patting pets, render once)
+  renderSoon() {
+    clearTimeout(this._soon);
+    this._soon = setTimeout(() => { if (this.el?.isConnected) this.render(); }, 150);
   }
 
   price(n) { return this.d.formatMoney(n).replace('$', ''); }
@@ -76,7 +85,21 @@ export class HomePanel {
       const cls = `${cur ? 'selected' : ''} ${past ? 'past' : ''} ${locked ? 'locked' : ''} ${next && cash < t.price ? 'poor' : ''}`;
       return this.card(`data-tier="${id}"`, `tier:${id}`, t.name, t.desc, `${this.perkTag(t.perk, cur, 'Starter home')}<div class="c-meta">${meta}</div>`, cls);
     }).join('');
-    return tiers;
+    return `${tiers}${this.paintCard('house')}`;
+  }
+
+  // Swatch card: repaint the house (two rows) or your ride (one row)
+  paintCard(kind) {
+    const { PAINT, CARS } = this.d, h = this.mode.home;
+    const row = (label, list, cur, attr) => `<div class="hm-swrow"><span>${label}</span>${[null, ...list].map((c) => `<button class="hm-sw ${(cur ?? null) === c ? 'on' : ''} ${c ? '' : 'none'}" ${attr}="${c ?? ''}" ${c ? `style="background:${c}"` : ''} title="${c ? 'Paint' : 'Original colour'}">${c ? '' : icon('x')}</button>`).join('')}</div>`;
+    if (kind === 'house') {
+      const [a, b] = PAINT_PARTS[h.tier];
+      return `<div class="card hm-card hm-paint"><div class="hm-txt"><div class="c-name">${icon('brush')}Paint the house <small>${badge('coin')}${this.price(PAINT.house)} a coat</small></div>
+        ${row(a, PAINT.wall, h.paint.wall, 'data-paint-wall')}${row(b, PAINT.roof, h.paint.roof, 'data-paint-roof')}</div></div>`;
+    }
+    if (!h.favCar) return '';
+    return `<div class="card hm-card hm-paint"><div class="hm-txt"><div class="c-name">${icon('brush')}Paint the ${esc(CARS[h.favCar].name)} <small>${badge('coin')}${this.price(PAINT.carPrice)}</small></div>
+      ${row('Body', PAINT.car, h.carPaint[h.favCar], 'data-carpaint')}</div></div>`;
   }
 
   // Yard section chips: beside the cards, or above them on upright phones
@@ -143,20 +166,30 @@ export class HomePanel {
     if (b) b.disabled = !this.mode.placing?.ok;
   }
 
+  // Your pets (happiness and treats), then the adoption cards
   petCards() {
-    const { PETS, PET_LIMITS } = this.d, h = this.mode.home, cash = this.mode.game.state.cash;
-    return Object.entries(PETS).map(([id, t]) => {
+    const { PETS, PET_LIMITS, PET_CARE } = this.d, h = this.mode.home, cash = this.mode.game.state.cash;
+    const mine = h.pets.map((id, i) => {
+      const c = h.care[i], joy = Math.round(c.joy), happy = joy >= PET_CARE.happy;
+      const tip = `${c.name} the ${PETS[id].name}: happiness ${joy}%. ${happy ? 'Happy pets help the restaurant.' : 'Sad pets give no bonus.'}`;
+      return `<div class="card hm-card hm-mypet ${happy ? '' : 'sad'}" title="${esc(tip)}"><img src="${this.mode.thumb(`pet:${id}`)}" data-thumb="pet:${id}" alt="">
+        <div class="hm-txt"><div class="c-name">${esc(c.name)} <small>${esc(PETS[id].name)}</small></div>
+        <div class="hm-joy"><span style="width:${joy}%"></span></div>
+        <div class="hm-sbtns"><span class="hm-mood">${icon(happy ? 'heart' : 'sad')}${happy ? `${joy}%` : 'Misses you'}</span><button class="hm-mini ok" data-treat="${i}" title="A tasty treat: +${PET_CARE.treatJoy}% happiness">${icon('bone')}${badge('coin')}${PET_CARE.treat}</button></div></div></div>`;
+    }).join('');
+    const shop = Object.entries(PETS).map(([id, t]) => {
       const n = h.pets.filter((p) => p === id).length;
       const max = n >= PET_LIMITS.same || h.pets.length >= PET_LIMITS.total;
       const meta = max ? `<span class="hm-tag on">${icon('check')}${n ? `${n} at home` : 'Yard full'}</span>` : `<b>${badge('coin')}${this.price(t.price)}</b>${n ? `<span>×${n}</span>` : ''}`;
       const corner = t.lux ? `<span class="hm-lux" title="Luxury">${icon('crown')}</span>` : '';
       return this.card(`data-pet="${id}"`, `pet:${id}`, t.name, t.desc, `${this.perkTag(t.perk, n > 0)}<div class="c-meta">${meta}</div>`, `${n ? 'owned' : ''} ${!max && cash < t.price ? 'poor' : ''}`, corner);
     }).join('');
+    return mine ? `<div class="hm-label">Yours</div>${mine}<div class="hm-label">Adopt</div>${shop}` : shop;
   }
 
   carCards() {
     const { CARS } = this.d, h = this.mode.home, cash = this.mode.game.state.cash;
-    return Object.entries(CARS).map(([id, t]) => {
+    return this.paintCard('car') + Object.entries(CARS).map(([id, t]) => {
       const owned = h.cars.includes(id), fav = h.favCar === id;
       let meta = `<b>${badge('coin')}${this.price(t.price)}</b>`;
       if (fav) meta = `<span class="hm-tag on">${icon('crown')}Your ride</span>`;
@@ -169,8 +202,9 @@ export class HomePanel {
   note() {
     const { PET_LIMITS, PET_BONUS, perkText } = this.d, h = this.mode.home;
     if (this.tab === 'pets') {
-      const bonus = h.pets.length >= PET_BONUS.count ? `pet lover bonus <b>${esc(perkText(PET_BONUS.perk))}</b>` : `adopt ${PET_BONUS.count} for <b>${esc(perkText(PET_BONUS.perk))}</b>`;
-      return `<b>${h.pets.length}</b> of ${PET_LIMITS.total} pets, ${bonus}. Tap a pet in the yard for a cuddle.`;
+      if (!h.pets.length) return `Adopt a pet. ${PET_BONUS.count} happy pets earn the pet lover bonus <b>${esc(perkText(PET_BONUS.perk))}</b>.`;
+      const happy = h.pets.length - this.d.sadPets(h);
+      return `<b>${happy}</b> of ${h.pets.length} pets happy${happy >= PET_BONUS.count ? `, pet lover bonus <b>${esc(perkText(PET_BONUS.perk))}</b>` : ''}. Tap pets in the yard for a pat, or give a treat. Max ${PET_LIMITS.total}.`;
     }
     if (this.tab === 'garage') return 'Tap a car you own to drive it: your ride takes the turntable. Luxury cars bring <b>more guests</b>.';
     if (this.tab === 'yard') {
@@ -187,7 +221,8 @@ export class HomePanel {
     const perks = d.homePerks(h);
     const perkLine = Object.keys(perks).length ? d.perkText(perks) : 'none yet';
     const comfort = d.homeComfort(h);
-    this.top.innerHTML = `<span class="hm-ic">${icon('home')}</span><div class="hm-tt"><div><b>${esc(T.name)}</b><small>${icon('heart')}${comfort}<i></i>${icon('paw')}${h.pets.length}<i></i>${icon('car')}${h.cars.length}</small></div>
+    const sad = d.sadPets(h);
+    this.top.innerHTML = `<span class="hm-ic">${icon('home')}</span><div class="hm-tt"><div><b>${esc(T.name)}</b><small>${icon('heart')}${comfort}<i></i>${icon('paw')}${h.pets.length}${sad ? `<em class="hm-sad">${icon('sad')}${sad}</em>` : ''}<i></i>${icon('car')}${h.cars.length}</small></div>
       <span class="hm-perks">Restaurant bonus: <em>${esc(perkLine)}</em></span></div>`;
     const tools = !!(this.mode.placing || this.mode.sel);
     const row = this.el.querySelector('.hm-row');
@@ -255,6 +290,10 @@ export class HomePanel {
     else if (b.dataset.pet) m.adoptPet(b.dataset.pet);
     else if (b.dataset.car) m.carClick(b.dataset.car);
     else if (b.dataset.item) m.itemCard(b.dataset.item);
+    else if (b.dataset.treat !== undefined) m.treatPet(+b.dataset.treat);
+    else if (b.dataset.paintWall !== undefined) m.paintHouse('wall', b.dataset.paintWall || null);
+    else if (b.dataset.paintRoof !== undefined) m.paintHouse('roof', b.dataset.paintRoof || null);
+    else if (b.dataset.carpaint !== undefined) m.paintCar(b.dataset.carpaint || null);
     else if (b.dataset.stored) m.startPlacing(b.dataset.stored, { stored: true });
     else if (b.dataset.sellstored) m.sellStored(b.dataset.sellstored);
   }

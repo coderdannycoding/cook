@@ -65,6 +65,9 @@ const P = {
   joystick: '<circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="3.2" class="f"/>',
   dots: '<path d="M6 12h.01M12 12h.01M18 12h.01" stroke-width="3.4"/>',
   zzz: '<path d="M4 9h5l-5 6h5M13 5h4l-4 5h4M17 13h3.5L17 17.5h3.5"/>',
+  sad: '<circle cx="12" cy="12" r="8.6"/><path d="M8.4 16.6c2-2 5.2-2 7.2 0M9.2 9.6v.8M14.8 9.6v.8"/>',
+  bone: '<path d="M8.6 8.6l6.8 6.8"/><circle cx="6.2" cy="8.4" r="2.2"/><circle cx="8.4" cy="6.2" r="2.2"/><circle cx="15.6" cy="17.8" r="2.2"/><circle cx="17.8" cy="15.6" r="2.2"/>',
+  brush: '<rect x="4" y="3.5" width="13" height="5.5" rx="1.6"/><path d="M17 6.2h2.5v5.3H11v3"/><rect x="9.6" y="14.5" width="2.8" height="6.5" rx="1"/>',
   question: '<path d="M8.8 9a3.3 3.3 0 1 1 4.6 3c-1 .5-1.4 1.1-1.4 2.2v.6M12 18.5v.2"/>',
   pin: '<circle cx="12" cy="9.5" r="5"/><path d="M12 14.5V21"/>',
 };

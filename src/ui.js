@@ -11,6 +11,7 @@ import { DAY } from './config.js';
 import { icon, hasIcon, badge } from './icons.js';
 import { openAvatarEditor } from './avatar.js';
 import { playerLook, staffLook } from './models.js';
+import { sadPets } from './home.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 function el(html) {
@@ -585,12 +586,13 @@ export class UI {
     const view = `${this.dockTab}|${this.buildCat}`;
     const keep = view === this._dockViewShown ? [...D.querySelectorAll('.dock-panel, .dock-panel .cards, .dock-panel .chips')].map((n) => [n.scrollTop, n.scrollLeft]) : [];
     this._dockViewShown = view;
+    const sad = sadPets(g.state.home);
     D.innerHTML = `
       <div class="dock-top">
         <div class="dock-tabs">${tabs.map(([id, ic, n]) => `<button class="tab ${this.dockTab === id ? 'on' : ''}" data-tab="${id}">${icon(ic)}${n}</button>`).join('')}</div>
         <div class="dock-info">Ambience <b>${Math.round(g.ambience * 100)}%</b>, wages <b>${formatMoney(wages)}</b> and rent <b>${formatMoney(g.rent())}</b> a day</div>
         <button class="tab collapse" data-act="collapse" title="Show or hide the panel">${this.dockCollapsed ? 'Show' : 'Hide'}</button>
-        <button class="tab home-btn" data-act="home" title="Visit your home: houses, pets and cars">${icon('home')}Home</button>
+        <button class="tab home-btn" data-act="home" title="${sad ? `${sad === 1 ? 'A pet misses' : `${sad} pets miss`} you. ` : ''}Visit your home: house, yard, pets and cars">${icon('home')}Home${sad ? `<i class="hb-dot">${icon('sad')}</i>` : ''}</button>
         <button class="big-btn primary open-btn" data-act="open">Open for day ${g.state.day}</button>
       </div>
       <div class="dock-panel ${this.dockCollapsed ? 'hidden' : ''}">${this.renderPanel()}</div>`;

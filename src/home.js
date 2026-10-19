@@ -43,6 +43,21 @@ export const PETS = {
 export const PET_LIMITS = { same: 3, total: 12 };
 const PET_SCALE = 1.25;
 export const PET_BONUS = { count: 3, perk: { review: 0.05 } };
+// Pet care: happiness (joy, 0-100) drops a little every working day and comes back with pats and
+// treats. Only happy pets give their bonus. Pet furniture in the yard slows the drop.
+export const PET_CARE = { happy: 40, treat: 25, treatJoy: 30, pat: 5, pats: 6, drop: 18 };
+const PET_NAMES = [
+  'Biscuit', 'Mochi', 'Pickles', 'Noodle', 'Waffles', 'Peanut', 'Pepper', 'Tofu', 'Nugget', 'Muffin',
+  'Dumpling', 'Sprout', 'Pretzel', 'Bean', 'Taco', 'Toffee', 'Cookie', 'Olive', 'Ziggy', 'Sushi',
+];
+// Paint jobs: house walls and roof (reset when you move), and the body colour of each car
+export const PAINT = {
+  wall: ['#f7f5f0', '#f6ead2', '#ffe08a', '#ffc9d6', '#d9c8f0', '#a9d8ec', '#b8e0b0', '#e8a27a', '#b5773f', '#8d99ae'],
+  roof: ['#4f5d8c', '#c8443a', '#4f8a4a', '#3a3f4a', '#7a4a2e', '#2f8cf0', '#9b5cf6', '#e8843f', '#f4f1ea', '#2f6f6a'],
+  car: ['#e8343f', '#ff8a3a', '#ffc21a', '#4fd1b0', '#2f8cf0', '#9b5cf6', '#ff6fae', '#22232c', '#f4f4f0', '#8d99ae'],
+  house: 300,
+  carPrice: 250,
+};
 
 export const CARS = {
   scooter: { name: 'City Scooter', price: 600, perk: { queue: 0.03 }, desc: 'Zippy, cheap and easy to park.' },
@@ -64,7 +79,12 @@ export const COMFORT_LEVELS = [
 ];
 
 export function defaultHomeState() {
-  return { tier: 0, pets: [], cars: [], favCar: null, items: [], storage: {} };
+  return { tier: 0, pets: [], cars: [], favCar: null, items: [], storage: {}, care: [], paint: { wall: null, roof: null }, carPaint: {} };
+}
+const isHex = (c) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
+function newPetName(home) {
+  const used = new Set((home.care || []).map((c) => c.name));
+  return PET_NAMES.find((n) => !used.has(n)) ?? pick(PET_NAMES);
 }
 
 // Fills in missing fields and drops anything unknown (old or hand-edited saves), in place
@@ -86,7 +106,38 @@ function normalizeHome(h) {
   if (Array.isArray(h.decor)) for (const id of h.decor) if (HOME_ITEMS[id]) store[id] = (store[id] || 0) + 1;
   delete h.decor;
   h.storage = store;
+  const care = Array.isArray(h.care) ? h.care : [];
+  h.care = [];
+  h.pets.forEach((id, i) => {
+    const c = care[i] && typeof care[i] === 'object' ? care[i] : {};
+    h.care.push({
+      name: typeof c.name === 'string' && c.name.trim() ? c.name.trim().slice(0, 14) : newPetName(h),
+      joy: Number.isFinite(c.joy) ? clamp(c.joy, 0, 100) : 80,
+      pats: clamp(int(c.pats), 0, 99),
+    });
+  });
+  const pt = h.paint && typeof h.paint === 'object' ? h.paint : {};
+  h.paint = { wall: isHex(pt.wall) ? pt.wall : null, roof: isHex(pt.roof) ? pt.roof : null };
+  const cp = h.carPaint && typeof h.carPaint === 'object' ? h.carPaint : {};
+  h.carPaint = {};
+  for (const [id, c] of Object.entries(cp)) if (CARS[id] && isHex(c)) h.carPaint[id] = c;
   return h;
+}
+
+const happyAt = (home, i) => (Number.isFinite(home?.care?.[i]?.joy) ? home.care[i].joy : 80) >= PET_CARE.happy;
+
+// A working day has passed: pets miss you a little (less with pet furniture in the yard)
+export function homeNewDay(home) {
+  if (!home || !Array.isArray(home.care)) return;
+  const kinds = new Set((home.items || []).filter((it) => HOME_ITEMS[it?.id]?.pet).map((it) => it.id)).size;
+  const drop = Math.max(6, PET_CARE.drop - kinds * 3);
+  for (const c of home.care) {
+    c.joy = clamp((Number(c.joy) || 0) - drop, 0, 100);
+    c.pats = 0;
+  }
+}
+export function sadPets(home) {
+  return Array.isArray(home?.pets) ? home.pets.filter((id, i) => !happyAt(home, i)).length : 0;
 }
 export { normalizeHome };
 
@@ -100,7 +151,7 @@ export function homeComfort(home) {
     n += seen.has(it.id) ? D.comfort / 2 : D.comfort;
     seen.add(it.id);
   }
-  n += (Array.isArray(home.pets) ? home.pets.length : 0) * 2;
+  n += (Array.isArray(home.pets) ? home.pets.filter((id, i) => happyAt(home, i)).length : 0) * 2;
   return Math.round(n);
 }
 export function comfortLevel(comfort) {
@@ -115,7 +166,7 @@ export function homePerks(home) {
   if (!home) return out;
   const add = (perk) => { for (const [k, v] of Object.entries(perk || {})) out[k] = (out[k] || 0) + v; };
   add(HOME_TIERS[TIER_IDS[clamp(Math.floor(Number(home.tier) || 0), 0, TIER_IDS.length - 1)]].perk);
-  const pets = Array.isArray(home.pets) ? home.pets.filter((id) => PETS[id]) : [];
+  const pets = Array.isArray(home.pets) ? home.pets.filter((id, i) => PETS[id] && happyAt(home, i)) : [];
   for (const id of new Set(pets)) add(PETS[id].perk);
   if (pets.length >= PET_BONUS.count) add(PET_BONUS.perk);
   for (const id of new Set(Array.isArray(home.cars) ? home.cars : [])) add(CARS[id]?.perk);
@@ -160,6 +211,7 @@ function put(parent, geo, m, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) {
   return o;
 }
 const sc = (o, x, y = x, z = x) => { o.scale.set(x, y, z); return o; };
+const shade = (c, k) => `#${new THREE.Color(c).multiplyScalar(k).getHexString()}`;
 function grp(x = 0, y = 0, z = 0, ry = 0) {
   const g = new THREE.Group();
   g.position.set(x, y, z);
@@ -583,6 +635,8 @@ const TYRE = () => P('#1d1d22', 0.85);
 const CHROME = () => P('#dfe4ea', 0.25, 0.85);
 const GLASS = () => P('#24324a', 0.12, 0.5);
 const TAIL = () => mat('#ff3b3b', { e: '#ff1010', ei: 0.7 });
+let CAR_PAINT = null; // body colour override while a repainted car is being built
+const body = (c, r = 0.28, m = 0.4) => P(CAR_PAINT ?? c, r, m);
 
 function wheels(g, o) {
   const R = o.R, tw = o.tw ?? 0.18;
@@ -601,7 +655,7 @@ function wheels(g, o) {
 // A toy car body: rounded lower body, a cabin with a glass band, bumpers, lamps and plates
 function carKit(o) {
   const g = new THREE.Group();
-  const paint = o.paint ?? P(o.col, 0.28, 0.4);
+  const paint = o.paint ?? body(o.col);
   const top = o.ride + o.h;
   put(g, rbox(o.w, o.h, o.len, Math.min(0.15, o.h * 0.42), 2), paint, 0, o.ride + o.h / 2, 0);
   if (o.cab) {
@@ -626,15 +680,15 @@ function carKit(o) {
 const CAR_MODELS = {
   scooter: () => {
     const g = new THREE.Group();
-    const body = P('#ff7a8a', 0.3, 0.35), cream = P('#fff4e0', 0.5);
+    const shell = body('#ff7a8a', 0.3, 0.35), cream = P('#fff4e0', 0.5);
     for (const z of [-0.42, 0.44]) {
       put(g, cyl(0.17, 0.17, 0.1, 16), TYRE(), 0, 0.17, z, 0, 0, PI / 2);
       put(g, cyl(0.09, 0.09, 0.12, 12), CHROME(), 0, 0.17, z, 0, 0, PI / 2);
     }
-    sc(put(g, sph(0.27, 16, 12), body, 0, 0.38, -0.3), 0.85, 0.7, 1.15);
+    sc(put(g, sph(0.27, 16, 12), shell, 0, 0.38, -0.3), 0.85, 0.7, 1.15);
     put(g, rbox(0.3, 0.06, 0.5, 0.02), P('#3a3a42', 0.7), 0, 0.22, 0.12);
-    put(g, rbox(0.34, 0.6, 0.12, 0.05), body, 0, 0.5, 0.42, -0.25);
-    sc(put(g, sph(0.2, 12, 8), body, 0, 0.36, 0.45), 0.7, 0.55, 1);
+    put(g, rbox(0.34, 0.6, 0.12, 0.05), shell, 0, 0.5, 0.42, -0.25);
+    sc(put(g, sph(0.2, 12, 8), shell, 0, 0.36, 0.45), 0.7, 0.55, 1);
     put(g, cyl(0.03, 0.03, 0.4, 8), CHROME(), 0, 0.78, 0.5, 0, 0, PI / 2);
     put(g, cyl(0.025, 0.025, 0.3, 8), CHROME(), 0, 0.68, 0.48, -0.3);
     for (const s of [-1, 1]) put(g, sph(0.04, 8, 6), P('#2a2c33'), s * 0.2, 0.78, 0.5);
@@ -696,9 +750,9 @@ const CAR_MODELS = {
     return g;
   },
   limo: () => {
-    const { g, top } = carKit({ len: 2.9, w: 1.0, h: 0.42, ride: 0.14, col: '#22232c', paint: P('#22232c', 0.18, 0.5), R: 0.19, cab: { len: 1.95, h: 0.4, z: -0.12 }, whitewall: true });
+    const { g, top, paint } = carKit({ len: 2.9, w: 1.0, h: 0.42, ride: 0.14, col: '#22232c', paint: body('#22232c', 0.18, 0.5), R: 0.19, cab: { len: 1.95, h: 0.4, z: -0.12 }, whitewall: true });
     put(g, box(1.012, 0.04, 2.8), CHROME(), 0, 0.14 + 0.42 * 0.55, 0);
-    for (let i = 0; i < 3; i++) put(g, box(0.86, 0.36 * 0.6, 0.04), P('#22232c', 0.18, 0.5), 0, top + 0.17, -0.7 + i * 0.5);
+    for (let i = 0; i < 3; i++) put(g, box(0.86, 0.36 * 0.6, 0.04), paint, 0, top + 0.17, -0.7 + i * 0.5);
     put(g, sph(0.06, 10, 8), CHROME(), 0, 0.14 + 0.42 + 0.02, 1.38);
     for (const s of [-1, 1]) {
       put(g, cyl(0.008, 0.008, 0.24, 6), CHROME(), s * 0.42, top + 0.12, 1.25);
@@ -707,10 +761,10 @@ const CAR_MODELS = {
     return g;
   },
   supercar: () => {
-    const body = P('#8f4dff', 0.24, 0.45);
-    const { g, top } = carKit({ len: 2.05, w: 1.08, h: 0.28, ride: 0.08, col: '#8f4dff', paint: body, R: 0.21, tw: 0.22, hub: '#ffcc33', cab: { len: 0.9, h: 0.27, z: -0.05, w: 0.8 }, bumper: P('#2a2c33', 0.5), noGrille: true, lampY: 0.7 });
+    const shell = body('#8f4dff', 0.24, 0.45);
+    const { g, top } = carKit({ len: 2.05, w: 1.08, h: 0.28, ride: 0.08, col: '#8f4dff', paint: shell, R: 0.21, tw: 0.22, hub: '#ffcc33', cab: { len: 0.9, h: 0.27, z: -0.05, w: 0.8 }, bumper: P('#2a2c33', 0.5), noGrille: true, lampY: 0.7 });
     const black = P('#22232a', 0.4);
-    put(g, rbox(1.0, 0.12, 0.7, 0.05, 1), body, 0, top + 0.02, 0.62, 0.18);
+    put(g, rbox(1.0, 0.12, 0.7, 0.05, 1), shell, 0, top + 0.02, 0.62, 0.18);
     for (const s of [-1, 1]) {
       put(g, box(0.02, 0.12, 0.42), black, s * 0.545, 0.08 + 0.14, -0.35);
       put(g, box(0.06, 0.2, 0.06), black, s * 0.38, top + 0.1, -0.88);
@@ -720,7 +774,7 @@ const CAR_MODELS = {
     return g;
   },
   hypercar: () => {
-    const gold = P('#f4c13a', 0.2, 0.92);
+    const gold = body('#f4c13a', 0.2, 0.92);
     const black = P('#1f2026', 0.35, 0.3);
     const { g, top } = carKit({ len: 2.12, w: 1.1, h: 0.3, ride: 0.08, col: '#f4c13a', paint: gold, R: 0.21, tw: 0.22, hub: '#1f2026', cab: { len: 0.95, h: 0.28, z: -0.08, w: 0.8, paint: black }, bumper: black, noGrille: true, lampY: 0.68 });
     put(g, rbox(1.02, 0.12, 0.72, 0.05, 1), gold, 0, top + 0.02, 0.64, 0.16);
@@ -738,20 +792,26 @@ const CAR_SIZE = { scooter: [0.5, 1.4], limo: [1.05, 2.95] };
 
 // A car model by catalog id: faces +z, sits on y = 0 and is about 2 units long (the limo is longer).
 // Static parts are merged; free it with models.disposeObject when done.
-export function buildLuxuryCar(id) {
-  const g = (CAR_MODELS[id] || CAR_MODELS.hatch)();
-  mergeStatic(g, 'prop');
-  return g;
+export function buildLuxuryCar(id, paint = null) {
+  CAR_PAINT = isHex(paint) ? paint : null;
+  try {
+    const g = (CAR_MODELS[id] || CAR_MODELS.hatch)();
+    mergeStatic(g, 'prop');
+    return g;
+  } finally {
+    CAR_PAINT = null;
+  }
 }
 
 // ---------------------------------------------------------------- houses (front faces +z)
 function tent(c) {
   const g = new THREE.Group();
+  const pt = c.paint || {};
   put(g, box(2.9, 0.03, 3.0), '#5d8fd6', 0, 0.015, 0.15).castShadow = false;
-  put(g, prism(2.5, 1.7, 2.6), '#ff8a3d', 0, 0, 0);
-  put(g, prism(2.56, 1.74, 0.06), '#ffd23f', 0, 0, -1.3);
+  put(g, prism(2.5, 1.7, 2.6), pt.wall ?? '#ff8a3d', 0, 0, 0);
+  put(g, prism(2.56, 1.74, 0.06), pt.roof ?? '#ffd23f', 0, 0, -1.3);
   put(g, prism(1.0, 1.05, 0.04), '#5a3524', 0, 0, 1.31);
-  for (const s of [-1, 1]) put(g, box(0.6, 0.9, 0.03), '#ffb36b', s * 0.46, 0.5, 1.42, 0, s * 0.5, s * 0.55);
+  for (const s of [-1, 1]) put(g, box(0.6, 0.9, 0.03), pt.wall ? shade(pt.wall, 1.25) : '#ffb36b', s * 0.46, 0.5, 1.42, 0, s * 0.5, s * 0.55);
   put(g, cyl(0.035, 0.035, 2.9, 6), '#8a5a33', 0, 1.72, 0, PI / 2);
   for (const z of [-1.35, 1.35]) put(g, cyl(0.035, 0.035, 1.75, 6), '#8a5a33', 0, 0.87, z);
   for (const [x, z] of [[-1.5, -1.45], [1.5, -1.45], [-1.5, 1.45], [1.5, 1.45]]) {
@@ -797,7 +857,8 @@ function tent(c) {
 
 function cabin(c) {
   const g = new THREE.Group();
-  const w = 4.2, d = 3.0, wh = 2.0, log = '#b5773f', log2 = '#a5672f', roofC = '#4f8a4a';
+  const pt = c.paint || {};
+  const w = 4.2, d = 3.0, wh = 2.0, log = pt.wall ?? '#b5773f', log2 = pt.wall ? shade(pt.wall, 0.86) : '#a5672f', roofC = pt.roof ?? '#4f8a4a';
   put(g, rbox(w + 0.2, 0.22, d + 0.2, 0.04, 1), '#9a8f86', 0, 0.11, 0);
   put(g, box(w, wh, d), log, 0, wh / 2 + 0.2, 0);
   for (let i = 0; i < 8; i++) {
@@ -838,7 +899,8 @@ function cabin(c) {
 
 function house(c) {
   const g = new THREE.Group();
-  const w = 5.2, d = 3.6, f1 = 2.0, f2 = 1.8, wall = '#a9d8ec', trim = '#ffffff', roofC = '#4f5d8c';
+  const pt = c.paint || {};
+  const w = 5.2, d = 3.6, f1 = 2.0, f2 = 1.8, wall = pt.wall ?? '#a9d8ec', trim = '#ffffff', roofC = pt.roof ?? '#4f5d8c';
   put(g, rbox(w + 0.2, 0.2, d + 0.2, 0.04, 1), '#d9cfc0', 0, 0.1, 0);
   put(g, box(w, f1, d), wall, 0, 0.2 + f1 / 2, 0);
   put(g, rbox(w + 0.16, 0.14, d + 0.16, 0.03, 1), trim, 0, 0.2 + f1, 0);
@@ -883,7 +945,8 @@ function house(c) {
 
 function villa(c) {
   const g = new THREE.Group();
-  const white = '#f7f5f0', dark = '#3a3f4a', wood = '#b98552';
+  const pt = c.paint || {};
+  const white = pt.wall ?? '#f7f5f0', dark = pt.roof ?? '#3a3f4a', wood = '#b98552';
   const glass = mat('#9fd0e4', { kind: 'env', r: 0.08, m: 0.3, e: '#ffbf70', ei: 0.4 });
   const w = 7.0, d = 4.2;
   put(g, rbox(w + 0.4, 0.16, d + 0.5, 0.03, 1), '#dcd6cc', 0, 0.08, 0.1);
@@ -926,7 +989,8 @@ function villa(c) {
 
 function mansion(c) {
   const g = new THREE.Group();
-  const wall = '#f6ead2', trim = '#ffffff', roofC = '#5a6fa8', stone = '#e3d6c0', gold = P('#e8b830', 0.3, 0.85);
+  const pt = c.paint || {};
+  const wall = pt.wall ?? '#f6ead2', trim = '#ffffff', roofC = pt.roof ?? '#5a6fa8', stone = '#e3d6c0', gold = P('#e8b830', 0.3, 0.85);
   put(g, rbox(9.4, 0.4, 5.6, 0.05, 1), stone, 0, 0.2, -0.2);
   for (let i = 0; i < 3; i++) put(g, box(3.0 - i * 0.2, 0.14, 0.4), stone, 0, 0.07 + i * 0.14, 2.75 - i * 0.3);
   const cw = 4.0, cd = 4.4, ch = 3.8, base = 0.4;
@@ -1257,8 +1321,8 @@ function pavingMesh(rects, tint, own, y = 0.012) {
 }
 
 // Everything that changes with the house tier: lawn, paving, fence, garage, house and extras
-function buildTier(tier) {
-  const c = { anim: [], lights: [], obstacles: [], own: [], front: 1 };
+function buildTier(tier, paint = null) {
+  const c = { anim: [], lights: [], obstacles: [], own: [], front: 1, paint };
   const root = new THREE.Group();
   const stat = new THREE.Group();
   root.add(stat);
@@ -1542,7 +1606,8 @@ export class HomeMode {
     this.pan = { x: 0, z: 0 };
     this.zoom = 1;
     this.panel = new HomePanel(this, {
-      HOME_TIERS, TIER_IDS, PETS, CARS, HOME_ITEMS, ITEM_GROUPS, PET_LIMITS, PET_BONUS, COMFORT_LEVELS, perkText, formatMoney, homePerks, homeComfort, comfortLevel,
+      HOME_TIERS, TIER_IDS, PETS, CARS, HOME_ITEMS, ITEM_GROUPS, PET_LIMITS, PET_BONUS, PET_CARE, PAINT, COMFORT_LEVELS,
+      perkText, formatMoney, homePerks, homeComfort, comfortLevel, sadPets,
       sellBack: ECON.sellRefund,
     });
     this.placing = null; // { id, rot, c, r, from (a placed item being moved), stored, ok }
@@ -1687,13 +1752,21 @@ export class HomeMode {
 
   setTier(tier, animate = true) {
     const old = this.tierObj;
-    const t = buildTier(tier);
+    const t = buildTier(tier, this.home.paint);
     this.tierObj = t;
     this.root.add(t);
     this.refreshObstacles();
     if (!old) return;
     const house = t.userData.house;
-    if (animate) {
+    if (animate === 'paint') {
+      // A fresh coat: splashes of the new colours and a little squash
+      const cols = [this.home.paint.wall, this.home.paint.roof].filter(Boolean);
+      for (let i = 0; i < 4; i++) this.fx('splash', SITE.x + rand(-2, 2), 1.5 + rand(0, 1.5), SITE.z + rand(-1, 1.5), 6);
+      this.fx('confetti', SITE.x, 3.2, SITE.z + 1, 50, cols.length ? cols : undefined);
+      this.root.remove(old);
+      this.disposeTier(old);
+      this.tween(0.5, (k) => { const e = Math.sin(k * PI) * 0.06; house.scale.set(1 + e, 1 - e, 1 + e); }, () => house.scale.set(1, 1, 1));
+    } else if (animate) {
       // Old home shrinks away in a puff, the new one springs up
       const x = SITE.x, z = SITE.z;
       this.fx('poof', x, 1.2, z, '#ffffff', 26);
@@ -2082,7 +2155,7 @@ export class HomeMode {
       const s = SPOTS[i] ?? SPOTS[SPOTS.length - 1];
       let c = this.carObjs.get(id);
       if (!c) {
-        const g = buildLuxuryCar(id);
+        const g = buildLuxuryCar(id, this.home.carPaint[id]);
         const [w, l] = CAR_SIZE[id] ?? [1.05, 2.15];
         const blob = makeBlobShadow(1);
         blob.scale.set(w * 1.35, 1, l * 1.1);
@@ -2105,7 +2178,7 @@ export class HomeMode {
     const want = this.home.pets;
     while (this.pets.length < want.length) {
       const id = want[this.pets.length];
-      const p = this.makePet(id);
+      const p = this.makePet(id, this.pets.length);
       this.pets.push(p);
       if (animate) {
         const sp = this.freeSpot(YARD, 0.4, this.chef ? { x: this.chef.x, z: this.chef.z + 0.8 } : null);
@@ -2121,11 +2194,11 @@ export class HomeMode {
     }
   }
 
-  makePet(id) {
+  makePet(id, idx) {
     const m = buildPet(id);
     const sp = this.freeSpot(YARD, 0.4);
     const p = {
-      id, def: PETS[id], m, x: sp.x, z: sp.z, y: 0, vy: 0, face: rand(-PI, PI), dir: 0, v: 0, phase: rand(0, 10), t: rand(0, 10),
+      id, idx, def: PETS[id], m, x: sp.x, z: sp.z, y: 0, vy: 0, face: rand(-PI, PI), dir: 0, v: 0, phase: rand(0, 10), t: rand(0, 10),
       state: 'idle', timer: rand(0.5, 3), tx: 0, tz: 0, wag: 1, hopT: 0,
     };
     p.dir = p.face;
@@ -2195,6 +2268,7 @@ export class HomeMode {
     this.confirmBuy(T.price, `Move into the ${T.name}?`, `It replaces your ${cur.name}. Your pets and cars come along.`, `Buy for ${formatMoney(T.price)}`, () => {
       if (!this._active || h.tier !== T.level - 1 || !this.game.spend(T.price)) return;
       h.tier = T.level;
+      h.paint = { wall: null, roof: null };
       this.setTier(h.tier, true);
       this.game.audio.levelUp?.();
       this.game.ui.toast(`Welcome home to your ${T.name}!`, 'gold', 'home');
@@ -2215,11 +2289,12 @@ export class HomeMode {
     if (!this.canAfford(D.price)) return;
     this.confirmBuy(D.price, `Adopt the ${D.name}?`, D.desc, `Adopt for ${formatMoney(D.price)}`, () => {
       if (!this._active || !this.game.spend(D.price)) return;
+      h.care.push({ name: newPetName(h), joy: 90, pats: 0 });
       h.pets.push(id);
       this.syncPets(true);
       this.game.audio.happy?.();
       const bonus = h.pets.length === PET_BONUS.count ? ` Pet lover bonus: ${perkText(PET_BONUS.perk)}.` : '';
-      this.game.ui.toast(`A ${D.name.toLowerCase()} joined the family!${bonus}`, 'good', 'paw');
+      this.game.ui.toast(`${h.care[h.care.length - 1].name} the ${D.name.toLowerCase()} joined the family!${bonus}`, 'good', 'paw');
       this.afterPurchase();
     });
   }
@@ -2248,6 +2323,98 @@ export class HomeMode {
       this.game.ui.toast(`The ${D.name} is yours!`, D.lux ? 'gold' : 'good', 'car');
       this.afterPurchase();
     });
+  }
+
+  // ------------------------------------------------------------ paint jobs
+  paintHouse(part, col) {
+    const h = this.home;
+    if (!['wall', 'roof'].includes(part) || (col && !PAINT[part].includes(col))) return;
+    if ((h.paint[part] ?? null) === (col ?? null)) { this.game.audio.click?.(); return; }
+    const price = col ? PAINT.house : 0;
+    if (price && !this.canAfford(price)) return;
+    if (price && !this.game.spend(price)) return;
+    h.paint[part] = col;
+    this.setTier(h.tier, 'paint');
+    this.game.audio.place?.();
+    this.afterPurchase();
+  }
+
+  paintCar(col) {
+    const h = this.home, id = h.favCar;
+    if (!id || (col && !PAINT.car.includes(col))) return;
+    if ((h.carPaint[id] ?? null) === (col ?? null)) { this.game.audio.click?.(); return; }
+    const price = col ? PAINT.carPrice : 0;
+    if (price && !this.canAfford(price)) return;
+    if (price && !this.game.spend(price)) return;
+    if (col) h.carPaint[id] = col;
+    else delete h.carPaint[id];
+    const c = this.carObjs.get(id);
+    if (c) {
+      const rot = c.g.rotation.y;
+      this.root.remove(c.g);
+      disposeObject(c.g);
+      this.carObjs.delete(id);
+      this.syncCars(false);
+      const n = this.carObjs.get(id);
+      n.g.rotation.y = rot;
+      n.bounce = 1;
+      this.fx('confetti', n.g.position.x, 1.6, n.g.position.z, 40, col ? [col, '#ffffff'] : undefined);
+      for (let i = 0; i < 3; i++) this.fx('splash', n.g.position.x + rand(-0.6, 0.6), 0.7, n.g.position.z + rand(-1, 1), 5);
+    }
+    this.game.audio.place?.();
+    if (typeof this.game.syncParkedCar === 'function') this.game.syncParkedCar();
+    this.afterPurchase();
+  }
+
+  // ------------------------------------------------------------ pet care
+  petJoy(i, n) {
+    const c = this.home.care[i];
+    if (!c) return;
+    const was = c.joy >= PET_CARE.happy;
+    c.joy = clamp(c.joy + n, 0, 100);
+    if (!was && c.joy >= PET_CARE.happy) {
+      this.game.ui.toast(`${c.name} is happy again`, 'good', 'heart');
+      if (typeof this.game.updateAmbience === 'function') this.game.updateAmbience(true);
+    }
+  }
+
+  treatPet(i) {
+    const h = this.home, c = h.care[i], p = this.pets[i];
+    if (!c || !p) return;
+    if (c.joy >= 100) {
+      this.game.ui.toast(`${c.name} is as happy as can be`, 'info', 'heart');
+      this.game.audio.click?.();
+      return;
+    }
+    if (!this.canAfford(PET_CARE.treat) || !this.game.spend(PET_CARE.treat)) return;
+    this.petJoy(i, PET_CARE.treatJoy);
+    this.setPetState(p, 'eat', 2.4);
+    p.vy = 2.2;
+    this.emote(p, 'heart');
+    this.fx('confetti', p.x, 0.9, p.z, 16);
+    this.game.audio.munch?.();
+    if (this.chef) this.chefVisit(p);
+    this.afterPurchase();
+  }
+
+  // Pet furniture this pet can use: where to stand and what to do there
+  petSpots(p) {
+    const out = [];
+    const ACT = { foodbowls: 'eat', petbed: 'nap', doghouse: 'nap', agility: 'zoom', cattree: 'sit' };
+    for (const it of this.home.items) {
+      const D = HOME_ITEMS[it.id], act = ACT[it.id];
+      if (!D.pet || !act) continue;
+      if (it.id === 'cattree' && p.def.style !== 'cat') continue;
+      if (it.id === 'agility' && p.def.style !== 'dog') continue;
+      const q = itemRect(it), cx = (q.x0 + q.x1) / 2, cz = (q.z0 + q.z1) / 2;
+      // beds are climbed into; bowls are eaten from just in front; the rest are used from the front
+      const a = -it.rot * (PI / 2);
+      const off = it.id === 'petbed' ? 0 : it.id === 'foodbowls' ? 0.48 : (it.rot % 2 ? q.x1 - q.x0 : q.z1 - q.z0) / 2 + 0.4;
+      const x = cx + Math.sin(a) * off, z = cz + Math.cos(a) * off;
+      if (x < YARD.x0 || x > YARD.x1 || z < YARD.z0 || z > YARD.z1 || blocked(this.obstacles, x, z, 0.2)) continue;
+      out.push({ x, z, act, cx, cz, it });
+    }
+    return out;
   }
 
   // ------------------------------------------------------------ little effects
@@ -2467,6 +2634,12 @@ export class HomeMode {
     p.vy = 2.6;
     this.emote(p, 'heart');
     this.game.audio.happy?.();
+    const c = this.home.care[p.idx];
+    if (c && c.pats < PET_CARE.pats) {
+      c.pats++;
+      this.petJoy(p.idx, PET_CARE.pat);
+      this.panel.renderSoon();
+    }
     if (this.chef && Math.hypot(this.chef.x - p.x, this.chef.z - p.z) > 1) this.chefVisit(p);
   }
 
@@ -2580,6 +2753,22 @@ export class HomeMode {
   nextPetState(p) {
     const st = p.def.style, r = Math.random();
     const chef = this.chef;
+    const sad = (this.home.care[p.idx]?.joy ?? 80) < PET_CARE.happy;
+    if (sad && r < 0.45) return this.setPetState(p, Math.random() < 0.5 ? 'nap' : 'sit', rand(3, 6));
+    if (Math.random() < 0.3) {
+      const spots = this.petSpots(p);
+      if (spots.length) {
+        const s = pick(spots);
+        if (pathClear(this.obstacles, p.x, p.z, s.x, s.z, 0.15)) {
+          p.tx = s.x;
+          p.tz = s.z;
+          p.visit = s.act;
+          p.visitAt = { x: s.cx, z: s.cz };
+          p.flying = false;
+          return this.setPetState(p, 'walk', 9);
+        }
+      }
+    }
     if (st === 'dog' && chef && r < 0.22) return this.setPetState(p, 'follow', rand(5, 10));
     if (r < 0.5) {
       if (this.pickPetGoal(p, st === 'bird' && Math.random() < 0.4 ? 2 : 1)) {
@@ -2627,9 +2816,17 @@ export class HomeMode {
         speed = run * clamp(d / 0.4, 0.3, 1);
       } else if (p.state === 'walk') {
         p.flying = false;
-        this.nextPetState(p);
+        if (p.visit) {
+          // Arrived at a piece of pet furniture
+          const act = p.visit;
+          p.visit = null;
+          if (act === 'zoom') p.zoomA = 0;
+          if (act === 'eat' || act === 'sit') p.dir = Math.atan2(p.visitAt.x - p.x, p.visitAt.z - p.z);
+          this.setPetState(p, act, act === 'nap' ? rand(5, 9) : rand(2.5, 4));
+          if (act === 'eat' || act === 'nap') this.petJoy(p.idx, 1);
+        } else this.nextPetState(p);
       }
-      if (p.timer <= 0) { p.flying = false; this.nextPetState(p); }
+      if (p.timer <= 0) { p.flying = false; p.visit = null; this.nextPetState(p); }
     } else if (p.timer <= 0) this.nextPetState(p);
     // Hoppers only move while in the air
     if (p.m.hop || st === 'hop') {
@@ -2675,6 +2872,7 @@ export class HomeMode {
     if (p.state === 'sit') { tiltX = -0.32; bodyY = -0.03; }
     if (p.state === 'nap') { bodyY = -m.by * 0.42; legS = 0.3; headX = 0.25; }
     if (p.state === 'sniff') headX = 0.4 + Math.sin(p.t * 14) * 0.08;
+    if (p.state === 'eat') headX = 0.55 + Math.abs(Math.sin(p.t * 9)) * 0.18;
     if (p.state === 'idle' || p.state === 'sit') headY = Math.sin(p.t * 0.9) * 0.5;
     if (p.state === 'happy') tiltX = -0.15;
     m.inner.rotation.x = damp(m.inner.rotation.x, (st === 'hop' ? -0.35 : st === 'bird' ? -0.3 : 0) + tiltX, 8, dt);
@@ -2693,6 +2891,8 @@ export class HomeMode {
       m.wings.children[1].rotation.z = 0.1 + flap;
     }
     if (p.state === 'nap' && Math.random() < dt * 0.35) this.game.particles.emote(OX + p.x, 0.7, OZ + p.z, icon('zzz'), 'meh');
+    if (p.state === 'eat' && Math.random() < dt * 2) this.fx('crumbs', p.x + Math.sin(p.face) * 0.25, 0.15, p.z + Math.cos(p.face) * 0.25, '#c98a4e', 2);
+    if (p.state !== 'nap' && (this.home.care[p.idx]?.joy ?? 80) < PET_CARE.happy && Math.random() < dt * 0.12) this.emote(p, 'sad', 'bad');
     if (st === 'pony' && Math.random() < dt * (moving > 0.1 ? 6 : 1.5)) this.fx('sparkle', p.x, 0.5 + p.y, p.z, pick(['#ffd6f0', '#fff3a0', '#bfe8ff']));
     m.root.position.set(p.x, p.y, p.z);
     m.root.rotation.y = p.face;

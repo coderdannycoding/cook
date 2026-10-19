@@ -28,7 +28,7 @@ import { buildItem, buildDishPreview, buildAppliance, playerLook } from './model
 import { TOWN_STAGES } from './town.js';
 import { DriveThru } from './drivethru.js';
 import { Goals } from './goals.js';
-import { HomeMode, homePerks, defaultHomeState, normalizeHome, buildLuxuryCar, CARS } from './home.js';
+import { HomeMode, homePerks, defaultHomeState, normalizeHome, homeNewDay, buildLuxuryCar, CARS } from './home.js';
 import { floorTexture, wallTexture } from './textures.js';
 
 // The name painted on the shop sign (older saves stored the game's previous name)
@@ -380,7 +380,8 @@ class Game {
   // Your favourite car from home waits in the space beside the shop
   syncParkedCar() {
     const fav = this.state?.home?.favCar;
-    this.renderer.setParkedCar(fav && CARS[fav] ? fav : null, () => buildLuxuryCar(fav));
+    const paint = this.state?.home?.carPaint?.[fav] ?? null;
+    this.renderer.setParkedCar(fav && CARS[fav] ? `${fav}:${paint ?? ''}` : null, () => buildLuxuryCar(fav, paint));
   }
 
   // ---- home (night only): the restaurant is hidden while the player shops for houses, pets and cars
@@ -597,6 +598,7 @@ class Game {
     s.cash -= wages + rent;
     const t = this.today;
     this.goals.finish();
+    homeNewDay(s.home);
     const net = t.revenue + t.tips + t.criticBonus + t.goalCash - t.ingredients - wages - rent;
     const before = t.ratingStart;
     const newCuisines = CUISINE_ORDER.filter((id) => !s.cuisines[id] && before < CUISINES[id].stars && s.rating >= CUISINES[id].stars);

@@ -41,8 +41,8 @@ export const HOME_ITEMS = {
   trampoline: { group: 'play', name: 'Trampoline', price: 1200, size: [2, 2], comfort: 6, perk: { queue: 0.02 }, desc: 'Boing. The neighbours can see you over the fence.' },
   movie: { group: 'play', name: 'Movie Screen', price: 1500, size: [2, 1], comfort: 8, light: true, desc: 'Outdoor cinema nights under the stars.' },
   // pets
-  foodbowls: { group: 'pets', name: 'Food Bowls', price: 90, size: [1, 1], comfort: 1, pet: true, desc: 'Always full. Pets get hungry less often.' },
-  petbed: { group: 'pets', name: 'Pet Bed', price: 160, size: [1, 1], comfort: 2, pet: true, desc: 'A squishy round bed for naps.' },
+  foodbowls: { group: 'pets', name: 'Food Bowls', price: 90, size: [1, 1], comfort: 1, pet: true, flat: true, desc: 'Always full. Pets get hungry less often.' },
+  petbed: { group: 'pets', name: 'Pet Bed', price: 160, size: [1, 1], comfort: 2, pet: true, flat: true, desc: 'A squishy round bed for naps.' },
   agility: { group: 'pets', name: 'Agility Hurdles', price: 300, size: [2, 1], comfort: 2, pet: true, desc: 'Jump, jump, treat!' },
   doghouse: { group: 'pets', name: 'Pet House', price: 350, size: [1, 1], comfort: 3, pet: true, perk: { patience: 0.01 }, desc: 'A cosy kennel with a bone over the door.' },
   cattree: { group: 'pets', name: 'Cat Tree', price: 380, size: [1, 1], comfort: 3, pet: true, desc: 'Scratching posts, perches and a dangling mouse.' },

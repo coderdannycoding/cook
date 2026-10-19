@@ -344,4 +344,20 @@ button.card:active { transform: translateY(2px); }
 .res-goals .rg b { font: 400 15px var(--display); color: var(--grass-2); }
 .tab.home-btn { --b1: #ff8fb0; --b2: #e8507a; }
 .open-btn, .tab.home-btn { white-space: nowrap; }
+.tab.home-btn { position: relative; }
+.hb-dot {
+  position: absolute;
+  top: -9px;
+  right: -8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(var(--berry), var(--berry-2));
+  border: 2.5px solid var(--line);
+  animation: hbPulse 1.2s ease-in-out infinite;
+}
+.hb-dot .ic { width: 14px; height: 14px; filter: none; }
+@keyframes hbPulse { 50% { transform: scale(1.15); } }
 @media (max-width: 1200px) { .dock-info { font-size: 12px; } }

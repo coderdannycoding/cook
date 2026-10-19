@@ -401,8 +401,8 @@ export class Particles {
     }
   }
 
-  confetti(x, y, z, n = 30) {
-    const cols = ['#ff5d73', '#ffd23f', '#3ec1d3', '#7bd148', '#a66cff', '#ff9f43'];
+  confetti(x, y, z, n = 30, colors = null) {
+    const cols = colors?.length ? colors : ['#ff5d73', '#ffd23f', '#3ec1d3', '#7bd148', '#a66cff', '#ff9f43'];
     for (let i = 0; i < n; i++) {
       const a = rand(0, TAU);
       const s = rand(0.5, 2.4);
