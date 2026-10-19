@@ -4,7 +4,7 @@
 // restaurant while home is open. The DOM panel is in home-ui.js.
 
 import * as THREE from '../vendor/three-0.169.0.module.min.js';
-import { CAMERA } from './config.js';
+import { CAMERA, ECON } from './config.js';
 import { clamp, damp, dampAngle, rand, pick, TAU, easeOutBack, formatMoney, wrapAngle } from './utils.js';
 import {
   mat, mesh, box, rbox, cyl, sph, cone, torus, ico, capsule, mergeStatic, disposeObject, buildCharacter, playerLook, buildStreetLamp, envMats,
@@ -15,6 +15,7 @@ import { ThumbnailBaker } from './renderer.js';
 import { perkText } from './catalog.js';
 import { icon } from './icons.js';
 import { HomePanel } from './home-ui.js';
+import { HOME_ITEMS, ITEM_GROUPS, buildHomeItem } from './home-items.js';
 
 // ---------------------------------------------------------------- catalogs
 export const HOME_TIERS = {
@@ -54,17 +55,16 @@ export const CARS = {
   hypercar: { name: 'Golden Hypercar', price: 40000, perk: { arrivals: 0.04, review: 0.03 }, lux: true, desc: 'Plated in gold. The whole town knows your name.' },
 };
 
-export const HOME_DECOR = {
-  gnomes: { name: 'Garden Gnomes', price: 200, perk: { review: 0.01 }, desc: 'Three tiny guardians of the flower bed.' },
-  doghouse: { name: 'Pet House', price: 350, perk: { patience: 0.01 }, desc: 'A cosy kennel with a bone over the door.' },
-  bbq: { name: 'BBQ Grill', price: 500, perk: { tips: 0.01 }, desc: 'Weekend burgers, cooked by a pro.' },
-  hammock: { name: 'Hammock', price: 800, perk: { patience: 0.01 }, desc: 'A striped hammock that sways in the breeze.' },
-  trampoline: { name: 'Trampoline', price: 1200, perk: { queue: 0.02 }, desc: 'Boing. The neighbours can see you over the fence.' },
-  hottub: { name: 'Hot Tub', price: 3000, perk: { patience: 0.02 }, desc: 'Bubbly, steamy and very relaxing.' },
-};
+// Comfort: the house, every piece of yard furniture and the pets add to it. Each level gives the
+// restaurant a little more patience and tips. Extra copies of the same piece count for half.
+const TIER_COMFORT = [0, 10, 20, 35, 50];
+export const COMFORT_LEVELS = [
+  { at: 0, name: 'Bare' }, { at: 20, name: 'Homely' }, { at: 45, name: 'Cosy' },
+  { at: 80, name: 'Lovely' }, { at: 130, name: 'Dreamy' }, { at: 200, name: 'Paradise' },
+];
 
 export function defaultHomeState() {
-  return { tier: 0, pets: [], cars: [], favCar: null, decor: [] };
+  return { tier: 0, pets: [], cars: [], favCar: null, items: [], storage: {} };
 }
 
 // Fills in missing fields and drops anything unknown (old or hand-edited saves), in place
@@ -73,9 +73,40 @@ function normalizeHome(h) {
   h.tier = clamp(Math.floor(Number(h.tier) || 0), 0, TIER_IDS.length - 1);
   h.pets = Array.isArray(h.pets) ? h.pets.filter((id) => PETS[id]).slice(0, PET_LIMITS.total) : [];
   h.cars = Array.isArray(h.cars) ? [...new Set(h.cars.filter((id) => CARS[id]))] : [];
-  h.decor = Array.isArray(h.decor) ? [...new Set(h.decor.filter((id) => HOME_DECOR[id]))] : [];
   if (!h.cars.includes(h.favCar)) h.favCar = h.cars[0] ?? null;
+  const int = (v) => Math.floor(Number(v) || 0);
+  h.items = Array.isArray(h.items)
+    ? h.items.filter((it) => it && HOME_ITEMS[it.id]).map((it) => ({ id: it.id, c: int(it.c), r: int(it.r), rot: ((int(it.rot) % 4) + 4) % 4 }))
+    : [];
+  const store = {};
+  for (const [id, n] of Object.entries(h.storage && typeof h.storage === 'object' ? h.storage : {})) {
+    if (HOME_ITEMS[id] && int(n) > 0) store[id] = Math.min(99, int(n));
+  }
+  // Yard pieces bought before the yard had a grid wait in storage to be placed
+  if (Array.isArray(h.decor)) for (const id of h.decor) if (HOME_ITEMS[id]) store[id] = (store[id] || 0) + 1;
+  delete h.decor;
+  h.storage = store;
   return h;
+}
+export { normalizeHome };
+
+export function homeComfort(home) {
+  if (!home) return 0;
+  let n = TIER_COMFORT[clamp(Math.floor(Number(home.tier) || 0), 0, TIER_COMFORT.length - 1)];
+  const seen = new Set();
+  for (const it of Array.isArray(home.items) ? home.items : []) {
+    const D = HOME_ITEMS[it?.id];
+    if (!D) continue;
+    n += seen.has(it.id) ? D.comfort / 2 : D.comfort;
+    seen.add(it.id);
+  }
+  n += (Array.isArray(home.pets) ? home.pets.length : 0) * 2;
+  return Math.round(n);
+}
+export function comfortLevel(comfort) {
+  let i = 0;
+  while (i + 1 < COMFORT_LEVELS.length && comfort >= COMFORT_LEVELS[i + 1].at) i++;
+  return i;
 }
 
 // Restaurant bonuses from the home (fractions, same keys as catalog PERKS). Pets count once per kind.
@@ -88,7 +119,9 @@ export function homePerks(home) {
   for (const id of new Set(pets)) add(PETS[id].perk);
   if (pets.length >= PET_BONUS.count) add(PET_BONUS.perk);
   for (const id of new Set(Array.isArray(home.cars) ? home.cars : [])) add(CARS[id]?.perk);
-  for (const id of new Set(Array.isArray(home.decor) ? home.decor : [])) add(HOME_DECOR[id]?.perk);
+  for (const id of new Set(Array.isArray(home.items) ? home.items.map((it) => it?.id) : [])) add(HOME_ITEMS[id]?.perk);
+  const lv = comfortLevel(homeComfort(home));
+  if (lv) add({ tips: lv * 0.01, patience: lv * 0.01 });
   for (const k of Object.keys(out)) out[k] = Math.round(out[k] * 1000) / 1000;
   return out;
 }
@@ -109,14 +142,9 @@ const SPOTS = [
   { x: 3.6, z: -0.8 }, { x: 5.2, z: -0.8 }, { x: 6.8, z: -0.8 }, { x: 8.4, z: -0.8 },
   { x: 4.6, z: -4.6 },
 ];
-const DECOR_SPOTS = {
-  gnomes: { x: -0.6, z: 5.2, o: { x0: -1.5, z0: 4.9, x1: 0.3, z1: 5.55 } },
-  doghouse: { x: 0.4, z: 1.5, ry: -0.4, o: { x: 0.4, z: 1.5, r: 0.72 } },
-  bbq: { x: -1.25, z: 0.95, o: { x: -1.25, z: 0.95, r: 0.45 } },
-  hammock: { x: -6.9, z: 5.15, o: { x0: -8.4, z0: 4.85, x1: -5.4, z1: 5.5 } },
-  trampoline: { x: 0.75, z: 3.95, o: { x: 0.75, z: 3.95, r: 0.95 } },
-  hottub: { x: 1.95, z: 0.15, o: { x: 1.95, z: 0.15, r: 0.85 } },
-};
+// The yard grid: 1-unit cells in front of the house. Column GRID.path is the garden path to the gate
+// and always stays clear.
+const GRID = { x0: -8.9, z0: -0.3, cols: 11, rows: 6, path: 5 };
 const POOL = { x0: -8.6, x1: -5.4, z0: 1.15, z1: 3.45 };
 const FOUNTAIN = { x: -3.4, z: 3.1, r: 1.15 };
 
@@ -762,6 +790,7 @@ function tent(c) {
     flames.children.forEach((f, i) => { f.scale.set(1 + Math.sin(t * 13 + i) * 0.12, 1 + Math.sin(t * 9 + i * 2) * 0.22, 1 + Math.cos(t * 11 + i) * 0.12); });
   });
   c.fire = { x: SITE.x + fx, z: SITE.z + fz };
+  c.obstacles.push({ x: c.fire.x, z: c.fire.z, r: 1.25 });
   c.front = 1.5;
   return g;
 }
@@ -1432,6 +1461,29 @@ function buildDecor(id) {
   mergeStatic(g, 'prop');
   return g;
 }
+const itemModel = (id) => (DECOR_MODELS[id] ? buildDecor(id) : buildHomeItem(id));
+
+// Yard grid maths. Items are stored by the cell of their footprint's low corner and a quarter turn.
+const footprint = (id, rot) => {
+  const [w, d] = HOME_ITEMS[id].size;
+  return rot % 2 ? [d, w] : [w, d];
+};
+function cellRect(c, r, w, d, inset = 0) {
+  return { x0: GRID.x0 + c + inset, z0: GRID.z0 + r + inset, x1: GRID.x0 + c + w - inset, z1: GRID.z0 + r + d - inset };
+}
+function itemRect(it, inset = 0) {
+  const [w, d] = footprint(it.id, it.rot);
+  return cellRect(it.c, it.r, w, d, inset);
+}
+function rectHits(list, q) {
+  for (const o of list) {
+    if (o.r !== undefined) {
+      const x = clamp(o.x, q.x0, q.x1), z = clamp(o.z, q.z0, q.z1);
+      if (Math.hypot(x - o.x, z - o.z) < o.r) return true;
+    } else if (q.x0 < o.x1 && q.x1 > o.x0 && q.z0 < o.z1 && q.z1 > o.z0) return true;
+  }
+  return false;
+}
 
 // ---------------------------------------------------------------- geometry helpers for the yard
 function inRect(o, x, z, pad) { return x > o.x0 - pad && x < o.x1 + pad && z > o.z0 - pad && z < o.z1 + pad; }
@@ -1473,7 +1525,7 @@ function thumbJobs() {
   TIER_IDS.forEach((id, i) => jobs.push([`tier:${id}`, () => { const g = HOUSE_BUILDERS[i]({ anim: [], lights: [], obstacles: [] }); mergeStatic(g, 'env'); return g; }, { elevation: 0.6, pad: 1.04 }]));
   for (const id of Object.keys(PETS)) jobs.push([`pet:${id}`, () => buildPet(id).root, { elevation: 0.35, yaw: 0.55, pad: 1.08 }]);
   for (const id of Object.keys(CARS)) jobs.push([`car:${id}`, () => buildLuxuryCar(id), { elevation: 0.5, yaw: 0.75, pad: 1.04 }]);
-  for (const id of Object.keys(HOME_DECOR)) jobs.push([`decor:${id}`, () => buildDecor(id), { elevation: 0.6, pad: 1.08 }]);
+  for (const id of Object.keys(HOME_ITEMS)) jobs.push([`item:${id}`, () => itemModel(id), { elevation: 0.55, yaw: 0.6, pad: 1.08 }]);
   return jobs.filter(([k]) => !THUMBS[k]);
 }
 
@@ -1489,11 +1541,18 @@ export class HomeMode {
     this._active = false;
     this.pan = { x: 0, z: 0 };
     this.zoom = 1;
-    this.panel = new HomePanel(this, { HOME_TIERS, TIER_IDS, PETS, CARS, HOME_DECOR, PET_LIMITS, PET_BONUS, perkText, formatMoney, homePerks });
+    this.panel = new HomePanel(this, {
+      HOME_TIERS, TIER_IDS, PETS, CARS, HOME_ITEMS, ITEM_GROUPS, PET_LIMITS, PET_BONUS, COMFORT_LEVELS, perkText, formatMoney, homePerks, homeComfort, comfortLevel,
+      sellBack: ECON.sellRefund,
+    });
+    this.placing = null; // { id, rot, c, r, from (a placed item being moved), stored, ok }
+    this.sel = null; // the yard item picked for the item toolbar
   }
 
   get active() { return this._active; }
   get home() { return this.game.state.home; }
+  // Placing or editing furniture: Escape belongs to the yard, not the pause menu
+  get busy() { return !!(this.placing || this.sel); }
   thumb(key) { return THUMBS[key] || BLANK; }
 
   // ------------------------------------------------------------ enter / exit
@@ -1547,6 +1606,8 @@ export class HomeMode {
     if (!this._active) return;
     this._active = false;
     const g = this.game, r = g.renderer;
+    if (this.placing) this.cancelPlacing(true);
+    this.sel = null;
     this.panel.hide();
     for (const el of this.hiddenEls) el.classList.remove('hidden');
     for (const o of this.hiddenObjs) o.visible = true;
@@ -1595,8 +1656,11 @@ export class HomeMode {
     this.tierObj = null;
     this.setTier(this.home.tier, false);
     this.anims = [];
-    this.decorObjs = new Map();
-    this.syncDecor(false);
+    this.itemObjs = new Map();
+    this.fitItems(false);
+    this.syncItems();
+    this.overlay = this.makeOverlay();
+    this.root.add(this.overlay);
     this.carObjs = new Map();
     this.syncCars(false);
     this.pets = [];
@@ -1614,7 +1678,10 @@ export class HomeMode {
     this.tierObj = null;
     this.pets = [];
     this.carObjs = null;
-    this.decorObjs = null;
+    this.itemObjs = null;
+    this.overlay = null;
+    this.placing = null;
+    this.sel = null;
     this.chef = null;
   }
 
@@ -1641,6 +1708,10 @@ export class HomeMode {
       this.root.remove(old);
       this.disposeTier(old);
     }
+    if (this.itemObjs) {
+      this.fitItems(true);
+      this.syncItems();
+    }
     for (const p of this.pets || []) this.unstick(p);
   }
 
@@ -1651,24 +1722,351 @@ export class HomeMode {
 
   refreshObstacles() {
     const list = [...(this.tierObj?.userData.obstacles || [])];
-    for (const id of this.home.decor) list.push(DECOR_SPOTS[id].o);
+    for (const it of this.home.items) if (!HOME_ITEMS[it.id].flat) list.push(itemRect(it, 0.12));
     list.push({ x: SPOTS[0].x, z: SPOTS[0].z, r: 1.4 });
     for (const s of SPOTS.slice(1, this.home.cars.length)) list.push({ x0: s.x - 0.6, z0: s.z - 1.1, x1: s.x + 0.6, z1: s.z + 1.1 });
     this.obstacles = list;
   }
 
-  syncDecor(animate = true) {
-    for (const id of this.home.decor) {
-      if (this.decorObjs.has(id)) continue;
-      const s = DECOR_SPOTS[id];
-      const g = buildDecor(id);
-      g.position.set(s.x, 0, s.z);
-      g.rotation.y = s.ry ?? 0;
-      this.root.add(g);
-      this.decorObjs.set(id, g);
-      if (animate) this.dropIn(g, s.x, s.z);
+  // ------------------------------------------------------------ yard furniture
+  // Is there room for this piece with its low corner on cell (c, r)? `ignore` is the item being moved.
+  canPlace(id, c, r, rot, ignore = null) {
+    const [w, d] = footprint(id, rot);
+    if (c < 0 || r < 0 || c + w > GRID.cols || r + d > GRID.rows) return false;
+    if (c <= GRID.path && GRID.path < c + w) return false;
+    if (rectHits(this.tierObj.userData.obstacles, cellRect(c, r, w, d, 0.1))) return false;
+    for (const it of this.home.items) {
+      if (it === ignore) continue;
+      const [w2, d2] = footprint(it.id, it.rot);
+      if (c < it.c + w2 && it.c < c + w && r < it.r + d2 && it.r < r + d) return false;
+    }
+    return true;
+  }
+
+  // Free cell nearest to a yard point for this piece (null when the yard is full)
+  nearestFree(id, rot, x, z, ignore = null) {
+    const [w, d] = footprint(id, rot);
+    let best = null, bd = Infinity;
+    for (let r = 0; r + d <= GRID.rows; r++) {
+      for (let c = 0; c + w <= GRID.cols; c++) {
+        const dd = Math.hypot(GRID.x0 + c + w / 2 - x, GRID.z0 + r + d / 2 - z);
+        if (dd < bd && this.canPlace(id, c, r, rot, ignore)) { bd = dd; best = { c, r }; }
+      }
+    }
+    return best;
+  }
+
+  // After a move to a new house: anything that no longer fits goes back into storage
+  fitItems(tell) {
+    const h = this.home, keep = [];
+    let moved = 0;
+    for (const it of h.items) {
+      const prev = h.items;
+      h.items = keep;
+      const ok = this.canPlace(it.id, it.c, it.r, it.rot);
+      h.items = prev;
+      if (ok) keep.push(it);
+      else { h.storage[it.id] = (h.storage[it.id] || 0) + 1; moved++; }
+    }
+    h.items = keep;
+    if (moved && tell) this.game.ui.toast(`${moved === 1 ? 'One piece' : `${moved} pieces`} of yard furniture went into storage`, 'warn', 'crate');
+  }
+
+  syncItems(drop = null) {
+    const live = new Set(this.home.items);
+    for (const [it, g] of this.itemObjs) {
+      if (live.has(it)) continue;
+      this.root.remove(g);
+      disposeObject(g);
+      this.itemObjs.delete(it);
+    }
+    for (const it of this.home.items) {
+      let g = this.itemObjs.get(it);
+      if (!g) {
+        g = itemModel(it.id);
+        this.root.add(g);
+        this.itemObjs.set(it, g);
+      }
+      const q = itemRect(it);
+      g.position.set((q.x0 + q.x1) / 2, 0, (q.z0 + q.z1) / 2);
+      g.rotation.y = -it.rot * (PI / 2);
+      if (it === drop) this.dropIn(g, g.position.x, g.position.z);
     }
     this.refreshObstacles();
+    for (const p of this.pets || []) this.unstick(p);
+    if (this.chef) pushOut(this.obstacles, this.chef, 0.25);
+  }
+
+  // Grid squares shown while placing: one instanced tile per free cell
+  makeOverlay() {
+    const g = new THREE.Group();
+    g.visible = false;
+    const tileGeo = new THREE.PlaneGeometry(0.9, 0.9);
+    tileGeo.rotateX(-PI / 2);
+    const tileMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.28, depthWrite: false });
+    const tiles = new THREE.InstancedMesh(tileGeo, tileMat, GRID.cols * GRID.rows);
+    tiles.renderOrder = 2;
+    g.add(tiles);
+    // Footprint: a soft fill with a bright border (four strips, resized in showFoot)
+    const footGeo = new THREE.PlaneGeometry(1, 1);
+    footGeo.rotateX(-PI / 2);
+    const footMat = new THREE.MeshBasicMaterial({ color: '#3fd46a', transparent: true, opacity: 0.35, depthWrite: false });
+    const edgeMat = new THREE.MeshBasicMaterial({ color: '#3fd46a', transparent: true, opacity: 0.95, depthWrite: false });
+    const foot = new THREE.Group();
+    const fill = new THREE.Mesh(footGeo, footMat);
+    fill.renderOrder = 3;
+    foot.add(fill);
+    const edges = [0, 1, 2, 3].map(() => {
+      const e = new THREE.Mesh(footGeo, edgeMat);
+      e.renderOrder = 4;
+      foot.add(e);
+      return e;
+    });
+    g.add(foot);
+    // A bobbing gold arrow over the selected piece
+    const markMat = new THREE.MeshBasicMaterial({ color: '#ffd23f' });
+    const markGeo = new THREE.ConeGeometry(0.3, 0.5, 4);
+    markGeo.rotateX(PI);
+    const marker = new THREE.Mesh(markGeo, markMat);
+    marker.visible = false;
+    g.add(marker);
+    this.own.push(tileGeo, tileMat, footGeo, footMat, edgeMat, markMat, markGeo);
+    g.userData = { tiles, foot, fill, edges, marker };
+    return g;
+  }
+
+  refreshOverlay() {
+    const { tiles } = this.overlay.userData;
+    const P0 = this.placing;
+    const m = new THREE.Matrix4();
+    let n = 0;
+    for (let r = 0; r < GRID.rows; r++) {
+      for (let c = 0; c < GRID.cols; c++) {
+        if (!this.canPlace('flamingos', c, r, 0, P0?.from ?? null)) continue;
+        m.makeTranslation(GRID.x0 + c + 0.5, 0.035, GRID.z0 + r + 0.5);
+        tiles.setMatrixAt(n++, m);
+      }
+    }
+    tiles.count = n;
+    tiles.instanceMatrix.needsUpdate = true;
+  }
+
+  // Footprint highlight under the piece being placed (green / red) or the selected piece (gold)
+  showFoot(it, col) {
+    const { foot, fill, edges } = this.overlay.userData;
+    const q = itemRect(it), w = q.x1 - q.x0 - 0.06, d = q.z1 - q.z0 - 0.06, t = 0.07;
+    foot.position.set((q.x0 + q.x1) / 2, 0.045, (q.z0 + q.z1) / 2);
+    fill.scale.set(w, 1, d);
+    edges[0].scale.set(w, 1, t); edges[0].position.set(0, 0.002, -d / 2 + t / 2);
+    edges[1].scale.set(w, 1, t); edges[1].position.set(0, 0.002, d / 2 - t / 2);
+    edges[2].scale.set(t, 1, d); edges[2].position.set(-w / 2 + t / 2, 0.002, 0);
+    edges[3].scale.set(t, 1, d); edges[3].position.set(w / 2 - t / 2, 0.002, 0);
+    fill.material.color.set(col);
+    edges[0].material.color.set(col);
+    foot.visible = true;
+  }
+
+  // Start placing: a new piece from the shop, one from storage, or (from) a placed one being moved
+  startPlacing(id, { stored = false, from = null } = {}) {
+    const D = HOME_ITEMS[id];
+    if (!D || !this._active) return;
+    if (this.placing) this.cancelPlacing(true);
+    if (!stored && !from && !this.canAfford(D.price)) return;
+    this.sel = null;
+    const rot = from ? from.rot : 0;
+    const r = this.game.renderer;
+    const mid = r.screenToGround(r.width / 2, r.height * 0.4);
+    const near = from ? { x: (itemRect(from).x0 + itemRect(from).x1) / 2, z: (itemRect(from).z0 + itemRect(from).z1) / 2 }
+      : mid ? { x: mid.x - OX, z: mid.z - OZ } : { x: -3, z: 3 };
+    const spot = from ? { c: from.c, r: from.r } : this.nearestFree(id, rot, near.x, near.z);
+    if (!spot) {
+      this.game.ui.toast('The yard is full. Store or sell something first', 'warn', 'crate');
+      this.game.audio.error?.();
+      return;
+    }
+    const ghost = from ? this.itemObjs.get(from) : itemModel(id);
+    if (!from) this.root.add(ghost);
+    this.placing = { id, rot, c: spot.c, r: spot.r, from, stored, ghost, ok: true, lift: 0 };
+    if (from) this.refreshObstacles();
+    this.game.audio.click?.();
+    this.overlay.visible = true;
+    this.overlay.userData.marker.visible = false;
+    this.refreshOverlay();
+    this.movePlacing(spot.c, spot.r);
+    this.panel.render();
+  }
+
+  movePlacing(c, r) {
+    const P0 = this.placing;
+    const [w, d] = footprint(P0.id, P0.rot);
+    P0.c = clamp(c, 0, GRID.cols - w);
+    P0.r = clamp(r, 0, GRID.rows - d);
+    P0.ok = this.canPlace(P0.id, P0.c, P0.r, P0.rot, P0.from);
+    const q = cellRect(P0.c, P0.r, w, d);
+    P0.ghost.position.x = (q.x0 + q.x1) / 2;
+    P0.ghost.position.z = (q.z0 + q.z1) / 2;
+    P0.ghost.rotation.y = -P0.rot * (PI / 2);
+    this.showFoot({ id: P0.id, c: P0.c, r: P0.r, rot: P0.rot }, P0.ok ? '#3fd46a' : '#ff4a4a');
+    this.panel.renderTools();
+  }
+
+  // Follow a ground point with the piece's centre
+  aimPlacing(x, z) {
+    const P0 = this.placing;
+    const [w, d] = footprint(P0.id, P0.rot);
+    const c = Math.round(x - GRID.x0 - w / 2), r = Math.round(z - GRID.z0 - d / 2);
+    if (c !== P0.c || r !== P0.r) this.movePlacing(c, r);
+  }
+
+  rotatePlacing() {
+    const P0 = this.placing;
+    if (!P0) return;
+    const [w, d] = footprint(P0.id, P0.rot);
+    const cx = P0.c + w / 2, cz = P0.r + d / 2;
+    P0.rot = (P0.rot + 1) % 4;
+    this.game.audio.click?.();
+    this.movePlacing(Math.round(cx - d / 2), Math.round(cz - w / 2));
+  }
+
+  commitPlacing() {
+    const P0 = this.placing, h = this.home;
+    if (!P0) return;
+    if (!P0.ok) {
+      this.game.audio.error?.();
+      this.game.ui.toast('That spot is taken. Try a green square', 'warn', 'crate');
+      return;
+    }
+    const D = HOME_ITEMS[P0.id];
+    if (P0.from) {
+      Object.assign(P0.from, { c: P0.c, r: P0.r, rot: P0.rot });
+      P0.ghost.position.y = 0;
+      this.placing = null;
+      this.syncItems();
+      this.fx('dust', P0.ghost.position.x, P0.ghost.position.z, 6);
+      this.game.audio.place?.();
+    } else {
+      if (P0.stored) {
+        if (!h.storage[P0.id]) { this.cancelPlacing(); return; }
+        h.storage[P0.id]--;
+        if (!h.storage[P0.id]) delete h.storage[P0.id];
+      } else if (!this.game.spend(D.price)) {
+        this.canAfford(D.price);
+        return;
+      }
+      const it = { id: P0.id, c: P0.c, r: P0.r, rot: P0.rot };
+      h.items.push(it);
+      this.root.remove(P0.ghost);
+      disposeObject(P0.ghost);
+      this.placing = null;
+      this.syncItems(it);
+      this.game.audio.place?.();
+      if (!P0.stored) this.game.ui.toast(`${D.name} added to the yard`, 'good', 'home');
+    }
+    this.overlay.visible = false;
+    this.afterPurchase();
+  }
+
+  cancelPlacing(silent = false) {
+    const P0 = this.placing;
+    if (!P0) return;
+    this.placing = null;
+    if (P0.from) {
+      P0.ghost.position.y = 0;
+      this.syncItems();
+    } else {
+      this.root.remove(P0.ghost);
+      disposeObject(P0.ghost);
+    }
+    if (this.overlay) this.overlay.visible = false;
+    if (!silent) {
+      this.game.audio.click?.();
+      this.panel.render();
+    }
+  }
+
+  select(it) {
+    if (this.placing) this.cancelPlacing(true);
+    this.sel = it;
+    this.overlay.visible = !!it;
+    const { tiles, marker } = this.overlay.userData;
+    marker.visible = !!it;
+    if (it) {
+      tiles.count = 0;
+      this.showFoot(it, '#ffd23f');
+      const g = this.itemObjs.get(it);
+      if (g) {
+        g.userData.wob = 1;
+        g.userData.top ??= new THREE.Box3().setFromObject(g).max.y;
+      }
+    }
+    this.game.audio.click?.();
+    this.panel.render();
+  }
+
+  rotateItem(it) {
+    const [w, d] = footprint(it.id, it.rot), rot = (it.rot + 1) % 4;
+    const cx = it.c + w / 2, cz = it.r + d / 2;
+    const tries = [[Math.round(cx - d / 2), Math.round(cz - w / 2)], [Math.floor(cx - d / 2), Math.floor(cz - w / 2)], [Math.ceil(cx - d / 2), Math.ceil(cz - w / 2)], [it.c, it.r]];
+    const spot = tries.find(([c, r]) => this.canPlace(it.id, c, r, rot, it));
+    if (!spot) {
+      this.game.audio.error?.();
+      this.game.ui.toast('No room to turn it here. Move it first', 'warn', 'rotate');
+      return;
+    }
+    Object.assign(it, { c: spot[0], r: spot[1], rot });
+    this.syncItems();
+    const g = this.itemObjs.get(it);
+    if (g) g.userData.wob = 1;
+    this.showFoot(it, '#ffd23f');
+    this.game.audio.click?.();
+    this.game.save();
+  }
+
+  storeItem(it) {
+    const h = this.home;
+    h.items = h.items.filter((x) => x !== it);
+    h.storage[it.id] = (h.storage[it.id] || 0) + 1;
+    const q = itemRect(it);
+    this.fx('poof', (q.x0 + q.x1) / 2, 0.5, (q.z0 + q.z1) / 2, '#ffffff', 14);
+    this.sel = null;
+    this.overlay.visible = false;
+    this.syncItems();
+    this.game.audio.swoosh?.();
+    this.game.ui.toast(`${HOME_ITEMS[it.id].name} put in storage`, 'info', 'crate');
+    this.afterPurchase();
+  }
+
+  sellItem(it) {
+    const h = this.home, D = HOME_ITEMS[it.id];
+    const back = Math.round(D.price * ECON.sellRefund);
+    h.items = h.items.filter((x) => x !== it);
+    const q = itemRect(it);
+    this.fx('poof', (q.x0 + q.x1) / 2, 0.5, (q.z0 + q.z1) / 2, '#ffffff', 14);
+    this.sel = null;
+    this.overlay.visible = false;
+    this.syncItems();
+    this.game.addCash(back, OX + (q.x0 + q.x1) / 2, 1.2, OZ + (q.z0 + q.z1) / 2);
+    this.game.audio.sell?.();
+    this.afterPurchase();
+  }
+
+  sellStored(id) {
+    const h = this.home, D = HOME_ITEMS[id];
+    if (!h.storage[id]) return;
+    h.storage[id]--;
+    if (!h.storage[id]) delete h.storage[id];
+    const back = Math.round(D.price * ECON.sellRefund);
+    this.game.addCash(back);
+    this.game.audio.sell?.();
+    this.game.ui.toast(`Sold the ${D.name} for ${formatMoney(back)}`, 'good', 'coin');
+    this.afterPurchase();
+  }
+
+  // Shop and storage cards
+  itemCard(id) {
+    const h = this.home;
+    if (h.storage[id]) { this.startPlacing(id, { stored: true }); return; }
+    this.startPlacing(id);
   }
 
   // Favourite on the turntable, then the rest by price (fanciest nearest the street)
@@ -1852,21 +2250,6 @@ export class HomeMode {
     });
   }
 
-  buyDecor(id) {
-    const D = HOME_DECOR[id], h = this.home;
-    if (!D || h.decor.includes(id)) { this.game.audio.click?.(); return; }
-    if (!this.canAfford(D.price)) return;
-    this.confirmBuy(D.price, `Buy the ${D.name}?`, D.desc, `Buy for ${formatMoney(D.price)}`, () => {
-      if (!this._active || h.decor.includes(id) || !this.game.spend(D.price)) return;
-      h.decor.push(id);
-      this.syncDecor(true);
-      for (const p of this.pets) this.unstick(p);
-      this.game.audio.place?.();
-      this.game.ui.toast(`${D.name} added to the yard`, 'good', 'home');
-      this.afterPurchase();
-    });
-  }
-
   // ------------------------------------------------------------ little effects
   fx(name, x, ...a) {
     const p = this.game.particles;
@@ -1936,15 +2319,92 @@ export class HomeMode {
     if (tc.spray && Math.random() < dt * 14) this.fx('splash', tc.spray.x, 1.85, tc.spray.z, 2);
     for (const l of tc.lights) g.renderer.requestLight(OX + l.x, l.y, OZ + l.z, l.color, l.intensity, l.distance, 4);
     if (waterM?.map) { waterM.map.offset.x = (this.t * 0.02) % 1; waterM.map.offset.y = (this.t * 0.013) % 1; }
-    const ham = this.decorObjs.get('hammock');
-    if (ham) ham.userData.sway.rotation.x = Math.sin(this.t * 1.1) * 0.12;
-    if (this.decorObjs.has('hottub') && Math.random() < dt * 6) this.fx('bubbles', DECOR_SPOTS.hottub.x + rand(-0.4, 0.4), 0.52, DECOR_SPOTS.hottub.z + rand(-0.4, 0.4), 1);
-    if (this.decorObjs.has('hottub') && Math.random() < dt * 2) this.fx('steam', DECOR_SPOTS.hottub.x, 0.6, DECOR_SPOTS.hottub.z, 1.2);
-    if (this.decorObjs.has('bbq') && Math.random() < dt * 3) this.fx('steam', DECOR_SPOTS.bbq.x, 0.95, DECOR_SPOTS.bbq.z, 0.9);
+    this.updateItems(dt);
     this.updateCars(dt);
     for (const p of this.pets) this.updatePet(p, dt);
     this.separate();
     this.updateChef(dt);
+  }
+
+  // Furniture animations, lights and little particle effects
+  updateItems(dt) {
+    const r = this.game.renderer, t = this.t;
+    let lights = 0;
+    for (const [it, g] of this.itemObjs) {
+      const ud = g.userData, D = HOME_ITEMS[it.id];
+      const x = g.position.x, z = g.position.z, rot = g.rotation.y;
+      const at = (o) => ({ x: x + o.x * Math.cos(rot) + o.z * Math.sin(rot), z: z - o.x * Math.sin(rot) + o.z * Math.cos(rot) });
+      ud.animate?.(t + x * 0.37);
+      if (ud.sway) ud.sway.rotation.x = Math.sin(t * 1.1 + x) * 0.12;
+      if (ud.wob > 0) {
+        ud.wob = Math.max(0, ud.wob - dt * 2.5);
+        const k = Math.sin(ud.wob * PI * 3) * ud.wob * 0.08;
+        g.scale.set(1 - k, 1 + k, 1 - k);
+      }
+      if (ud.light && lights < 6) {
+        lights++;
+        const fl = D.fx === 'fire' ? Math.sin(t * 17 + x) * 0.5 : 0;
+        r.requestLight(OX + x, ud.light.y, OZ + z, ud.light.color, ud.light.intensity + fl, ud.light.distance, 3);
+      }
+      if (D.fx === 'fire') {
+        if (Math.random() < dt * 4) this.fx('sparks', x, 0.4, z, 1);
+        if (Math.random() < dt * 1.5) this.fx('smoke', x, 0.8, z, 0.2);
+      } else if (D.fx === 'tub') {
+        if (Math.random() < dt * 6) this.fx('bubbles', x + rand(-0.4, 0.4), 0.52, z + rand(-0.4, 0.4), 1);
+        if (Math.random() < dt * 2) this.fx('steam', x, 0.6, z, 1.2);
+      } else if (D.fx === 'smoke' && Math.random() < dt * 3) {
+        const s = ud.smoke ? at(ud.smoke) : { x, z };
+        this.fx('steam', s.x, ud.smoke?.y ?? 0.95, s.z, 0.9);
+      } else if (D.fx === 'spray' && Math.random() < dt * 10) this.fx('splash', x, ud.spray?.y ?? 1.5, z, 2);
+    }
+    if (this.sel) {
+      const g = this.itemObjs.get(this.sel), mk = this.overlay.userData.marker;
+      if (g) {
+        mk.position.set(g.position.x, (g.userData.top ?? 1) + 0.45 + Math.abs(Math.sin(t * 4)) * 0.2, g.position.z);
+        mk.rotation.y = t * 2;
+      }
+    }
+    const P0 = this.placing;
+    if (P0) {
+      P0.lift = damp(P0.lift, 1, 10, dt);
+      P0.ghost.position.y = P0.lift * (0.18 + Math.sin(t * 5) * 0.05);
+    }
+  }
+
+  // Placing furniture: the piece follows the pointer (or the last tap), a click/tap places it
+  handlePlacing(input, tap) {
+    const r = this.game.renderer, P0 = this.placing;
+    if (input.wasPressed('KeyR')) this.rotatePlacing();
+    if (input.wasPressed('Escape')) { this.cancelPlacing(); return; }
+    if (!this.placing) return;
+    // Follow the mouse while it is over the yard (not over the dock)
+    const hx = input.hover.x, hy = input.hover.y;
+    if (!input.touchMode && !input.dragging && (hx !== P0.hx || hy !== P0.hy)) {
+      P0.hx = hx;
+      P0.hy = hy;
+      const p = document.elementFromPoint(hx, hy) === this.game.canvas ? r.screenToGround(hx, hy) : null;
+      if (p) this.aimPlacing(p.x - OX, p.z - OZ);
+    }
+    if (tap) {
+      const p = r.screenToGround(tap.x, tap.y);
+      if (!p) return;
+      const before = `${P0.c},${P0.r}`;
+      this.aimPlacing(p.x - OX, p.z - OZ);
+      // On touch the first tap moves the piece and a tap on it (or the Place button) sets it down
+      if (!input.touchMode || before === `${P0.c},${P0.r}`) this.commitPlacing();
+    }
+  }
+
+  // The yard item under a screen point (by its footprint on the ground)
+  itemAt(sx, sy) {
+    const p = this.game.renderer.screenToGround(sx, sy);
+    if (!p) return null;
+    const x = p.x - OX, z = p.z - OZ;
+    for (const it of this.home.items) {
+      const q = itemRect(it, -0.1);
+      if (x > q.x0 && x < q.x1 && z > q.z0 && z < q.z1) return it;
+    }
+    return null;
   }
 
   handleInput(dt) {
@@ -1960,17 +2420,27 @@ export class HomeMode {
     this.pan.x = clamp(this.pan.x + (rx * mv.x + fx * mv.y) * dt * 8 + rx * gx + fx * gy, -9, 9);
     this.pan.z = clamp(this.pan.z + (rz * mv.x + fz * mv.y) * dt * 8 + rz * gx + fz * gy, -7, 7);
     const tap = input.tap && input.tap.button === 0 ? input.tap : null;
+    if (input.tap && input.tap.button === 2 && this.placing) { this.cancelPlacing(); return; }
+    if (this.placing) { this.handlePlacing(input, tap); return; }
+    if (this.sel) {
+      if (input.wasPressed('Escape')) { this.select(null); return; }
+      if (input.wasPressed('KeyR')) this.rotateItem(this.sel);
+      if (input.wasPressed('KeyM')) { this.startPlacing(this.sel.id, { from: this.sel }); return; }
+    }
     if (tap) {
       const hit = this.pick(tap.x, tap.y, tap.touch ? 56 : 42);
+      const it = hit ? null : this.itemAt(tap.x, tap.y);
       if (hit?.pet) this.petTapped(hit.pet);
       else if (hit?.car) this.honkCar(hit.car.id);
+      else if (it) this.select(it === this.sel ? null : it);
+      else if (this.sel) this.select(null);
       else {
         const p = r.screenToGround(tap.x, tap.y);
         if (p) this.chefGoTo(p.x - OX, p.z - OZ, true);
       }
     }
     if (!input.touchMode) {
-      const hov = input.dragging ? null : this.pick(input.hover.x, input.hover.y, 42);
+      const hov = input.dragging ? null : this.pick(input.hover.x, input.hover.y, 42) || this.itemAt(input.hover.x, input.hover.y);
       const cur = hov ? 'pointer' : '';
       if (g.canvas.style.cursor !== cur) g.canvas.style.cursor = cur;
     }
@@ -2008,8 +2478,11 @@ export class HomeMode {
     const right = new THREE.Vector3().crossVectors(UP, dir).normalize();
     const camUp = new THREE.Vector3().crossVectors(dir, right).normalize();
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    const top = [1.8, 2.6, 3.6, 3.6, 4.6][this.home.tier];
-    for (const x of [-8.8, 9.2]) for (const z of [-5.6, 6.2]) for (const y of [0, top]) {
+    // On the Yard tab (and while placing) the camera moves in on the front yard
+    const yard = !!(this.placing || this.sel || this.panel.tab === 'yard');
+    const top = yard ? 1.2 : [1.8, 2.6, 3.6, 3.6, 4.6][this.home.tier];
+    const xs = yard ? [-9.2, 2.8] : [-8.8, 9.2], zs = yard ? [-1.2, 6.3] : [-5.6, 6.2];
+    for (const x of xs) for (const z of zs) for (const y of [0, top]) {
       _w.set(x, y, z);
       const px = _w.dot(right), py = _w.dot(camUp);
       minX = Math.min(minX, px); maxX = Math.max(maxX, px);

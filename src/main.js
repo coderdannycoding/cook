@@ -28,7 +28,7 @@ import { buildItem, buildDishPreview, buildAppliance, playerLook } from './model
 import { TOWN_STAGES } from './town.js';
 import { DriveThru } from './drivethru.js';
 import { Goals } from './goals.js';
-import { HomeMode, homePerks, defaultHomeState, buildLuxuryCar, CARS } from './home.js';
+import { HomeMode, homePerks, defaultHomeState, normalizeHome, buildLuxuryCar, CARS } from './home.js';
 import { floorTexture, wallTexture } from './textures.js';
 
 // The name painted on the shop sign (older saves stored the game's previous name)
@@ -198,7 +198,7 @@ class Game {
     // saves from before the town existed get the neighbourhood their rating has earned
     if (s.townLevel === undefined) s.townLevel = this.townLevelFor(s.rating);
     this.renderer.setTownLevel(s.townLevel);
-    s.home ??= defaultHomeState();
+    s.home = normalizeHome(s.home ?? defaultHomeState());
     this.syncParkedCar();
     const objs = Array.isArray(s.objects) && s.objects.length ? s.objects : STARTER_LAYOUT;
     const hardFail = new Set(['Out of bounds', 'Space occupied', 'Keep the doorway clear']);
@@ -708,8 +708,8 @@ class Game {
     const input = this.input;
     input.pollGamepad();
     if (input.pausePressed && this.phase !== 'title') {
-      if (this.phase === 'night' && (this.build.selectedType || this.build.moving)) {
-        // build mode consumes Escape
+      if ((this.phase === 'night' && (this.build.selectedType || this.build.moving)) || this.home.busy) {
+        // build mode and yard furniture placing consume Escape
       } else if (this.ui.modalOpen && !this.paused) {
         this.ui.closeModal();
       } else this.togglePause();

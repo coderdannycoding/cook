@@ -148,6 +148,98 @@
 .hm-perks { font: 800 12px/1.2 var(--font); color: rgba(255, 255, 255, 0.78); overflow: hidden; text-overflow: ellipsis; }
 .hm-perks em { font-style: normal; color: var(--sun); }
 
+/* Yard: section chips on the left of the shop row */
+.hm-body { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.hm-body > .hm-row { flex: 1; min-width: 0; }
+.hm-grps {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+  align-content: center;
+  padding: 0 2px;
+}
+.hm-grp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 66px;
+  padding: 4px 9px 5px;
+  border: 2.5px solid var(--line);
+  border-radius: 10px;
+  background: linear-gradient(var(--navy-2), #2f3270);
+  color: #fff;
+  font: 400 13px/1 var(--display);
+  text-shadow: var(--ol-sm);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.16), 0 2px 0 var(--line);
+}
+.hm-grp.on { background: linear-gradient(var(--orange), var(--orange-2)); }
+.hm-grp .ic { width: 14px; height: 14px; }
+.hm-grp i { font-style: normal; min-width: 17px; padding: 1px 4px; border-radius: 99px; background: var(--sun); color: var(--line); text-shadow: none; font-size: 11px; }
+.hm-cf { display: inline-flex; align-items: center; gap: 1px; color: #e8507a; font: 400 13px/1 var(--display); }
+.card .c-meta .hm-cf .ic { color: #ff6f96; }
+.hm-size {
+  position: absolute;
+  top: -8px;
+  left: -7px;
+  z-index: 1;
+  padding: 1px 6px 2px;
+  border-radius: 99px;
+  background: var(--navy-2);
+  border: 2px solid var(--line);
+  color: #fff;
+  font: 400 11px/1.2 var(--display);
+  text-shadow: var(--ol-sm);
+}
+.hm-stored .c-name small { font-size: 12px; color: var(--orange-2); }
+.hm-sbtns { display: flex; gap: 5px; }
+.hm-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px 4px 5px;
+  border: 2px solid var(--line);
+  border-radius: 9px;
+  background: linear-gradient(#fffaf0, var(--cream-2));
+  color: var(--text);
+  font: 400 13px/1 var(--display);
+  box-shadow: 0 2px 0 var(--line);
+}
+.hm-mini.ok { background: linear-gradient(var(--grass), var(--grass-2)); color: #fff; text-shadow: var(--ol-sm); }
+.hm-mini .ic { width: 14px; height: 14px; }
+.hm-mini .bdg { width: 14px; height: 14px; }
+
+/* the toolbar for the piece being placed or edited */
+.hm-tools { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 86px; }
+.hm-tools > img { flex: none; width: 74px; height: 74px; border-radius: 12px; background: radial-gradient(circle at 50% 40%, #e7f6ff, #b9e3ff); border: 2px solid #9fd2f5; }
+.hm-thead { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; color: #fff; }
+.hm-thead b { font: 400 19px/1.05 var(--display); text-shadow: var(--ol-sm); }
+.hm-tmeta { display: inline-flex; align-items: center; gap: 4px; font: 400 14px/1.1 var(--display); color: var(--sun); text-shadow: var(--ol-sm); }
+.hm-tmeta .ic, .hm-tmeta .bdg { width: 15px; height: 15px; }
+.hm-hint { font: 800 12px/1.25 var(--font); color: rgba(255, 255, 255, 0.72); }
+.hm-tbtns { flex: none; display: flex; gap: 7px; flex-wrap: wrap; justify-content: flex-end; max-width: 62%; }
+.hm-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 40px;
+  padding: 6px 12px 8px;
+  border: var(--edge);
+  border-radius: 10px;
+  background: linear-gradient(#fffaf0, var(--cream-2));
+  color: var(--text);
+  font: 400 16px/1 var(--display);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.6), 0 3px 0 var(--line);
+}
+.hm-tool .ic { width: 18px; height: 18px; }
+.hm-tool .bdg { width: 16px; height: 16px; }
+.hm-tool.ok { background: linear-gradient(var(--grass), var(--grass-2)); color: #fff; text-shadow: var(--ol-sm); }
+.hm-tool.bad { background: linear-gradient(var(--berry), var(--berry-2)); color: #fff; text-shadow: var(--ol-sm); }
+.hm-tool:disabled { opacity: 0.5; }
+.hm-tool:not(:disabled):active { transform: translateY(2px); }
+body:not(.touch) .hm-tool[data-tool="place"] { display: none; }
+
 @media (max-width: 900px) {
   #home-dock .hm-note { display: none; }
 }
@@ -175,6 +267,18 @@
   .hm-lux { top: -7px; left: -6px; width: 21px; height: 21px; }
   .hm-lux .ic { width: 11px; height: 11px; }
   .hm-label { font-size: 11px; padding: 6px 3px; }
+  .hm-grps { grid-template-columns: repeat(3, 1fr); gap: 4px; padding-right: 6px; }
+  .hm-grp { min-width: 0; padding: 3px 6px 4px; font-size: 11.5px; border-width: 2px; border-radius: 8px; }
+  .hm-size { font-size: 10px; top: -6px; left: -5px; }
+  .hm-mini { font-size: 11.5px; padding: 2px 6px 3px 4px; }
+  .hm-tools { gap: 7px; min-height: 62px; }
+  .hm-tools > img { width: 54px; height: 54px; border-radius: 9px; }
+  .hm-thead b { font-size: 15px; }
+  .hm-tmeta { font-size: 12px; }
+  .hm-hint { display: none; }
+  .hm-tbtns { gap: 5px; max-width: 72%; }
+  .hm-tool { min-height: 34px; padding: 4px 8px 6px; font-size: 13.5px; }
+  .hm-tool .ic { width: 15px; height: 15px; }
   #home-title { padding: 3px 12px 4px 4px; gap: 6px; max-width: calc(100vw - 360px); }
   #home-title b { font-size: 16px; }
   #home-title .hm-ic { width: 28px; height: 28px; }
@@ -184,9 +288,18 @@
   .hm-perks { display: none; }
 }
 
-/* Upright phones: no room up top for the badge (the HUD takes the corners) */
+/* Upright phones: no room up top for the badge (the HUD takes the corners); icon tabs, and the
+   yard chips sit in a strip above the cards */
 @media (max-width: 640px) and (orientation: portrait) {
   #home-title { display: none; }
-  #home-dock .tab:not(.collapse) .ic { display: none; }
+  #home-dock .dock-tabs .tab { padding: 6px 10px 7px; }
+  #home-dock .dock-tabs .tab .ic { width: 20px; height: 20px; }
+  #home-dock .hm-tl { display: none; }
   #home-dock .card.hm-card { width: 168px; }
+  .hm-body { flex-direction: column; align-items: stretch; gap: 2px; }
+  .hm-grps { display: flex; gap: 4px; overflow-x: auto; padding: 6px 2px 0; scrollbar-width: none; }
+  .hm-grp { flex: none; }
+  .hm-tbtns { max-width: 100%; justify-content: flex-start; }
+  .hm-tools { flex-wrap: wrap; }
+  .hm-thead { flex-basis: calc(100% - 70px); }
 }
