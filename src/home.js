@@ -1912,6 +1912,7 @@ export class HomeMode {
     this.placing = null;
     this.sel = null;
     this.chef = null;
+    this.ball = null;
   }
 
   setTier(tier, animate = true) {
