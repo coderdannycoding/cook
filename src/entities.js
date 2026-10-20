@@ -7,11 +7,45 @@ import { buildCharacter, buildItem, playerLook, criticLook, vipLook, randomCusto
 import { STAFF_LEVELS } from './catalog.js';
 import { clamp, damp, dampAngle, rand } from './utils.js';
 
+// Building a character model takes several milliseconds, so random-looking guests and passers-by
+// reuse finished models: a few are built ahead of time and every one is returned when it leaves.
+const MODEL_POOL = [];
+const POOL_MAX = 24;
+export function warmCharacterPool(n = 1, target = 14) {
+  for (let i = 0; i < n && MODEL_POOL.length < target; i++) {
+    const look = randomCustomerLook();
+    MODEL_POOL.push({ look, model: buildCharacter(look) });
+  }
+}
+function resetModel(m) {
+  m.root.position.set(0, 0, 0);
+  m.root.rotation.set(0, 0, 0);
+  m.root.visible = true;
+  m.pivot.position.set(0, 0, 0);
+  m.pivot.rotation.set(0, 0, 0);
+  m.pivot.scale.set(1, 1, 1);
+  m.head.rotation.set(0, 0, 0);
+  m.eyes.scale.set(1, 1, 1);
+  m.mouths.smile.visible = true;
+  m.mouths.frown.visible = false;
+  m.mouths.open.visible = false;
+  m.footL.visible = m.footR.visible = true;
+}
+
 export class Character {
+  // look: a look object, or null for a random guest (taken from the model pool)
   constructor(game, look) {
     this.game = game;
+    if (look) {
+      this.model = buildCharacter(look);
+    } else {
+      const p = MODEL_POOL.pop() ?? (() => { const l = randomCustomerLook(); return { look: l, model: buildCharacter(l) }; })();
+      look = p.look;
+      this.model = p.model;
+      resetModel(this.model);
+      this.pooled = true;
+    }
     this.look = look;
-    this.model = buildCharacter(look);
     this.root = this.model.root;
     this.baseScale = look.scale || 1;
     game.charGroup.add(this.root);
@@ -218,7 +252,13 @@ export class Character {
 
   dispose() {
     this.game.charGroup.remove(this.root);
-    disposeObject(this.root);
+    if (this.heldMesh) {
+      this.model.held.remove(this.heldMesh);
+      disposeObject(this.heldMesh);
+      this.heldMesh = null;
+    }
+    if (this.pooled && MODEL_POOL.length < POOL_MAX) MODEL_POOL.push({ look: this.look, model: this.model });
+    else disposeObject(this.root);
   }
 }
 
@@ -418,7 +458,7 @@ export class Player extends Character {
 
 export class Customer extends Character {
   constructor(game, group, critic = false, vip = false) {
-    super(game, critic ? criticLook() : vip ? vipLook() : randomCustomerLook());
+    super(game, critic ? criticLook() : vip ? vipLook() : null);
     this.group = group;
     this.critic = critic;
     this.vip = vip;

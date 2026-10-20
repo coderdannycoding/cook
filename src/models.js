@@ -94,6 +94,8 @@ export const cone = (r, h, seg = 14) => G(`k${r},${h},${seg}`, () => new THREE.C
 export const torus = (r, t, rs = 8, ts = 20, arc = TAU) => G(`t${r},${t},${rs},${ts},${arc}`, () => new THREE.TorusGeometry(r, t, rs, ts, arc));
 export const ico = (r, d = 1) => G(`i${r},${d}`, () => new THREE.IcosahedronGeometry(r, d));
 export const capsule = (r, l) => G(`cap${r},${l}`, () => new THREE.CapsuleGeometry(r, l, 6, 14));
+// Low-poly capsule for tiny details (brows, whiskers) where 14 segments are wasted
+const capsuleLo = (r, l) => G(`capl${r},${l}`, () => new THREE.CapsuleGeometry(r, l, 2, 6));
 
 const plateGeo = () => G('plate', () => {
   const pts = [
@@ -196,7 +198,7 @@ export function disposeObject(root) {
 const vcMats = new Map();
 function vcMaterial(src, kind) {
   const metal = src.metalness >= 0.65 ? 0.75 : src.metalness >= 0.3 ? 0.45 : 0;
-  const rough = metal ? (src.roughness < 0.36 ? 0.3 : 0.42) : src.roughness < 0.45 ? 0.35 : 0.72;
+  const rough = metal ? (src.roughness < 0.36 ? 0.3 : 0.42) : kind === 'char' ? 0.68 : src.roughness < 0.45 ? 0.35 : 0.72;
   const key = `${kind}|${metal}|${rough}|${src.flatShading ? 1 : 0}|${src.side}`;
   let m = vcMats.get(key);
   if (!m) {
@@ -225,9 +227,11 @@ export function mergeStatic(root, kind = 'prop') {
     g.applyMatrix4(m4);
     const vc = canVertexColor(o.material);
     const material = vc ? vcMaterial(o.material, kind) : o.material;
-    const key = `${material.uuid}|${o.castShadow}`;
+    // Characters and pets decide shadow casting after merging, so their parts share one bucket
+    const key = kind === 'char' ? material.uuid : `${material.uuid}|${o.castShadow}`;
     if (!buckets.has(key)) buckets.set(key, { material, cast: o.castShadow, geos: [], colors: material.vertexColors ? [] : null });
     const b = buckets.get(key);
+    b.cast ||= o.castShadow;
     b.geos.push(g);
     if (b.colors) b.colors.push(vc ? o.material.color : null);
     remove.push(o);
@@ -1745,7 +1749,7 @@ export function buildCharacter(look) {
     const pm = mat(look.pants, { r: 0.75, ...ch });
     pivot.add(OL(mesh(sph(0.256, 18, 10, 0, TAU, Math.PI / 2, Math.PI / 2), pm, 0, 0.34, 0)));
     pivot.add(mesh(cyl(0.256, 0.256, 0.07, 18, true), pm, 0, 0.375, 0));
-    const belt = mesh(torus(0.257, 0.016, 6, 22), mat(shadeHex(look.pants, 0.55), { r: 0.6, ...ch }), 0, 0.41, 0);
+    const belt = mesh(torus(0.257, 0.016, 4, 18), mat(shadeHex(look.pants, 0.55), { r: 0.6, ...ch }), 0, 0.41, 0);
     belt.rotation.x = Math.PI / 2;
     pivot.add(belt);
   }
@@ -1816,7 +1820,7 @@ export function buildCharacter(look) {
     // eyebrows in a darker shade of the hair
     const browM = mat(shadeHex(look.hair || '#4a2f1e', 0.75), { r: 0.8, ...ch });
     for (const x of [-0.1, 0.1]) {
-      const b = mesh(capsule(0.014, 0.05), browM, x, 0.118, 0.236, false);
+      const b = mesh(capsuleLo(0.014, 0.05), browM, x, 0.118, 0.236, false);
       b.rotation.z = Math.PI / 2 + (x < 0 ? -0.12 : 0.12);
       b.rotation.y = x < 0 ? 0.25 : -0.25;
       head.add(b);
@@ -1877,7 +1881,7 @@ export function buildCharacter(look) {
   if (look.mustache) {
     const mm = mat(look.hair, { r: 0.8, ...ch });
     for (const sx of [-1, 1]) {
-      const m = mesh(capsule(0.025, 0.07), mm, sx * 0.05, -0.04, 0.262, false);
+      const m = mesh(capsuleLo(0.025, 0.07), mm, sx * 0.05, -0.04, 0.262, false);
       m.rotation.z = sx * (Math.PI / 2 - 0.35);
       head.add(m);
     }
@@ -2062,7 +2066,6 @@ export function buildCharacter(look) {
     t.scale.copy(o.scale);
     o.parent.add(t);
   }
-  for (const h of [handL, handR]) h.add(new THREE.Mesh(hullGeometry(h.geometry), outlineMaterial));
   // Collapse static body parts into a few meshes (animated parts stay separate)
   head.userData.dynamic = true;
   for (const m of [smile, frown, open]) m.userData.dynamic = true;
@@ -2072,6 +2075,8 @@ export function buildCharacter(look) {
   mergeStatic(eyes, 'char');
   // Body parts cast shadows; outlines, the contact blob and tiny face details don't
   root.traverse((o) => { if (o.isMesh) o.castShadow = o.material !== outlineMaterial && !o.material.transparent; });
+  // hands and feet are too small to matter in the shadow map
+  for (const o of [handL, handR, footL, footR]) o.castShadow = false;
   eyes.traverse((o) => { o.castShadow = false; });
   for (const m of [smile, frown, open]) m.castShadow = false;
   return { root, pivot, head, eyes, handL, handR, footL, footR, held, hat, mouths: { smile, frown, open } };

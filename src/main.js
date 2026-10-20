@@ -18,7 +18,7 @@ import { BuildMode } from './build.js';
 import { UI } from './ui.js';
 import { Tutorial } from './tutorial.js';
 import { TouchControls } from './touch.js';
-import { Player } from './entities.js';
+import { Player, warmCharacterPool } from './entities.js';
 import { newGameState, saveGame, loadGame, loadSettings, saveSettings } from './state.js';
 import {
   DISHES, CUISINES, CUISINE_ORDER, INGREDIENTS, COOKER_INFO, dishRequirements, allThumbKeys, itemFromKey,
@@ -740,6 +740,8 @@ class Game {
   }
 
   update(dt) {
+    // Outside service, top up the pool of ready-made guest models (one every few frames)
+    if (this.phase !== 'day' && this.phase !== 'countdown' && (this._warm = (this._warm || 0) + 1) % 8 === 0) warmCharacterPool(1);
     if (this.home.active) {
       this.home.update(dt);
       return;

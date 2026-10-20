@@ -215,9 +215,14 @@ export class Grid {
     return this.inBounds(x, z) && reach[this.idx(x, z)] === 1;
   }
 
+  // Tiles reachable from the door. The live layout's answer is cached until the layout changes
+  // (rebuildOccupancy makes a new solid array); callers must not modify the result.
   reachable(solid = this.solid) {
-    const reach = new Uint8Array(this.W * this.H);
     const d = this.doorTile;
+    const live = solid === this.solid, key = `${d.x},${d.z},${this.W},${this.H}`;
+    if (live && this._reachFor === solid && this._reachKey === key) return this._reachCache;
+    const reach = new Uint8Array(this.W * this.H);
+    if (live) { this._reachFor = solid; this._reachKey = key; this._reachCache = reach; }
     if (solid[this.idx(d.x, d.z)]) return reach;
     const q = [d.x, d.z];
     reach[this.idx(d.x, d.z)] = 1;

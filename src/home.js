@@ -5,7 +5,7 @@
 
 import * as THREE from '../vendor/three-0.169.0.module.min.js';
 import { CAMERA, ECON } from './config.js';
-import { clamp, damp, dampAngle, rand, pick, TAU, easeOutBack, formatMoney, wrapAngle } from './utils.js';
+import { clamp, damp, dampAngle, rand, pick, TAU, easeOutBack, formatMoney, wrapAngle, MinHeap } from './utils.js';
 import {
   mat, mesh, box, rbox, cyl, sph, cone, torus, ico, capsule, mergeStatic, disposeObject, buildCharacter, playerLook, buildStreetLamp, envMats,
 } from './models.js';
@@ -1704,6 +1704,8 @@ function thumbJobs() {
 // the mode
 const _v = new THREE.Vector3();
 const _w = new THREE.Vector3();
+const _r = new THREE.Vector3();
+const _u = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
 
 export class HomeMode {
@@ -2770,8 +2772,8 @@ export class HomeMode {
     const r = this.game.renderer;
     const aspect = r.width / Math.max(1, r.height);
     const dir = _v.set(Math.sin(CAMERA.yaw) * Math.cos(CAMERA.elevation), Math.sin(CAMERA.elevation), Math.cos(CAMERA.yaw) * Math.cos(CAMERA.elevation));
-    const right = new THREE.Vector3().crossVectors(UP, dir).normalize();
-    const camUp = new THREE.Vector3().crossVectors(dir, right).normalize();
+    const right = _r.crossVectors(UP, dir).normalize();
+    const camUp = _u.crossVectors(dir, right).normalize();
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     // On the Yard tab (and while placing) the camera moves in on the front yard
     const yard = !!(this.placing || this.sel || this.panel.tab === 'yard');
@@ -2810,11 +2812,17 @@ export class HomeMode {
     }
   }
 
+  // A few thumbnails per frame (the open tab's first) so entering home never stalls
   bakeSome() {
     if (!this.thumbQueue?.length) return;
     const t0 = performance.now();
     if (!this.baker) this.baker = new ThumbnailBaker(128);
-    while (this.thumbQueue.length && performance.now() - t0 < 14) {
+    const want = { house: ['tier:', 'helper:'], yard: ['item:'], pets: ['pet:'], garage: ['car:'] }[this.panel.tab] || [];
+    if (this._bakeTab !== this.panel.tab) {
+      this._bakeTab = this.panel.tab;
+      this.thumbQueue.sort((a, b) => (want.some((w) => b[0].startsWith(w)) ? 1 : 0) - (want.some((w) => a[0].startsWith(w)) ? 1 : 0));
+    }
+    while (this.thumbQueue.length && performance.now() - t0 < 7) {
       const [key, make, opts] = this.thumbQueue.shift();
       try {
         THUMBS[key] = this.baker.bake(make(), opts);
@@ -3096,19 +3104,16 @@ export class HomeMode {
     }
     const start = sj * W + si, goal = gj * W + gi;
     const gs = new Float32Array(W * H).fill(Infinity), from = new Int32Array(W * H).fill(-1), done = new Uint8Array(W * H);
-    const open = [start];
+    const hs = (n) => { const dx = Math.abs((n % W) - gi), dz = Math.abs(((n / W) | 0) - gj); return Math.max(dx, dz) + 0.4142 * Math.min(dx, dz); };
+    const open = new MinHeap();
     gs[start] = 0;
-    const hs = (n) => Math.hypot((n % W) - gi, Math.floor(n / W) - gj);
-    while (open.length) {
-      let bi = 0;
-      for (let k = 1; k < open.length; k++) if (gs[open[k]] + hs(open[k]) < gs[open[bi]] + hs(open[bi])) bi = k;
-      const n = open[bi];
-      open[bi] = open[open.length - 1];
-      open.pop();
+    open.push(start, hs(start));
+    while (open.size) {
+      const n = open.pop();
       if (n === goal) break;
       if (done[n]) continue;
       done[n] = 1;
-      const ni = n % W, nj = Math.floor(n / W);
+      const ni = n % W, nj = (n / W) | 0;
       for (let dj = -1; dj <= 1; dj++) {
         for (let di = -1; di <= 1; di++) {
           if (!di && !dj) continue;
@@ -3118,7 +3123,7 @@ export class HomeMode {
           if (nav[m] || done[m]) continue;
           if (di && dj && (nav[nj * W + i] || nav[j * W + ni])) continue;
           const g = gs[n] + (di && dj ? 1.414 : 1);
-          if (g < gs[m]) { gs[m] = g; from[m] = n; open.push(m); }
+          if (g < gs[m]) { gs[m] = g; from[m] = n; open.push(m, g + hs(m)); }
         }
       }
     }
@@ -3127,12 +3132,20 @@ export class HomeMode {
     for (let n = goal; n !== start && n >= 0; n = from[n]) cells.push({ x: WALK.x0 + (n % W) * S, z: WALK.z0 + Math.floor(n / W) * S });
     cells.reverse();
     if (cells.length) cells[cells.length - 1] = { x: x1, z: z1 };
-    // keep only the turns: skip ahead while the straight line stays clear
+    // Keep only the turns: skip ahead while the straight line stays on open cells
+    const clear = (ax, az, bx, bz) => {
+      const steps = Math.ceil(Math.hypot(bx - ax, bz - az) / (S * 0.5));
+      for (let k = 1; k < steps; k++) {
+        const [ci, cj] = cell(ax + ((bx - ax) * k) / steps, az + ((bz - az) * k) / steps);
+        if (nav[cj * W + ci]) return false;
+      }
+      return true;
+    };
     const out = [];
     let cx = x0, cz = z0, k = 0;
     while (k < cells.length) {
       let far = k;
-      for (let m = cells.length - 1; m > k; m--) if (pathClear(obs, cx, cz, cells[m].x, cells[m].z, 0.18)) { far = m; break; }
+      for (let m = cells.length - 1; m > k; m--) if (clear(cx, cz, cells[m].x, cells[m].z)) { far = m; break; }
       out.push(cells[far]);
       cx = cells[far].x;
       cz = cells[far].z;

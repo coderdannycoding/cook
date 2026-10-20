@@ -65,4 +65,4 @@ export const CAMERA = {
   maxView: 22,
 };
 
-export const LIGHT_POOL_SIZE = 10;
+export const LIGHT_POOL_SIZE = 6;

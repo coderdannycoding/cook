@@ -5,7 +5,6 @@ import { icon } from './icons.js';
 import { Customer, Character } from './entities.js';
 import { findPath } from './ai.js';
 import { DISHES, dishBasePatience } from './recipes.js';
-import { randomCustomerLook } from './models.js';
 import { rand, pick, weightedPick, clamp } from './utils.js';
 import { DAY } from './config.js';
 
@@ -558,7 +557,7 @@ export class CustomerManager {
     if (this.passT <= 0) {
       this.passT = g.phase === 'day' ? rand(2.5, 6) : rand(6, 12);
       if (this.passersby.length < max) {
-        const p = new Character(g, randomCustomerLook());
+        const p = new Character(g, null);
         const left = Math.random() < 0.5;
         const z = this.grid.H + rand(2.0, 2.5);
         p.setPos(left ? -14 : this.grid.W + 14, z);

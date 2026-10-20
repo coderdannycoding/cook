@@ -59,10 +59,11 @@ export class Renderer {
     let coarse = false;
     try { coarse = window.matchMedia('(pointer: coarse)').matches; } catch { coarse = false; }
     this.mobile = coarse && Math.min(window.innerWidth, window.innerHeight) < 900;
-    this.maxPixelRatio = Math.min(window.devicePixelRatio || 1, this.mobile ? 1.5 : 1.75);
+    this.maxPixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
     this.renderer.setPixelRatio(this.maxPixelRatio);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Plain PCF with a blur radius: nearly as soft as PCFSoft for a fraction of the samples
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     // Neutral tone mapping keeps authored hues & saturation (ACES greys them out), for a bright,
     // saturated "hit game" palette.
     this.renderer.toneMapping = THREE.NeutralToneMapping;
@@ -152,8 +153,9 @@ export class Renderer {
     this.fill.position.set(6, 14, 4.5);
     this.scene.add(this.fill, this.fill.target);
 
+    // Every point light is shaded on every pixel of every lit material, so keep the pool small
     this.pool = [];
-    for (let i = 0; i < LIGHT_POOL_SIZE; i++) {
+    for (let i = 0; i < (this.mobile ? Math.min(4, LIGHT_POOL_SIZE) : LIGHT_POOL_SIZE); i++) {
       const l = new THREE.PointLight('#ffb070', 0, 4, 2);
       l.position.set(0, -50, 0);
       this.scene.add(l);
@@ -201,12 +203,13 @@ export class Renderer {
     this.quality = level;
     const pr = level >= 2 ? this.maxPixelRatio : level === 1 ? Math.max(1, this.maxPixelRatio * 0.7) : 1;
     this.renderer.setPixelRatio(pr);
-    this.renderer.shadowMap.type = level === 0 ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
     if (level === 0 && this.sun.shadow.mapSize.x > 1024) {
       this.sun.shadow.mapSize.set(1024, 1024);
       this.sun.shadow.map?.dispose();
       this.sun.shadow.map = null;
     }
+    // Low quality keeps only the three most important point lights (one shader rebuild)
+    if (level === 0) for (const l of this.pool.splice(3)) this.scene.remove(l);
     this.resize();
   }
 

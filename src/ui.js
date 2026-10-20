@@ -339,7 +339,13 @@ export class UI {
 
   updateTickets() {
     const n = this.ticketEls.size;
-    const room = this.e.tickets.clientWidth || window.innerWidth * 0.6;
+    // Measuring the bar forces a layout, so only do it when the count or the window size changes
+    const key = `${n}|${window.innerWidth}|${window.innerHeight}`;
+    if (this._tkKey !== key) {
+      this._tkKey = key;
+      this._tkRoom = this.e.tickets.clientWidth || window.innerWidth * 0.6;
+    }
+    const room = this._tkRoom;
     const per = n ? room / n : 999;
     toggle(this.e.tickets, 'compact', per < 122 && per >= 86);
     toggle(this.e.tickets, 'tiny', per < 86);

@@ -92,3 +92,41 @@ export const FIRST_NAMES = [
 
 let uidCounter = 1;
 export const uid = () => uidCounter++;
+
+// Binary min-heap of items keyed by a priority (A* open sets)
+export class MinHeap {
+  constructor() { this.items = []; this.prio = []; }
+  get size() { return this.items.length; }
+  push(item, p) {
+    const a = this.items, pr = this.prio;
+    a.push(item); pr.push(p);
+    let i = a.length - 1;
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (pr[parent] <= pr[i]) break;
+      [a[parent], a[i]] = [a[i], a[parent]];
+      [pr[parent], pr[i]] = [pr[i], pr[parent]];
+      i = parent;
+    }
+  }
+  pop() {
+    const a = this.items, pr = this.prio;
+    const top = a[0];
+    const last = a.pop(), lp = pr.pop();
+    if (a.length) {
+      a[0] = last; pr[0] = lp;
+      let i = 0;
+      for (;;) {
+        const l = i * 2 + 1, r = l + 1;
+        let m = i;
+        if (l < a.length && pr[l] < pr[m]) m = l;
+        if (r < a.length && pr[r] < pr[m]) m = r;
+        if (m === i) break;
+        [a[m], a[i]] = [a[i], a[m]];
+        [pr[m], pr[i]] = [pr[i], pr[m]];
+        i = m;
+      }
+    }
+    return top;
+  }
+}
