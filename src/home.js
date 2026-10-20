@@ -2104,10 +2104,19 @@ export class HomeMode {
     foot.visible = true;
   }
 
+  // The chef stops using (or walking over to) a piece that is being moved, turned, stored or sold
+  releaseChef(it) {
+    const c = this.chef;
+    if (!c || !it) return;
+    if (c.pending?.it === it) { c.pending = null; c.state = 'idle'; c.timer = 1; }
+    if (c.use?.it === it) this.endUse(c, true);
+  }
+
   // Start placing: a new piece from the shop, one from storage, or (from) a placed one being moved
   startPlacing(id, { stored = false, from = null } = {}) {
     const D = HOME_ITEMS[id];
     if (!D || !this._active) return;
+    this.releaseChef(from);
     if (this.placing) this.cancelPlacing(true);
     if (!stored && !from && !this.canAfford(D.price)) return;
     this.sel = null;
@@ -2242,6 +2251,7 @@ export class HomeMode {
   }
 
   rotateItem(it) {
+    this.releaseChef(it);
     const [w, d] = footprint(it.id, it.rot), rot = (it.rot + 1) % 4;
     const cx = it.c + w / 2, cz = it.r + d / 2;
     const tries = [[Math.round(cx - d / 2), Math.round(cz - w / 2)], [Math.floor(cx - d / 2), Math.floor(cz - w / 2)], [Math.ceil(cx - d / 2), Math.ceil(cz - w / 2)], [it.c, it.r]];
@@ -2262,6 +2272,7 @@ export class HomeMode {
 
   storeItem(it) {
     const h = this.home;
+    this.releaseChef(it);
     h.items = h.items.filter((x) => x !== it);
     h.storage[it.id] = (h.storage[it.id] || 0) + 1;
     const q = itemRect(it);
@@ -2276,6 +2287,7 @@ export class HomeMode {
 
   sellItem(it) {
     const h = this.home, D = HOME_ITEMS[it.id];
+    this.releaseChef(it);
     const back = Math.round(D.price * ECON.sellRefund);
     h.items = h.items.filter((x) => x !== it);
     const q = itemRect(it);
