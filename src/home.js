@@ -70,6 +70,16 @@ export const CARS = {
   hypercar: { name: 'Golden Hypercar', price: 40000, perk: { arrivals: 0.04, review: 0.03 }, lux: true, desc: 'Plated in gold. The whole town knows your name.' },
 };
 
+// Extras fitted to the house itself. Buy once, then show or hide them for free.
+export const HOUSE_EXTRAS = {
+  lights: { name: 'String Lights', price: 400, comfort: 5, desc: 'Strings of coloured bulbs along the porch and the eaves.' },
+  wreath: { name: 'Door Wreath', price: 120, comfort: 2, desc: 'A leafy wreath with red berries and a bow.' },
+  mat: { name: 'Welcome Mat', price: 180, comfort: 3, desc: 'A doormat and two pots of flowers by the door.' },
+  chimes: { name: 'Wind Chimes', price: 150, comfort: 2, desc: 'Little metal tubes that sway in the evening breeze.' },
+  flag: { name: 'Flag Pole', price: 300, comfort: 3, desc: 'A striped flag in your roof colour.' },
+  dish: { name: 'Satellite Dish', price: 500, comfort: 3, desc: 'Two hundred channels and the ball game every night.' },
+};
+
 // Helpers you can hire for the home; wages are paid at the end of each working day
 export const HOME_STAFF = {
   gardener: { name: 'Gardener', wage: 30, desc: 'Picks any crops you missed each day and keeps the garden neat (+10 comfort).' },
@@ -104,7 +114,7 @@ export const COMFORT_LEVELS = [
 export function defaultHomeState() {
   return {
     tier: 0, pets: [], cars: [], favCar: null, items: [], storage: {}, care: [], paint: { wall: null, roof: null }, carPaint: {},
-    staff: [], rested: 0, mailDay: 0,
+    staff: [], rested: 0, mailDay: 0, extras: {},
   };
 }
 const isHex = (c) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
@@ -145,6 +155,10 @@ function normalizeHome(h) {
   const pt = h.paint && typeof h.paint === 'object' ? h.paint : {};
   h.paint = { wall: isHex(pt.wall) ? pt.wall : null, roof: isHex(pt.roof) ? pt.roof : null };
   h.fence = FENCES[h.fence] ? h.fence : null;
+  // extras: id -> 1 (shown) or 0 (owned, hidden)
+  const ex = h.extras && typeof h.extras === 'object' ? h.extras : {};
+  h.extras = {};
+  for (const id of Object.keys(HOUSE_EXTRAS)) if (id in ex) h.extras[id] = ex[id] ? 1 : 0;
   const cp = h.carPaint && typeof h.carPaint === 'object' ? h.carPaint : {};
   h.carPaint = {};
   for (const [id, c] of Object.entries(cp)) if (CARS[id] && isHex(c)) h.carPaint[id] = c;
@@ -199,6 +213,7 @@ export function homeComfort(home) {
   }
   n += (Array.isArray(home.pets) ? home.pets.filter((id, i) => happyAt(home, i)).length : 0) * 2;
   if (Array.isArray(home.staff) && home.staff.includes('gardener')) n += 10;
+  for (const [id, shown] of Object.entries(home.extras && typeof home.extras === 'object' ? home.extras : {})) if (shown) n += HOUSE_EXTRAS[id]?.comfort || 0;
   return Math.round(n);
 }
 export function comfortLevel(comfort) {
@@ -940,6 +955,11 @@ function tent(c) {
   c.fire = { x: SITE.x + fx, z: SITE.z + fz };
   c.obstacles.push({ x: c.fire.x, z: c.fire.z, r: 1.25 });
   c.front = 1.5;
+  c.spots = {
+    door: [0, 0, 1.4, 1.0], wreath: [0, 1.22, 1.34],
+    lights: [[[-1.24, 0.06, 1.34], [0, 1.73, 1.35], 0], [[0, 1.73, 1.35], [1.24, 0.06, 1.34], 0]],
+    chimes: [-1.75, 0, 0.9, 'hook'], dish: [1.8, 0, -0.8, 'ground'], flag: [-1.8, -0.4, 2.3],
+  };
   return g;
 }
 
@@ -982,6 +1002,11 @@ function cabin(c) {
   c.lights.push({ x: SITE.x + 0.1, y: 1.8, z: SITE.z + d / 2 + 0.5, color: '#ffc27a', intensity: 3, distance: 4 });
   c.chimney = { x: SITE.x - 1.2, y: wh + 2.3, z: SITE.z - 0.55 };
   c.front = d / 2 + pd + 0.3;
+  c.spots = {
+    door: [-0.6, 0.3, 1.66, 0.66], wreath: [-0.6, 1.2, 1.8],
+    lights: [[[-2.3, 1.99, 2.98], [2.3, 1.99, 2.98], 0.18]],
+    chimes: [1.8, 2.1, 2.45], dish: [2.25, 1.8, -0.85, 'wall'], flag: [2.95, 0.9, 3.0],
+  };
   return g;
 }
 
@@ -1028,6 +1053,11 @@ function house(c) {
   lantern(f, 0.0, 1.75);
   c.lights.push({ x: SITE.x, y: 2.0, z: SITE.z + d / 2 + 0.6, color: '#ffc27a', intensity: 3, distance: 4.5 });
   c.front = d / 2 + pd + 0.35;
+  c.spots = {
+    door: [-0.6, 0.24, 1.8, 0.7], wreath: [-0.6, 1.3, 1.92],
+    lights: [[[-2.6, 2.14, 3.12], [1.4, 2.14, 3.12], 0.15], [[-2.7, 3.55, 2.02], [2.7, 3.55, 2.02], 0.16]],
+    chimes: [0.65, 2.16, 2.6], dish: [2.6, 3.3, 0, 'wall'], flag: [3.4, 1.0, 3.4],
+  };
   return g;
 }
 
@@ -1072,6 +1102,11 @@ function villa(c) {
   for (const [x, z] of [[-2.0, -1.2], [-2.8, -1.0]]) put(g, rbox(0.5, 0.1, 0.9, 0.03, 1), '#ffffff', x, 2.43, z);
   c.lights.push({ x: SITE.x + 2.75, y: 2.0, z: SITE.z + d / 2 + 0.6, color: '#ffd29a', intensity: 3, distance: 4.5 });
   c.front = d / 2 + 0.4;
+  c.spots = {
+    door: [2.75, 0.16, 2.1, 0.75], wreath: [2.75, 1.3, 2.22],
+    lights: [[[-3.4, 2.2, 2.28], [1.9, 2.2, 2.28], 0.15], [[-1.15, 4.24, 2.32], [3.15, 4.24, 2.32], 0.14]],
+    chimes: [2.2, 2.08, 2.85], dish: [2.6, 4.41, -0.8, 'roof'], flag: [4.0, -0.2, 3.6],
+  };
   return g;
 }
 
@@ -1134,10 +1169,124 @@ function mansion(c) {
   }
   c.lights.push({ x: SITE.x, y: 2.5, z: SITE.z + 2.6, color: '#ffd29a', intensity: 4, distance: 5 });
   c.front = 3.0;
+  c.spots = {
+    door: [0, base, fz, 1.24], wreath: [0, base + 1.4, fz + 0.14],
+    lights: [[[-1.8, base + 3.04, 2.8], [1.8, base + 3.04, 2.8], 0.12], [[1.95, base + 2.8, 1.25], [4.65, base + 2.8, 1.25], 0.15], [[-4.65, base + 2.8, 1.25], [-1.95, base + 2.8, 1.25], 0.15]],
+    chimes: [-1.0, base + 3.05, 2.35], dish: [4.6, base + 2.35, 0, 'wall'], flag: [5.3, 0.6, 3.8],
+  };
   return g;
 }
 
 const HOUSE_BUILDERS = [tent, cabin, house, villa, mansion];
+
+// House extras: bits that hang on the house itself, fitted to each home's spots (house-local)
+const BULBS = ['#ff5a5a', '#ffd23f', '#5cd6ff', '#7cff8a'];
+function houseExtras(h, c, ex) {
+  const S = c.spots;
+  if (!S || !ex) return;
+  const on = (id) => ex[id] === 1;
+  if (on('lights')) {
+    // One glowing material per colour, so the strands twinkle without extra draw calls
+    const mats = BULBS.map((col) => new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 1, roughness: 0.4 }));
+    c.own.push(...mats);
+    let n = 0;
+    for (const [a, b, sag] of S.lights) {
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]), steps = Math.max(2, Math.round(len / 0.3));
+      const at = (t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - sag * 4 * t * (1 - t), a[2] + (b[2] - a[2]) * t];
+      let prev = at(0);
+      for (let i = 1; i <= steps; i++) {
+        const p = at(i / steps), dx = p[0] - prev[0], dy = p[1] - prev[1], dz = p[2] - prev[2], seg = Math.hypot(dx, dy, dz);
+        const wire = put(h, cyl(0.008, 0.008, seg, 4), '#2b2b2b', (p[0] + prev[0]) / 2, (p[1] + prev[1]) / 2, (p[2] + prev[2]) / 2);
+        wire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(dx / seg, dy / seg, dz / seg));
+        wire.castShadow = false;
+        put(h, sph(0.045, 7, 5), mats[n++ % mats.length], p[0], p[1] - 0.05, p[2]).castShadow = false;
+        prev = p;
+      }
+    }
+    c.anim.push((t) => mats.forEach((m, i) => { m.emissiveIntensity = 0.75 + Math.max(0, Math.sin(t * 2.2 + i * 1.6)) * 0.7; }));
+  }
+  if (on('wreath')) {
+    const [x, y, z] = S.wreath;
+    put(h, torus(0.15, 0.055, 6, 14), '#2f7a3a', x, y, z);
+    for (let i = 0; i < 5; i++) put(h, ico(0.03, 0), '#e8302a', x + Math.sin(i * 1.3) * 0.15, y + Math.cos(i * 1.3) * 0.15, z + 0.05);
+    for (const s of [-1, 1]) put(h, box(0.11, 0.07, 0.03), '#e8302a', x + s * 0.06, y - 0.17, z + 0.06, 0, 0, s * 0.35);
+  }
+  if (on('mat')) {
+    const [x, y, z, w] = S.door;
+    put(h, rbox(0.78, 0.03, 0.46, 0.012, 1), '#7a4a2e', x, y + 0.015, z + 0.36).castShadow = false;
+    put(h, box(0.62, 0.032, 0.3), '#c9925a', x, y + 0.02, z + 0.36).castShadow = false;
+    for (const s of [-1, 1]) {
+      const px = x + s * (w / 2 + 0.32);
+      put(h, cyl(0.15, 0.11, 0.26, 10), '#c8643a', px, y + 0.13, z + 0.22);
+      put(h, sph(0.2, 10, 8), '#3f8a3c', px, y + 0.38, z + 0.22);
+      for (let i = 0; i < 3; i++) put(h, ico(0.045, 0), PETALS[(i + (s > 0 ? 2 : 0)) % PETALS.length], px + Math.sin(i * 2.1) * 0.14, y + 0.48, z + 0.22 + Math.cos(i * 2.1) * 0.14);
+    }
+  }
+  if (on('chimes')) {
+    const [x, y, z, kind] = S.chimes;
+    let top = y;
+    if (kind === 'hook') {
+      // A shepherd's hook pushed into the lawn
+      put(h, cyl(0.02, 0.02, 1.5, 6), '#2f3a3f', x, 0.75, z);
+      put(h, torus(0.12, 0.02, 5, 10, PI), '#2f3a3f', x + 0.12, 1.5, z);
+      top = 1.5;
+    }
+    const sw = dyn(grp(kind === 'hook' ? x + 0.24 : x, top, z));
+    put(sw, box(0.01, 0.14, 0.01), '#d8d2c4', 0, -0.07, 0);
+    put(sw, cyl(0.1, 0.1, 0.025, 10), '#a0683e', 0, -0.15, 0);
+    const lens = [0.32, 0.4, 0.26, 0.36, 0.3];
+    lens.forEach((l, i) => {
+      const a = (i / lens.length) * TAU;
+      put(sw, cyl(0.014, 0.014, l, 6), P('#cfd6de', 0.25, 0.8), Math.sin(a) * 0.075, -0.17 - l / 2, Math.cos(a) * 0.075);
+    });
+    put(sw, cyl(0.035, 0.035, 0.02, 8), '#a0683e', 0, -0.36, 0);
+    h.add(sw);
+    c.anim.push((t) => { sw.rotation.z = Math.sin(t * 1.7) * 0.12; sw.rotation.x = Math.sin(t * 1.3 + 1) * 0.08; });
+  }
+  if (on('dish')) {
+    const [x, y, z, mount] = S.dish;
+    let d;
+    if (mount === 'wall') {
+      d = grp(x, y, z);
+      put(d, box(0.06, 0.24, 0.12), '#9aa3ad', 0.03, 0, 0);
+      put(d, cyl(0.025, 0.025, 0.28, 6), '#9aa3ad', 0.16, 0, 0, 0, 0, PI / 2);
+    } else {
+      // On a mast standing on the lawn or the flat roof
+      const mast = mount === 'ground' ? 1.1 : 0.4;
+      put(h, cyl(0.04, 0.05, mast, 7), '#9aa3ad', x, y + mast / 2, z);
+      if (mount === 'roof') put(h, box(0.3, 0.04, 0.3), '#9aa3ad', x, y + 0.02, z);
+      d = grp(x - 0.25, y + mast, z);
+    }
+    const dish = grp(0.3, 0.05, 0);
+    dish.rotation.z = -0.95;
+    put(dish, cyl(0.3, 0.06, 0.1, 16), '#eef1f4', 0, 0, 0);
+    put(dish, cyl(0.012, 0.012, 0.36, 5), '#9aa3ad', 0, 0.2, 0);
+    put(dish, box(0.07, 0.07, 0.09), '#5b6470', 0, 0.38, 0);
+    d.add(dish);
+    h.add(d);
+  }
+  if (on('flag')) {
+    const [x, z, H] = S.flag;
+    put(h, cyl(0.04, 0.05, H, 8), '#e9ecef', x, H / 2, z);
+    put(h, sph(0.07, 8, 6), P('#e8b830', 0.3, 0.85), x, H + 0.04, z);
+    put(h, cyl(0.16, 0.2, 0.12, 10), '#9a8f86', x, 0.06, z);
+    const main = c.paint?.roof ?? '#e8483b', cloth = dyn(grp(x, H - 0.25, z));
+    const segs = [];
+    let parent = cloth;
+    for (let i = 0; i < 4; i++) {
+      const s = grp(i ? 0.2 : 0.04, 0, 0);
+      put(s, box(0.2, 0.42, 0.02), i % 2 ? '#ffffff' : main, 0.1, 0, 0).castShadow = false;
+      parent.add(s);
+      segs.push(s);
+      parent = s;
+    }
+    h.add(cloth);
+    c.anim.push((t) => {
+      cloth.rotation.y = Math.sin(t * 0.6) * 0.25 - 0.4;
+      segs.forEach((s, i) => { s.rotation.y = Math.sin(t * 4 - i * 0.9) * 0.18; });
+    });
+  }
+}
 
 // plot dressing per tier
 function picketFence(g, x0, z0, x1, z1, col = '#ffffff') {
@@ -1441,7 +1590,7 @@ function pavingMesh(rects, tint, own, y = 0.012) {
 }
 
 // Everything that changes with the house tier: lawn, paving, fence, garage, house and extras
-function buildTier(tier, paint = null, fence = null) {
+function buildTier(tier, paint = null, fence = null, extras = null) {
   const c = { anim: [], lights: [], obstacles: [], own: [], front: 1, paint };
   const root = new THREE.Group();
   const stat = new THREE.Group();
@@ -1468,6 +1617,7 @@ function buildTier(tier, paint = null, fence = null) {
   mailbox(stat, tier);
   garage(stat, tier);
   const h = HOUSE_BUILDERS[tier](c);
+  houseExtras(h, c, extras);
   h.position.set(SITE.x, 0, SITE.z);
   mergeStatic(h, 'env');
   root.add(dyn(h));
@@ -1764,7 +1914,7 @@ export class HomeMode {
     this.zoom = 1;
     this.panel = new HomePanel(this, {
       HOME_TIERS, TIER_IDS, PETS, CARS, HOME_ITEMS, ITEM_GROUPS, PET_LIMITS, PET_BONUS, PET_CARE, PAINT, COMFORT_LEVELS,
-      perkText, formatMoney, homePerks, homeComfort, comfortLevel, sadPets, isRested, HOME_STAFF, REST_PERK, FENCES, FENCE_PRICE,
+      perkText, formatMoney, homePerks, homeComfort, comfortLevel, sadPets, isRested, HOME_STAFF, REST_PERK, FENCES, FENCE_PRICE, HOUSE_EXTRAS,
       sellBack: ECON.sellRefund,
     });
     this.placing = null; // { id, rot, c, r, from (a placed item being moved), stored, ok }
@@ -1917,13 +2067,17 @@ export class HomeMode {
 
   setTier(tier, animate = true) {
     const old = this.tierObj;
-    const t = buildTier(tier, this.home.paint, this.home.fence);
+    const t = buildTier(tier, this.home.paint, this.home.fence, this.home.extras);
     this.tierObj = t;
     this.root.add(t);
     this.refreshObstacles();
     if (!old) return;
     const house = t.userData.house;
-    if (animate === 'paint') {
+    if (animate === 'extra') {
+      this.fx('poof', SITE.x, 1.6, SITE.z + 1.5, '#ffffff', 14);
+      this.root.remove(old);
+      this.disposeTier(old);
+    } else if (animate === 'paint') {
       // A fresh coat: splashes of the new colours and a little squash
       const cols = [this.home.paint.wall, this.home.paint.roof].filter(Boolean);
       for (let i = 0; i < 4; i++) this.fx('splash', SITE.x + rand(-2, 2), 1.5 + rand(0, 1.5), SITE.z + rand(-1, 1.5), 6);
@@ -2529,6 +2683,23 @@ export class HomeMode {
     h.fence = id;
     this.setTier(h.tier, 'paint');
     this.game.audio.place?.();
+    this.afterPurchase();
+  }
+
+  // Buy a house extra, or show / hide one you own
+  setExtra(id) {
+    const D = Object.hasOwn(HOUSE_EXTRAS, id) ? HOUSE_EXTRAS[id] : null, h = this.home;
+    if (!D) return;
+    if (Object.hasOwn(h.extras, id)) {
+      h.extras[id] = h.extras[id] ? 0 : 1;
+      this.game.audio.click?.();
+    } else {
+      if (!this.canAfford(D.price) || !this.game.spend(D.price)) return;
+      h.extras[id] = 1;
+      this.game.audio.place?.();
+      this.game.ui.toast(`${D.name} added to the house`, 'good', 'home');
+    }
+    this.setTier(h.tier, 'extra');
     this.afterPurchase();
   }
 
