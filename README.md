@@ -155,16 +155,18 @@ around the shop overnight: a cottage, a bakery, a flower market, a park with a d
 cream corner, a row of townhouses, a windmill and finally a Ferris wheel.
 
 **Home.** The Home button in the night menu takes you to your own plot. Buy your way up from a
-camping tent to a cabin, a suburban house, a modern villa and a hilltop mansion, and paint the
-walls and roof.
+camping tent to a cabin, a suburban house, a modern villa and a hilltop mansion. Paint the
+walls and roof, pick one of eight fence styles, and fit **house extras** (string lights, a door
+wreath, a welcome mat, wind chimes, a flag pole, a satellite dish) that you can show or hide.
 
-- **Yard:** 36 pieces of furniture in five groups (garden, relax, play, pets, fancy) go on a grid
-  in front of the house; turn, move, store or sell them. Everything adds **comfort**, and each
-  comfort level gives the restaurant a little more patience and tips.
+- **Yard:** 60 pieces of furniture in five groups (garden, relax, play, pets, fancy), from
+  sunflowers and a beehive to a treehouse, an observatory and a helipad, go on a grid that runs
+  from the garden across the driveway; turn, move, store or sell them. Everything adds
+  **comfort**, and each comfort level gives the restaurant a little more patience and tips.
 - **Things to do:** click furniture and your chef uses it: naps on the lounger or hammock, soaks
   in the hot tub, bounces on the trampoline, swings, grills, shoots hoops, stargazes, slides.
-  A rest leaves you **well rested** for the next day. Pick the veggie patch and apple tree once a
-  day, and check the mailbox for fan mail, gifts and treats.
+  A rest leaves you **well rested** for the next day. Pick the veggie patch, apple tree, beehive
+  and greenhouse once a day, and check the mailbox for fan mail, gifts and treats.
 - **Pets:** ten pets with names and a happiness bar. Happiness drops a little each working day
   and comes back with pats and treats; only happy pets give their bonus. They use beds, bowls,
   the pet house, the cat tree and agility hurdles.
