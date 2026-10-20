@@ -349,3 +349,4 @@ button:focus-visible, .card:focus-visible, .swatch:focus-visible { outline: 3px 
   .logo-mark { width: 64px; height: 64px; }
   #title-screen { justify-content: center; padding: 2vh 3vw; }
 }
+.pause-note { margin: 12px 0 0; font-size: 13px; text-align: center; opacity: 0.75; }

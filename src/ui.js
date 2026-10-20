@@ -942,6 +942,7 @@ export class UI {
   showPause() {
     const g = this.game;
     const v = g.audio.vol;
+    const midDay = g.phase === 'day' || g.phase === 'countdown';
     const w = this.modal(`
       <h2>Paused</h2>
       <div class="settings">
@@ -949,10 +950,11 @@ export class UI {
         <label>Effects <input type="range" min="0" max="1" step="0.05" value="${v.sfx}" data-vol="sfx"></label>
         <label>Music <input type="range" min="0" max="1" step="0.05" value="${v.music}" data-vol="music"></label>
       </div>
+      ${midDay ? `<p class="pause-note">${g.peekSave() ? 'Your game was saved last night. Quitting now starts this day over.' : 'Nothing is saved until the first day ends.'}</p>` : ''}
       <div class="m-actions col">
         <button class="big-btn primary" data-a="resume">Resume</button>
         <button class="big-btn ghost" data-a="help">How to play</button>
-        <button class="big-btn ghost" data-a="quit">Save and quit to title</button>
+        <button class="big-btn ghost" data-a="quit">${midDay ? 'Quit to title' : 'Save and quit to title'}</button>
       </div>`);
     w.oninput = (ev) => {
       const k = ev.target.dataset.vol;
