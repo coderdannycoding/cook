@@ -85,7 +85,14 @@ export class HomePanel {
       const cls = `${cur ? 'selected' : ''} ${past ? 'past' : ''} ${locked ? 'locked' : ''} ${next && cash < t.price ? 'poor' : ''}`;
       return this.card(`data-tier="${id}"`, `tier:${id}`, t.name, t.desc, `${this.perkTag(t.perk, cur, 'Starter home')}<div class="c-meta">${meta}</div>`, cls);
     }).join('');
-    return `${tiers}${this.paintCard('house')}<div class="hm-label">Helpers</div>${this.helperCards()}`;
+    return `${tiers}${this.paintCard('house')}${this.fenceCard()}<div class="hm-label">Helpers</div>${this.helperCards()}`;
+  }
+
+  fenceCard() {
+    const { FENCES, FENCE_PRICE } = this.d, cur = this.mode.home.fence ?? null;
+    const chips = [[null, 'Standard'], ...Object.entries(FENCES).map(([id, f]) => [id, f.name])]
+      .map(([id, n]) => `<button class="hm-mini ${cur === id ? 'ok' : ''}" data-fence="${id ?? ''}">${esc(n)}</button>`).join('');
+    return `<div class="card hm-card hm-paint hm-fence"><div class="hm-txt"><div class="c-name">${icon('home')}Fence <small>${badge('coin')}${this.price(FENCE_PRICE)}</small></div><div class="hm-fchips">${chips}</div></div></div>`;
   }
 
   helperCards() {
@@ -220,7 +227,7 @@ export class HomePanel {
       const { COMFORT_LEVELS, homeComfort, comfortLevel } = this.d, c = homeComfort(h), lv = comfortLevel(c), next = COMFORT_LEVELS[lv + 1];
       return `Comfort <b>${c}</b>, ${COMFORT_LEVELS[lv].name}${lv ? ` (+${lv}% tips and patience)` : ''}.${next ? ` ${next.name} at ${next.at}.` : ''} On this tab, tap furniture to edit it.`;
     }
-    return 'Tap furniture to use it, a nap or a soak leaves you <b>well rested</b> for tomorrow. Check the mailbox daily.';
+    return 'Tap furniture to use it. A nap or a soak leaves you <b>well rested</b> for tomorrow.';
   }
 
   render() {
@@ -302,6 +309,7 @@ export class HomePanel {
     else if (b.dataset.item) m.itemCard(b.dataset.item);
     else if (b.dataset.treat !== undefined) m.treatPet(+b.dataset.treat);
     else if (b.dataset.helper) m.toggleHelper(b.dataset.helper);
+    else if (b.dataset.fence !== undefined) m.setFence(b.dataset.fence || null);
     else if (b.dataset.paintWall !== undefined) m.paintHouse('wall', b.dataset.paintWall || null);
     else if (b.dataset.paintRoof !== undefined) m.paintHouse('roof', b.dataset.paintRoof || null);
     else if (b.dataset.carpaint !== undefined) m.paintCar(b.dataset.carpaint || null);

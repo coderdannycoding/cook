@@ -21,6 +21,14 @@ export const HOME_ITEMS = {
   topiary: { group: 'garden', name: 'Topiary Swan', price: 420, size: [1, 1], comfort: 4, desc: 'A hedge clipped into a very proud swan.' },
   fairyarch: { group: 'garden', name: 'Fairy-Light Arch', price: 380, size: [2, 1], comfort: 5, light: true, desc: 'A rose arch strung with twinkling lights.' },
   pond: { group: 'garden', name: 'Koi Pond', price: 900, size: [2, 2], comfort: 8, perk: { patience: 0.01 }, desc: 'Lily pads and slow, golden koi.' },
+  sunflowers: { group: 'garden', name: 'Sunflowers', price: 160, size: [1, 1], comfort: 3, desc: 'Five tall sunflowers turning to the sun.' },
+  rosebush: { group: 'garden', name: 'Rose Bush', price: 190, size: [1, 1], comfort: 3, desc: 'A round bush covered in red and pink roses.' },
+  stones: { group: 'garden', name: 'Stepping Stones', price: 70, size: [1, 1], comfort: 1, flat: true, desc: 'Flat stones with moss between them.' },
+  scarecrow: { group: 'garden', name: 'Scarecrow', price: 240, size: [1, 1], comfort: 3, desc: 'Keeps the crows off the veggies. Mostly.' },
+  beehive: { group: 'garden', name: 'Beehive', price: 420, size: [1, 1], comfort: 4, desc: 'Busy bees and a jar of honey to collect each day.' },
+  windmill: { group: 'garden', name: 'Garden Windmill', price: 460, size: [1, 1], comfort: 5, desc: 'A little white windmill with spinning sails.' },
+  well: { group: 'garden', name: 'Wishing Well', price: 520, size: [1, 1], comfort: 5, perk: { review: 0.01 }, desc: 'Stone, a shingle roof and a bucket on a rope.' },
+  greenhouse: { group: 'garden', name: 'Greenhouse', price: 1600, size: [2, 2], comfort: 9, light: true, perk: { tips: 0.01 }, desc: 'Glass walls, tomato vines and fresh herbs to pick daily.' },
   // relax
   picnic: { group: 'relax', name: 'Picnic Blanket', price: 150, size: [2, 2], comfort: 3, flat: true, desc: 'Gingham, a basket and a jug of lemonade.' },
   lounger: { group: 'relax', name: 'Sun Lounger', price: 220, size: [1, 2], comfort: 4, desc: 'Stripy cushions and a cold drink.' },
@@ -29,6 +37,10 @@ export const HOME_ITEMS = {
   firepit: { group: 'relax', name: 'Fire Pit', price: 600, size: [2, 2], comfort: 7, light: true, fx: 'fire', desc: 'Stone ring, crackling logs and stump seats.' },
   hammock: { group: 'relax', name: 'Hammock', price: 800, size: [3, 1], comfort: 6, perk: { patience: 0.01 }, desc: 'A striped hammock that sways in the breeze.' },
   hottub: { group: 'relax', name: 'Hot Tub', price: 3000, size: [2, 2], comfort: 12, fx: 'tub', perk: { patience: 0.02 }, desc: 'Bubbly, steamy and very relaxing.' },
+  adirondack: { group: 'relax', name: 'Deck Chairs', price: 280, size: [2, 1], comfort: 5, desc: 'Two slatted wooden chairs and a little side table.' },
+  tent: { group: 'relax', name: 'Camping Tent', price: 340, size: [2, 2], comfort: 4, light: true, desc: 'For backyard camping, with a lantern inside.' },
+  sofa: { group: 'relax', name: 'Outdoor Sofa', price: 900, size: [2, 2], comfort: 8, desc: 'A cushy corner sofa, a coffee table and a rug.' },
+  pergola: { group: 'relax', name: 'Pergola', price: 1400, size: [2, 2], comfort: 10, light: true, perk: { patience: 0.01 }, desc: 'Vines, flowers and string lights over a bench.' },
   // play
   sandbox: { group: 'play', name: 'Sandbox', price: 300, size: [2, 2], comfort: 3, desc: 'Buckets, spades and a lopsided castle.' },
   hoop: { group: 'play', name: 'Basketball Hoop', price: 350, size: [1, 1], comfort: 3, desc: 'Swish. Mostly.' },
@@ -40,17 +52,29 @@ export const HOME_ITEMS = {
   pizzaoven: { group: 'play', name: 'Pizza Oven', price: 900, size: [1, 1], comfort: 6, light: true, fx: 'smoke', perk: { tips: 0.01 }, desc: 'A brick dome oven for Sunday pizza.' },
   trampoline: { group: 'play', name: 'Trampoline', price: 1200, size: [2, 2], comfort: 6, perk: { queue: 0.02 }, desc: 'Boing. The neighbours can see you over the fence.' },
   movie: { group: 'play', name: 'Movie Screen', price: 1500, size: [2, 1], comfort: 8, light: true, desc: 'Outdoor cinema nights under the stars.' },
+  pingpong: { group: 'play', name: 'Ping-Pong Table', price: 550, size: [2, 1], comfort: 4, desc: 'A quick game before the dinner rush.' },
+  goal: { group: 'play', name: 'Football Goal', price: 380, size: [2, 1], comfort: 3, desc: 'A net, a ball and endless penalty practice.' },
+  skateramp: { group: 'play', name: 'Skate Ramp', price: 700, size: [2, 1], comfort: 4, desc: 'A painted fun box with two ramps.' },
+  bouncy: { group: 'play', name: 'Bouncy Castle', price: 1100, size: [2, 2], comfort: 6, perk: { queue: 0.02 }, desc: 'Inflatable towers in every colour.' },
+  treehouse: { group: 'play', name: 'Treehouse', price: 2200, size: [2, 2], comfort: 9, perk: { patience: 0.01 }, desc: 'A hut up in the branches with a rope ladder.' },
   // pets
   foodbowls: { group: 'pets', name: 'Food Bowls', price: 90, size: [1, 1], comfort: 1, pet: true, flat: true, desc: 'Always full. Pets get hungry less often.' },
   petbed: { group: 'pets', name: 'Pet Bed', price: 160, size: [1, 1], comfort: 2, pet: true, flat: true, desc: 'A squishy round bed for naps.' },
   agility: { group: 'pets', name: 'Agility Hurdles', price: 300, size: [2, 1], comfort: 2, pet: true, desc: 'Jump, jump, treat!' },
   doghouse: { group: 'pets', name: 'Pet House', price: 350, size: [1, 1], comfort: 3, pet: true, perk: { patience: 0.01 }, desc: 'A cosy kennel with a bone over the door.' },
   cattree: { group: 'pets', name: 'Cat Tree', price: 380, size: [1, 1], comfort: 3, pet: true, desc: 'Scratching posts, perches and a dangling mouse.' },
+  birdhouse: { group: 'pets', name: 'Birdhouse', price: 120, size: [1, 1], comfort: 2, pet: true, desc: 'A tiny house on a post. Birds love it.' },
+  kiddiepool: { group: 'pets', name: 'Paddling Pool', price: 150, size: [1, 1], comfort: 2, pet: true, flat: true, desc: 'Dogs splash about on warm days.' },
+  hutch: { group: 'pets', name: 'Rabbit Hutch', price: 260, size: [2, 1], comfort: 2, pet: true, desc: 'Hay, a ramp and a cosy loft for bunnies.' },
   // fancy
   statue: { group: 'fancy', name: 'Garden Statue', price: 1200, size: [1, 1], comfort: 8, perk: { review: 0.01 }, desc: 'A marble chef holding a ladle aloft.' },
   fountain: { group: 'fancy', name: 'Tiered Fountain', price: 2500, size: [2, 2], comfort: 12, fx: 'spray', perk: { review: 0.02 }, desc: 'Three tiers of splashing water.' },
   gazebo: { group: 'fancy', name: 'Gazebo', price: 4000, size: [3, 3], comfort: 16, light: true, perk: { patience: 0.02 }, desc: 'An airy white gazebo with benches and lanterns.' },
   balloon: { group: 'fancy', name: 'Hot Air Balloon', price: 8000, size: [2, 2], comfort: 20, perk: { arrivals: 0.02 }, desc: 'Tethered in the yard and visible all over town.' },
+  donut: { group: 'fancy', name: 'Giant Donut', price: 1800, size: [1, 1], comfort: 8, perk: { tips: 0.01 }, desc: 'A pink-iced sculpture with sprinkles. Very photogenic.' },
+  bridge: { group: 'fancy', name: 'Garden Bridge', price: 2800, size: [3, 1], comfort: 12, perk: { patience: 0.01 }, desc: 'A red arched bridge over a little stream.' },
+  observatory: { group: 'fancy', name: 'Observatory', price: 6000, size: [2, 2], comfort: 16, light: true, perk: { review: 0.02 }, desc: 'A domed tower with a big telescope.' },
+  helipad: { group: 'fancy', name: 'Helipad', price: 15000, size: [3, 3], comfort: 24, light: true, perk: { arrivals: 0.03 }, desc: 'Your own helicopter, rotors turning.' },
 };
 export const ITEM_GROUPS = [['garden', 'Garden'], ['relax', 'Relax'], ['play', 'Play'], ['pets', 'Pets'], ['fancy', 'Fancy']];
 
@@ -684,6 +708,493 @@ B.balloon = () => {
   g.add(lift);
   for (const s of [-1, 1]) rod(g, [s * 0.6, 0.25, 0.6], [s * 0.3, 0.8, 0.3], 0.006, P('#e8dcc0'));
   g.userData.animate = (t) => { lift.position.y = Math.sin(t * 0.7) * 0.12; lift.rotation.y = Math.sin(t * 0.3) * 0.15; };
+  return g;
+};
+
+// ---- second batch
+B.sunflowers = () => {
+  const g = new THREE.Group();
+  put(g, cyl(0.38, 0.42, 0.1, 14), '#6a4a33', 0, 0.05, 0);
+  for (const [x, z, h] of [[-0.18, -0.14, 1.2], [0.16, -0.16, 1.32], [0.02, 0.1, 0.98], [-0.24, 0.16, 0.82], [0.24, 0.12, 0.9]]) {
+    rod(g, [x, 0.08, z], [x, h, z], 0.022, P('#4c9a45'));
+    for (const s of [-1, 1]) sc(put(g, sph(0.09, 8, 6), LEAF, x + s * 0.08, h * 0.5, z, 0, 0, s * 0.6), 1, 0.3, 0.6);
+    const head = grp(x, h, z + 0.02);
+    head.rotation.x = -0.35;
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * TAU;
+      put(head, sph(0.05, 6, 4), '#ffc21a', Math.cos(a) * 0.12, Math.sin(a) * 0.12, 0, 0, 0, a).scale.set(1.6, 0.6, 0.3);
+    }
+    put(head, cyl(0.085, 0.085, 0.05, 12), '#6b3a1e', 0, 0, 0.012, PI / 2);
+    g.add(head);
+  }
+  return g;
+};
+
+B.rosebush = () => {
+  const g = new THREE.Group();
+  put(g, cyl(0.3, 0.34, 0.08, 14), '#6a4a33', 0, 0.04, 0);
+  for (const [x, y, z, r] of [[0, 0.42, 0, 0.36], [-0.18, 0.3, 0.12, 0.24], [0.2, 0.3, -0.1, 0.24], [0.08, 0.6, 0.06, 0.2]]) put(g, ico(r, 1), i2c(x + z, LEAF, '#3f8f4a'), x, y, z);
+  const cols = ['#e8343f', '#ff6f8f', '#ff9ab0', '#ffffff'];
+  for (let i = 0; i < 14; i++) {
+    const a = i * 2.4, el = 0.2 + (i % 4) * 0.28;
+    put(g, sph(0.055, 8, 6), cols[i % cols.length], Math.cos(a) * Math.cos(el) * 0.36, 0.42 + Math.sin(el) * 0.32, Math.sin(a) * Math.cos(el) * 0.36);
+  }
+  return g;
+};
+function i2c(k, a, b) { return Math.abs(Math.round(k * 10)) % 2 ? a : b; }
+
+B.stones = () => {
+  const g = new THREE.Group();
+  for (const [x, z, r] of [[-0.22, 0.24, 0.2], [0.16, -0.04, 0.22], [-0.12, -0.3, 0.17]]) put(g, cyl(r, r * 1.05, 0.05, 9), STONE, x, 0.025, z).castShadow = false;
+  for (let i = 0; i < 7; i++) sc(put(g, sph(0.05, 6, 4), LEAF2, Math.cos(i * 2.1) * 0.36, 0.01, Math.sin(i * 2.1) * 0.36), 1, 0.35, 1).castShadow = false;
+  return g;
+};
+
+B.scarecrow = () => {
+  const g = new THREE.Group();
+  rod(g, [0, 0, 0], [0, 1.45, 0], 0.035, P(WOOD));
+  rod(g, [-0.5, 1.0, 0], [0.5, 1.0, 0], 0.03, P(WOOD));
+  put(g, rbox(0.5, 0.48, 0.24, 0.06, 1), '#e8483b', 0, 0.86, 0);
+  for (const x of [-0.12, 0.12]) put(g, box(0.02, 0.48, 0.25), '#a8302a', x, 0.86, 0);
+  put(g, box(0.5, 0.02, 0.25), '#a8302a', 0, 0.9, 0);
+  for (const s of [-1, 1]) {
+    put(g, cyl(0.06, 0.06, 0.42, 8), '#e8483b', s * 0.36, 1.0, 0, 0, 0, PI / 2);
+    for (let i = 0; i < 3; i++) put(g, cone(0.025, 0.12, 5), '#e8c45a', s * (0.58 + i * 0.01), 0.98 - i * 0.03, -0.03 + i * 0.03, 0, 0, s * (1.8 + i * 0.2));
+  }
+  put(g, sph(0.17, 12, 10), '#d9b98a', 0, 1.28, 0);
+  for (const x of [-0.06, 0.06]) put(g, box(0.035, 0.035, 0.01), '#2a2420', x, 1.32, 0.165);
+  put(g, box(0.12, 0.01, 0.01), '#2a2420', 0, 1.22, 0.16);
+  put(g, cyl(0.3, 0.3, 0.025, 16), '#e8c45a', 0, 1.42, 0);
+  put(g, cyl(0.13, 0.17, 0.16, 12), '#e8c45a', 0, 1.5, 0);
+  put(g, cyl(0.172, 0.172, 0.04, 12), '#e8483b', 0, 1.46, 0);
+  const crow = grp(0.46, 1.05, 0);
+  sc(put(crow, sph(0.07, 8, 6), '#1d1a2f', 0, 0.05, 0), 1, 0.9, 1.3);
+  put(crow, sph(0.045, 8, 6), '#1d1a2f', 0, 0.12, 0.07);
+  put(crow, cone(0.018, 0.06, 5), '#ffc21a', 0, 0.12, 0.13, PI / 2);
+  g.add(crow);
+  return g;
+};
+
+B.beehive = () => {
+  const g = new THREE.Group();
+  for (const [x, z] of [[-0.25, -0.2], [0.25, -0.2], [-0.25, 0.2], [0.25, 0.2]]) rod(g, [x, 0, z], [x, 0.3, z], 0.025, P(WOOD));
+  put(g, box(0.62, 0.05, 0.5), WOOD, 0, 0.3, 0);
+  for (let i = 0; i < 3; i++) put(g, rbox(0.56, 0.2, 0.44, 0.02, 1), i % 2 ? '#fff6dc' : WHITE, 0, 0.43 + i * 0.205, 0);
+  put(g, rbox(0.66, 0.06, 0.54, 0.02, 1), '#d9a441', 0, 1.06, 0);
+  put(g, box(0.18, 0.025, 0.02), '#2a2420', 0, 0.36, 0.22);
+  put(g, cyl(0.07, 0.07, 0.12, 10), mat('#ffc21a', { op: 0.85, r: 0.15 }), 0.18, 0.39, 0.32);
+  const bees = dyn(new THREE.Group());
+  bees.position.set(0, 0.6, 0);
+  for (let i = 0; i < 4; i++) {
+    const b = new THREE.Group();
+    sc(put(b, sph(0.03, 6, 4), '#ffc21a', 0, 0, 0), 1, 1, 1.3);
+    put(b, box(0.062, 0.012, 0.012), '#1d1a2f', 0, 0, 0);
+    bees.add(b);
+  }
+  g.add(bees);
+  g.userData.animate = (t) => {
+    bees.children.forEach((b, i) => {
+      const a = t * (1.6 + i * 0.3) + i * 1.7;
+      b.position.set(Math.cos(a) * (0.42 + (i % 2) * 0.12), Math.sin(t * 3 + i) * 0.12 + i * 0.05, Math.sin(a) * (0.36 + (i % 2) * 0.1));
+      b.rotation.y = -a;
+    });
+  };
+  return g;
+};
+
+B.windmill = () => {
+  const g = new THREE.Group();
+  put(g, cyl(0.2, 0.32, 1.1, 8), WHITE, 0, 0.55, 0);
+  put(g, cone(0.27, 0.36, 8), '#c8443a', 0, 1.28, 0);
+  put(g, rbox(0.14, 0.24, 0.03, 0.02, 1), '#4a6fa5', 0, 0.16, 0.29);
+  for (const y of [0.5, 0.8]) put(g, rbox(0.1, 0.12, 0.03, 0.02, 1), '#7fc3e8', 0, y, 0.25 - (y - 0.5) * 0.12);
+  const sails = dyn(grp(0, 1.12, 0.28));
+  put(sails, cyl(0.045, 0.045, 0.08, 8), '#3a3f4a', 0, 0, 0, PI / 2);
+  for (let i = 0; i < 4; i++) {
+    const arm = grp(0, 0, 0.04);
+    arm.rotation.z = (i / 4) * TAU;
+    put(arm, box(0.03, 0.62, 0.02), WOOD, 0, 0.32, 0);
+    put(arm, box(0.14, 0.44, 0.012), '#fff6e8', 0.08, 0.38, 0);
+    sails.add(arm);
+  }
+  g.add(sails);
+  g.userData.animate = (t) => { sails.rotation.z = t * 1.2; };
+  return g;
+};
+
+B.well = () => {
+  const g = new THREE.Group();
+  put(g, cyl(0.38, 0.4, 0.5, 14), STONE, 0, 0.25, 0);
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * TAU;
+    put(g, rbox(0.17, 0.09, 0.08, 0.02, 1), i % 2 ? '#b5ada0' : '#d8d1c4', Math.cos(a) * 0.39, 0.12 + (i % 3) * 0.13, Math.sin(a) * 0.39, 0, -a, 0);
+  }
+  put(g, cyl(0.31, 0.31, 0.02, 14), '#2c5a7a', 0, 0.44, 0).castShadow = false;
+  for (const s of [-1, 1]) rod(g, [s * 0.36, 0.5, 0], [s * 0.36, 1.25, 0], 0.035, P(WOOD));
+  rod(g, [-0.38, 1.05, 0], [0.38, 1.05, 0], 0.025, P('#7a5538'));
+  for (const s of [-1, 1]) put(g, box(0.92, 0.04, 0.42), '#8a4a35', 0, 1.33 + 0.0, s * 0.17, s * 0.55, 0, 0);
+  rod(g, [0.05, 1.04, 0], [0.05, 0.75, 0], 0.006, P('#efe0c0'));
+  put(g, cyl(0.08, 0.06, 0.12, 10), '#8a5a33', 0.05, 0.7, 0);
+  return g;
+};
+
+B.greenhouse = () => {
+  const g = new THREE.Group();
+  const frame = P(WHITE, 0.4);
+  const glass = mat('#d9f2ff', { op: 0.28, r: 0.05 });
+  put(g, rbox(1.8, 0.16, 1.7, 0.03, 1), STONE, 0, 0.08, 0);
+  for (const [x, z] of [[-0.86, -0.8], [0.86, -0.8], [-0.86, 0.8], [0.86, 0.8]]) put(g, box(0.05, 1.0, 0.05), frame, x, 0.66, z);
+  for (const x of [-0.43, 0, 0.43]) for (const z of [-0.8, 0.8]) put(g, box(0.03, 1.0, 0.03), frame, x, 0.66, z);
+  for (const z of [-0.4, 0, 0.4]) for (const x of [-0.86, 0.86]) put(g, box(0.03, 1.0, 0.03), frame, x, 0.66, z);
+  for (const y of [0.16, 1.16]) {
+    put(g, box(1.76, 0.04, 0.04), frame, 0, y, 0.8);
+    put(g, box(1.76, 0.04, 0.04), frame, 0, y, -0.8);
+    put(g, box(0.04, 0.04, 1.6), frame, 0.86, y, 0);
+    put(g, box(0.04, 0.04, 1.6), frame, -0.86, y, 0);
+  }
+  for (const [w, x, z, ry] of [[1.72, 0, 0.8, 0], [1.72, 0, -0.8, 0], [1.56, 0.86, 0, PI / 2], [1.56, -0.86, 0, PI / 2]]) put(g, box(w, 1.0, 0.01), glass, x, 0.66, z, 0, ry, 0).castShadow = false;
+  for (const s of [-1, 1]) {
+    put(g, box(1.8, 0.012, 0.95), glass, 0, 1.42, s * 0.4, s * 0.58, 0, 0).castShadow = false;
+    put(g, box(1.8, 0.04, 0.04), frame, 0, 1.68, 0);
+    for (const x of [-0.86, 0, 0.86]) rod(g, [x, 1.16, s * 0.8], [x, 1.68, 0], 0.018, frame);
+  }
+  put(g, box(1.4, 0.06, 0.4), WOOD, 0, 0.55, -0.45);
+  for (const x of [-0.5, 0.5]) put(g, box(0.05, 0.4, 0.38), WOOD, x, 0.35, -0.45);
+  for (let i = 0; i < 5; i++) {
+    const x = -0.56 + i * 0.28;
+    put(g, cyl(0.08, 0.06, 0.12, 10), '#c8705a', x, 0.64, -0.45);
+    put(g, ico(0.1, 0), i % 2 ? LEAF : LEAF2, x, 0.78, -0.45);
+    if (i % 2 === 0) put(g, sph(0.035, 6, 5), '#e8343f', x + 0.05, 0.8, -0.38);
+  }
+  for (const x of [-0.4, 0.4]) {
+    rod(g, [x, 0.16, 0.45], [x, 1.0, 0.45], 0.012, P('#7a5538'));
+    for (let k = 0; k < 4; k++) {
+      put(g, ico(0.08, 0), LEAF, x + (k % 2 ? 0.06 : -0.06), 0.35 + k * 0.17, 0.45);
+      if (k % 2) put(g, sph(0.04, 6, 5), '#e8343f', x, 0.38 + k * 0.17, 0.5);
+    }
+  }
+  g.userData.light = { y: 1.0, color: '#ffe3a8', intensity: 2.2, distance: 3.5 };
+  return g;
+};
+
+B.adirondack = () => {
+  const g = new THREE.Group();
+  for (const x of [-0.52, 0.52]) {
+    const c = grp(x, 0, 0.05, 0);
+    const wood = P(x < 0 ? '#3fb6c8' : '#ff8a3d', 0.6);
+    put(c, box(0.5, 0.04, 0.5), wood, 0, 0.33, 0.02, -0.12, 0, 0);
+    for (const s of [-1, 1]) {
+      put(c, box(0.05, 0.36, 0.05), wood, s * 0.24, 0.18, 0.22);
+      put(c, box(0.05, 0.5, 0.05), wood, s * 0.24, 0.25, -0.18, -0.35, 0, 0);
+      put(c, box(0.1, 0.03, 0.56), wood, s * 0.3, 0.5, 0.02);
+    }
+    const back = grp(0, 0.36, -0.22);
+    back.rotation.x = -0.32;
+    for (let i = 0; i < 5; i++) put(back, box(0.08, 0.62 - Math.abs(i - 2) * 0.06, 0.03), wood, -0.2 + i * 0.1, 0.3 - Math.abs(i - 2) * 0.03, 0);
+    c.add(back);
+    g.add(c);
+  }
+  put(g, cyl(0.15, 0.15, 0.03, 12), WOOD, 0, 0.42, 0.12);
+  rod(g, [0, 0, 0.12], [0, 0.42, 0.12], 0.025, P(WOOD));
+  put(g, cyl(0.035, 0.03, 0.11, 10), mat('#ff9ac2', { op: 0.75, r: 0.1 }), -0.05, 0.49, 0.12);
+  put(g, cyl(0.035, 0.03, 0.11, 10), mat('#ffd23f', { op: 0.75, r: 0.1 }), 0.05, 0.49, 0.14);
+  return g;
+};
+
+B.tent = () => {
+  const g = new THREE.Group();
+  put(g, box(1.7, 0.02, 1.6), '#4f8f4a', 0, 0.01, 0).castShadow = false;
+  const fab = P('#ffb03a', 0.75), fab2 = P('#ff8a3d', 0.75);
+  for (const s of [-1, 1]) put(g, box(1.02, 0.03, 1.5), s < 0 ? fab : fab2, s * 0.36, 0.5, -0.05, 0, 0, s * -0.95);
+  put(g, cyl(0.025, 0.025, 1.6, 6), '#8a5a33', 0, 1.0, -0.05, PI / 2);
+  for (const z of [-0.78, 0.68]) rod(g, [0, 0, z], [0, 1.0, z], 0.02, P('#8a5a33'));
+  const back = new THREE.Shape([new THREE.Vector2(-0.72, 0), new THREE.Vector2(0.72, 0), new THREE.Vector2(0, 1.0)]);
+  const bg = new THREE.ShapeGeometry(back);
+  bg.userData.own = true;
+  put(g, bg, P('#e8783a', 0.75), 0, 0, -0.79);
+  for (const s of [-1, 1]) put(g, box(0.5, 0.75, 0.02), fab, s * 0.27, 0.37, 0.72, 0, s * 0.5, s * -0.6);
+  put(g, rbox(0.7, 0.12, 0.6, 0.05, 1), '#3f6fb8', 0, 0.06, -0.15);
+  const lamp = glow('#fff1c4', '#ffb050', 1.8);
+  put(g, cyl(0.06, 0.06, 0.14, 8), lamp, 0.35, 0.09, 0.3).castShadow = false;
+  put(g, cyl(0.07, 0.07, 0.02, 8), '#3a3f4a', 0.35, 0.17, 0.3);
+  g.userData.light = { y: 0.4, color: '#ffc27a', intensity: 1.8, distance: 2.6 };
+  return g;
+};
+
+B.sofa = () => {
+  const g = new THREE.Group();
+  put(g, box(1.8, 0.015, 1.5), '#e8dcc0', 0, 0.008, 0.05).castShadow = false;
+  for (let i = 0; i < 5; i++) put(g, box(1.8, 0.016, 0.06), '#d4664a', 0, 0.012, -0.55 + i * 0.25).castShadow = false;
+  const base = P('#8a6a4a', 0.7), cush = P('#f4f1ea', 0.85);
+  put(g, rbox(1.7, 0.3, 0.6, 0.05, 1), base, 0, 0.15, -0.55);
+  put(g, rbox(0.6, 0.3, 0.9, 0.05, 1), base, -0.55, 0.15, 0.2);
+  put(g, rbox(1.6, 0.14, 0.5, 0.06, 2), cush, 0, 0.37, -0.53);
+  put(g, rbox(0.5, 0.14, 0.86, 0.06, 2), cush, -0.55, 0.37, 0.22);
+  put(g, rbox(1.7, 0.42, 0.14, 0.06, 2), cush, 0, 0.55, -0.8);
+  put(g, rbox(0.14, 0.42, 1.0, 0.06, 2), cush, -0.82, 0.55, 0.12);
+  for (const [x, z, c, r] of [[-0.6, -0.65, '#3fb6c8', 0.2], [0.55, -0.65, '#ffd23f', -0.2], [-0.7, 0.5, '#ff6f8f', 0.6]]) put(g, rbox(0.3, 0.3, 0.1, 0.05, 2), c, x, 0.56, z, 0.25, r, 0);
+  put(g, rbox(0.6, 0.06, 0.45, 0.02, 1), WOOD, 0.35, 0.32, 0.25);
+  for (const [x, z] of [[0.1, 0.07], [0.6, 0.07], [0.1, 0.43], [0.6, 0.43]]) put(g, box(0.04, 0.3, 0.04), WOOD, x, 0.15, z);
+  put(g, cyl(0.06, 0.05, 0.12, 10), '#ffffff', 0.25, 0.41, 0.2);
+  put(g, ico(0.09, 0), LEAF, 0.25, 0.52, 0.2);
+  put(g, cyl(0.12, 0.12, 0.02, 12), '#c8705a', 0.48, 0.36, 0.3);
+  return g;
+};
+
+B.pergola = () => {
+  const g = new THREE.Group();
+  const wood = P('#c8935a', 0.7);
+  put(g, box(1.85, 0.04, 1.8), '#d8cbb6', 0, 0.02, 0).castShadow = false;
+  for (const [x, z] of [[-0.82, -0.8], [0.82, -0.8], [-0.82, 0.8], [0.82, 0.8]]) put(g, box(0.1, 1.9, 0.1), wood, x, 0.95, z);
+  for (const z of [-0.8, 0.8]) put(g, box(1.95, 0.1, 0.08), wood, 0, 1.9, z);
+  for (let i = 0; i < 6; i++) put(g, box(0.05, 0.06, 1.9), wood, -0.8 + i * 0.32, 1.98, 0);
+  for (let i = 0; i < 16; i++) put(g, ico(0.12, 0), i % 3 ? LEAF : LEAF2, -0.85 + ((i * 7) % 16) * 0.11, 2.04, -0.85 + ((i * 5) % 16) * 0.11);
+  for (let i = 0; i < 6; i++) put(g, sph(0.05, 6, 5), i % 2 ? '#d9a3ff' : '#ff9ac2', -0.75 + i * 0.3, 1.92, i % 2 ? 0.7 : -0.7);
+  for (const x of [-0.82, 0.82]) for (let k = 0; k < 5; k++) put(g, ico(0.07, 0), LEAF, x + (k % 2 ? 0.05 : -0.05), 0.3 + k * 0.35, 0.8);
+  const bulb = glow('#fff6c8', '#ffd27a', 1.8);
+  for (let i = 0; i < 9; i++) {
+    const t = i / 8, x = -0.8 + t * 1.6, y = 1.82 - Math.sin(t * PI) * 0.18;
+    put(g, sph(0.035, 6, 5), bulb, x, y, 0, 0, 0, 0).castShadow = false;
+  }
+  put(g, rbox(1.2, 0.08, 0.36, 0.03, 1), wood, 0, 0.42, -0.55);
+  put(g, rbox(1.2, 0.36, 0.06, 0.03, 1), wood, 0, 0.66, -0.72);
+  for (const x of [-0.5, 0.5]) put(g, box(0.06, 0.4, 0.3), wood, x, 0.2, -0.55);
+  put(g, rbox(0.5, 0.1, 0.3, 0.04, 1), '#3fb6c8', -0.25, 0.51, -0.55);
+  g.userData.light = { y: 1.7, color: '#ffd9a0', intensity: 2.4, distance: 3.8 };
+  g.userData.animate = (t) => { bulb.emissiveIntensity = 1.5 + Math.sin(t * 2.4) * 0.4; };
+  return g;
+};
+
+B.pingpong = () => {
+  const g = new THREE.Group();
+  put(g, box(1.7, 0.04, 0.9), '#2f7a5c', 0, 0.72, 0);
+  put(g, box(1.7, 0.042, 0.02), WHITE, 0, 0.721, 0.44);
+  put(g, box(1.7, 0.042, 0.02), WHITE, 0, 0.721, -0.44);
+  put(g, box(0.02, 0.042, 0.9), WHITE, 0.84, 0.721, 0);
+  put(g, box(0.02, 0.042, 0.9), WHITE, -0.84, 0.721, 0);
+  put(g, box(1.7, 0.043, 0.01), WHITE, 0, 0.722, 0);
+  put(g, box(0.01, 0.14, 0.96), mat('#ffffff', { op: 0.7, r: 0.8 }), 0, 0.81, 0);
+  for (const z of [-0.48, 0.48]) put(g, cyl(0.012, 0.012, 0.16, 6), '#3a3f4a', 0, 0.8, z);
+  for (const [x, z] of [[-0.7, -0.35], [0.7, -0.35], [-0.7, 0.35], [0.7, 0.35]]) put(g, box(0.05, 0.7, 0.05), '#3a3f4a', x, 0.35, z);
+  for (const [x, c] of [[-0.5, '#e8343f'], [0.55, '#2b2d5c']]) {
+    put(g, cyl(0.08, 0.08, 0.015, 12), c, x, 0.75, 0.2);
+    put(g, box(0.03, 0.02, 0.1), WOOD, x, 0.75, 0.32);
+  }
+  put(g, sph(0.025, 8, 6), '#ffffff', 0.15, 0.76, -0.15);
+  return g;
+};
+
+B.goal = () => {
+  const g = new THREE.Group();
+  const post = P(WHITE, 0.4);
+  for (const x of [-0.9, 0.9]) rod(g, [x, 0, 0.3], [x, 1.0, 0.3], 0.035, post);
+  rod(g, [-0.9, 1.0, 0.3], [0.9, 1.0, 0.3], 0.035, post);
+  for (const x of [-0.9, 0.9]) rod(g, [x, 1.0, 0.3], [x * 0.95, 0, -0.35], 0.02, post);
+  rod(g, [-0.86, 0.02, -0.35], [0.86, 0.02, -0.35], 0.02, post);
+  const net = P('#e8eef2', 0.9);
+  for (let i = 0; i <= 8; i++) rod(g, [-0.9 + i * 0.225, 0.98, 0.28], [-0.86 + i * 0.215, 0.02, -0.34], 0.006, net);
+  for (let k = 1; k < 5; k++) { const t = k / 5; rod(g, [-0.89, 1 - t, 0.3 - t * 0.64], [0.89, 1 - t, 0.3 - t * 0.64], 0.006, net); }
+  const ball = put(g, ico(0.11, 1), '#ffffff', 0.3, 0.11, 0.55);
+  ball.material = P('#ffffff');
+  for (let i = 0; i < 5; i++) put(g, sph(0.03, 6, 4), '#1d1a2f', 0.3 + Math.cos(i * 1.26) * 0.09, 0.11 + Math.sin(i * 1.26) * 0.09, 0.6);
+  return g;
+};
+
+B.skateramp = () => {
+  const g = new THREE.Group();
+  const top = P('#3f6fb8', 0.6), side = P('#ffd23f', 0.5);
+  put(g, box(0.7, 0.3, 0.8), side, 0, 0.15, 0);
+  put(g, box(0.72, 0.02, 0.82), top, 0, 0.31, 0);
+  for (const s of [-1, 1]) {
+    const r = put(g, box(0.62, 0.025, 0.8), top, s * 0.62, 0.15, 0, 0, 0, s * -0.47);
+    r.castShadow = true;
+    const w = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(0.57, 0), new THREE.Vector2(0, 0.3)]);
+    const wg = new THREE.ShapeGeometry(w);
+    wg.userData.own = true;
+    for (const z of [-0.4, 0.4]) put(g, wg, side, s * 0.35, 0, z, 0, s > 0 ? 0 : PI, 0);
+  }
+  rod(g, [-0.35, 0.33, -0.4], [-0.35, 0.33, 0.4], 0.018, METAL());
+  put(g, rbox(0.5, 0.03, 0.14, 0.02, 1), '#e8343f', 0.15, 0.34, 0.15, 0, 0.4, 0);
+  for (const [x, z] of [[-0.05, 0.1], [0.32, 0.22]]) put(g, cyl(0.025, 0.025, 0.04, 8), '#fff6dc', x, 0.33, z, 0, 0, PI / 2);
+  return g;
+};
+
+B.bouncy = () => {
+  const g = new THREE.Group();
+  const top = dyn(new THREE.Group());
+  put(top, rbox(1.8, 0.3, 1.7, 0.12, 2), '#e8343f', 0, 0.15, 0);
+  put(top, rbox(1.6, 0.06, 1.5, 0.03, 1), '#3f6fb8', 0, 0.31, 0);
+  for (const [w, d, x, z] of [[1.7, 0.16, 0, -0.78], [0.16, 1.6, -0.82, 0], [0.16, 1.6, 0.82, 0]]) put(top, rbox(w, 0.7, d, 0.07, 2), '#ffd23f', x, 0.6, z);
+  for (const [x, z] of [[-0.82, -0.78], [0.82, -0.78], [-0.82, 0.72], [0.82, 0.72]]) {
+    put(top, cyl(0.16, 0.18, 1.0, 12), '#2fbf5f', x, 0.8, z);
+    put(top, cone(0.2, 0.36, 12), '#e8343f', x, 1.48, z);
+    put(top, sph(0.05, 8, 6), '#ffd23f', x, 1.68, z);
+  }
+  put(top, rbox(0.7, 0.35, 0.16, 0.08, 2), '#ff8ac0', 0, 1.08, -0.78);
+  g.add(top);
+  g.userData.animate = (t) => { const k = Math.abs(Math.sin(t * 3)) * 0.04; top.scale.set(1 + k * 0.5, 1 - k, 1 + k * 0.5); };
+  return g;
+};
+
+B.treehouse = () => {
+  const g = new THREE.Group();
+  put(g, cyl(0.18, 0.26, 1.6, 10), '#8a5a33', -0.25, 0.8, -0.2);
+  for (const [x, y, z, r] of [[-0.25, 2.55, -0.25, 0.6], [0.3, 2.3, -0.4, 0.45], [-0.7, 2.25, 0.1, 0.42], [0.2, 2.65, 0.2, 0.4]]) put(g, ico(r, 1), r > 0.5 ? LEAF : LEAF2, x, y, z);
+  put(g, box(1.3, 0.08, 1.2), WOOD, 0, 1.55, 0);
+  for (const [x, z] of [[-0.55, -0.5], [0.55, -0.5], [-0.55, 0.5], [0.55, 0.5]]) put(g, box(0.07, 1.55, 0.07), '#7a5538', x, 0.78, z);
+  const hut = grp(0.05, 1.59, -0.1);
+  put(hut, box(0.8, 0.6, 0.7), '#e8a24a', 0, 0.3, 0);
+  for (const s of [-1, 1]) put(hut, box(0.95, 0.04, 0.5), '#c8443a', 0, 0.78, s * 0.2, s * 0.6, 0, 0);
+  put(hut, box(0.24, 0.4, 0.02), '#5a3524', -0.18, 0.2, 0.36);
+  put(hut, box(0.2, 0.2, 0.02), '#bfe8ff', 0.2, 0.36, 0.36);
+  g.add(hut);
+  for (const x of [-0.6, 0.6]) put(g, box(0.04, 0.3, 1.2), WOOD, x, 1.74, 0);
+  put(g, box(1.24, 0.3, 0.04), WOOD, 0, 1.74, 0.58);
+  for (const s of [-1, 1]) rod(g, [0.4 + s * 0.12, 0, 0.75], [0.4 + s * 0.12, 1.55, 0.55], 0.012, P('#efe0c0'));
+  for (let k = 0; k < 6; k++) { const t = (k + 0.5) / 6; put(g, box(0.28, 0.025, 0.04), WOOD, 0.4, t * 1.55, 0.75 - t * 0.2); }
+  rod(g, [0.5, 1.88, -0.4], [0.5, 2.4, -0.4], 0.012, P('#3a3f4a'));
+  put(g, box(0.22, 0.14, 0.01), '#2f8cf0', 0.62, 2.32, -0.4);
+  return g;
+};
+
+B.birdhouse = () => {
+  const g = new THREE.Group();
+  rod(g, [0, 0, 0], [0, 1.0, 0], 0.03, P(WOOD));
+  put(g, box(0.32, 0.03, 0.28), WOOD, 0, 1.0, 0);
+  put(g, box(0.24, 0.26, 0.24), '#7fc3e8', 0, 1.15, 0);
+  for (const s of [-1, 1]) put(g, box(0.32, 0.025, 0.2), '#c8443a', s * 0.1, 1.33, 0, 0, 0, s * -0.65);
+  put(g, cyl(0.04, 0.04, 0.02, 10), '#2a2420', 0, 1.18, 0.121, PI / 2);
+  rod(g, [0, 1.08, 0.12], [0, 1.08, 0.2], 0.008, P(WOOD));
+  const bird = dyn(grp(0.1, 1.0, 0.1, 0.6));
+  sc(put(bird, sph(0.05, 8, 6), '#e8343f', 0, 0.05, 0), 1, 0.85, 1.3);
+  const head = put(bird, sph(0.035, 8, 6), '#e8343f', 0, 0.1, 0.045);
+  put(bird, cone(0.012, 0.035, 5), '#ffc21a', 0, 0.1, 0.085, PI / 2);
+  g.add(bird);
+  g.userData.animate = (t) => { head.position.y = 0.1 + Math.max(0, Math.sin(t * 5)) ** 8 * 0.03; bird.rotation.y = 0.6 + Math.sin(t * 0.7) * 0.4; };
+  return g;
+};
+
+B.kiddiepool = () => {
+  const g = new THREE.Group();
+  put(g, torus(0.36, 0.08, 8, 20), '#ff8ac0', 0, 0.08, 0, PI / 2);
+  put(g, torus(0.36, 0.06, 8, 20), '#7fd4ff', 0, 0.2, 0, PI / 2);
+  put(g, cyl(0.36, 0.36, 0.02, 20), '#2f8cf0', 0, 0.01, 0).castShadow = false;
+  put(g, cyl(0.33, 0.33, 0.01, 20), mat('#7fd4ff', { op: 0.75, r: 0.05 }), 0, 0.16, 0).castShadow = false;
+  const duck = dyn(grp(0.12, 0.17, -0.05));
+  sc(put(duck, sph(0.06, 8, 6), '#ffd23f', 0, 0.03, 0), 1.2, 0.8, 1);
+  put(duck, sph(0.04, 8, 6), '#ffd23f', 0.05, 0.08, 0);
+  put(duck, cone(0.015, 0.04, 5), '#ff8a3d', 0.09, 0.08, 0, 0, 0, -PI / 2);
+  g.add(duck);
+  g.userData.animate = (t) => { duck.position.set(Math.cos(t * 0.4) * 0.15, 0.17 + Math.sin(t * 2) * 0.01, Math.sin(t * 0.4) * 0.15); duck.rotation.y = -t * 0.4; };
+  return g;
+};
+
+B.hutch = () => {
+  const g = new THREE.Group();
+  for (const [x, z] of [[-0.8, -0.3], [0.8, -0.3], [-0.8, 0.3], [0.8, 0.3]]) put(g, box(0.06, 0.3, 0.06), '#7a5538', x, 0.15, z);
+  put(g, box(1.7, 0.6, 0.65), WOOD, 0, 0.6, -0.02);
+  put(g, box(0.75, 0.48, 0.02), '#d9c8a0', -0.38, 0.6, 0.31);
+  for (let i = 0; i < 8; i++) put(g, box(0.012, 0.48, 0.012), '#9aa3ad', -0.72 + i * 0.1, 0.6, 0.325);
+  for (let k = 0; k < 4; k++) put(g, box(0.72, 0.012, 0.012), '#9aa3ad', -0.38, 0.4 + k * 0.13, 0.325);
+  put(g, box(0.7, 0.48, 0.02), '#c8935a', 0.42, 0.6, 0.31);
+  put(g, cyl(0.03, 0.03, 0.02, 8), '#3a3f4a', 0.68, 0.6, 0.33, PI / 2);
+  for (const s of [-1, 1]) put(g, box(1.85, 0.04, 0.42), '#8a4a35', 0, 1.02, s * 0.17, s * 0.5, 0, 0);
+  put(g, box(0.3, 0.02, 0.5), WOOD, -0.6, 0.18, 0.45, -0.6, 0, 0);
+  const bun = grp(-0.4, 0.33, 0.15, 0.5);
+  sc(put(bun, sph(0.09, 8, 6), '#ffffff', 0, 0.06, 0), 1, 0.85, 1.25);
+  put(bun, sph(0.06, 8, 6), '#ffffff', 0, 0.13, 0.08);
+  for (const s of [-1, 1]) sc(put(bun, sph(0.025, 6, 4), '#ffd0dc', s * 0.025, 0.22, 0.07), 0.6, 2, 0.6);
+  g.add(bun);
+  for (let i = 0; i < 6; i++) sc(put(g, sph(0.05, 6, 4), '#e8c45a', -0.6 + i * 0.07, 0.33, -0.1), 1.6, 0.4, 1);
+  return g;
+};
+
+B.donut = () => {
+  const g = new THREE.Group();
+  put(g, rbox(0.7, 0.3, 0.7, 0.04, 1), '#f4f1ea', 0, 0.15, 0);
+  put(g, rbox(0.76, 0.05, 0.76, 0.02, 1), '#e3d6c0', 0, 0.32, 0);
+  const d = grp(0, 0.82, 0);
+  put(d, torus(0.32, 0.16, 12, 24), '#e8a24a', 0, 0, 0);
+  put(d, torus(0.32, 0.165, 10, 24, PI * 2), mat('#ff8ac0', { r: 0.35 }), 0, 0, 0.02).scale.set(1, 1, 0.75);
+  const cols = ['#ffffff', '#ffd23f', '#2f8cf0', '#2fbf5f', '#9b5cf6'];
+  for (let i = 0; i < 22; i++) {
+    const a = i * 0.9, r = 0.24 + (i % 3) * 0.08;
+    put(d, box(0.05, 0.014, 0.014), cols[i % cols.length], Math.cos(a) * r, Math.sin(a) * r, 0.155, 0, 0, a * 2.3);
+  }
+  g.add(d);
+  return g;
+};
+
+B.bridge = () => {
+  const g = new THREE.Group();
+  put(g, box(0.5, 0.02, 1.0), '#2f8cf0', 0, 0.012, 0).castShadow = false;
+  put(g, box(0.4, 0.022, 1.0), '#7fd4ff', 0, 0.014, 0).castShadow = false;
+  for (const s of [-1, 1]) for (let i = 0; i < 4; i++) put(g, ico(0.08, 0), STONE, s * (0.3 + (i % 2) * 0.06), 0.04, -0.4 + i * 0.27);
+  const red = P('#d8352a', 0.5);
+  const N = 9;
+  for (let i = 0; i < N; i++) {
+    const t0 = i / N, t1 = (i + 1) / N;
+    const x0 = -1.35 + t0 * 2.7, x1 = -1.35 + t1 * 2.7;
+    const y0 = Math.sin(t0 * PI) * 0.5 + 0.08, y1 = Math.sin(t1 * PI) * 0.5 + 0.08;
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    put(g, box(len + 0.02, 0.06, 0.62), P('#a8743f', 0.7), (x0 + x1) / 2, (y0 + y1) / 2, 0, 0, 0, Math.atan2(y1 - y0, x1 - x0));
+    for (const z of [-0.3, 0.3]) {
+      put(g, box(len + 0.02, 0.05, 0.05), red, (x0 + x1) / 2, (y0 + y1) / 2 + 0.38, z, 0, 0, Math.atan2(y1 - y0, x1 - x0));
+      put(g, box(0.05, 0.4, 0.05), red, x0, y0 + 0.2, z);
+    }
+  }
+  for (const z of [-0.3, 0.3]) put(g, box(0.05, 0.4, 0.05), red, 1.35, 0.28, z);
+  for (const x of [-1.35, 1.35]) for (const z of [-0.3, 0.3]) put(g, sph(0.05, 8, 6), GOLD(), x, 0.52, z);
+  return g;
+};
+
+B.observatory = () => {
+  const g = new THREE.Group();
+  put(g, cyl(0.82, 0.86, 1.1, 20), WHITE, 0, 0.55, 0);
+  put(g, cyl(0.86, 0.86, 0.08, 20), '#c9c2b5', 0, 1.12, 0);
+  put(g, rbox(0.36, 0.6, 0.06, 0.03, 1), '#4a6fa5', 0, 0.3, 0.83);
+  for (const a of [0.8, -0.8]) put(g, rbox(0.22, 0.22, 0.04, 0.05, 1), '#bfe8ff', Math.sin(a) * 0.83, 0.7, Math.cos(a) * 0.83, 0, a, 0);
+  const dome = dyn(grp(0, 1.16, 0));
+  put(dome, sph(0.8, 20, 12, 0, TAU, 0, PI / 2), P('#cfd6de', 0.3, 0.7), 0, 0, 0);
+  put(dome, box(0.26, 0.85, 0.2), '#2b2d5c', 0, 0.42, 0.62, -0.75, 0, 0);
+  const scope = grp(0, 0.4, 0.3);
+  scope.rotation.x = -0.75;
+  put(scope, cyl(0.1, 0.13, 0.8, 12), '#2b2d5c', 0, 0.3, 0);
+  put(scope, cyl(0.135, 0.135, 0.06, 12), GOLD(), 0, 0.68, 0);
+  dome.add(scope);
+  g.add(dome);
+  g.userData.light = { y: 0.8, color: '#a8c8ff', intensity: 1.8, distance: 3 };
+  g.userData.animate = (t) => { dome.rotation.y = Math.sin(t * 0.15) * 0.8; };
+  return g;
+};
+
+B.helipad = () => {
+  const g = new THREE.Group();
+  put(g, cyl(1.42, 1.45, 0.06, 28), '#3a3f4a', 0, 0.03, 0);
+  put(g, torus(1.3, 0.035, 4, 32), '#ffd23f', 0, 0.065, 0, PI / 2).castShadow = false;
+  for (const x of [-0.32, 0.32]) put(g, box(0.1, 0.012, 0.8), WHITE, x, 0.066, 0).castShadow = false;
+  put(g, box(0.64, 0.012, 0.1), WHITE, 0, 0.066, 0).castShadow = false;
+  const bulb = glow('#d8ffd8', '#3fff7a', 1.6);
+  for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU; put(g, sph(0.04, 6, 5), bulb, Math.cos(a) * 1.38, 0.08, Math.sin(a) * 1.38).castShadow = false; }
+  const heli = grp(0, 0.06, 0, 0.6);
+  for (const s of [-1, 1]) {
+    put(heli, box(0.04, 0.04, 0.9), '#2a2c33', s * 0.3, 0.05, 0);
+    for (const z of [-0.25, 0.25]) put(heli, box(0.03, 0.18, 0.03), '#2a2c33', s * 0.25, 0.14, z, 0, 0, s * 0.4);
+  }
+  sc(put(heli, sph(0.42, 18, 12), P('#e8343f', 0.3, 0.3), 0, 0.55, 0.05), 0.85, 0.8, 1.25);
+  sc(put(heli, sph(0.3, 16, 10), mat('#24324a', { r: 0.1, m: 0.5 }), 0, 0.62, 0.32), 0.9, 0.7, 0.8);
+  rod(heli, [0, 0.6, -0.4], [0, 0.72, -1.25], 0.06, P('#e8343f', 0.3, 0.3));
+  put(heli, box(0.03, 0.3, 0.2), '#e8343f', 0, 0.82, -1.22);
+  put(heli, cyl(0.04, 0.04, 0.2, 8), '#2a2c33', 0, 0.98, 0.0);
+  const rotor = dyn(grp(0, 1.08, 0.0));
+  for (let i = 0; i < 4; i++) put(rotor, box(0.12, 0.015, 1.15), '#2a2c33', 0, 0, 0, 0, (i / 4) * TAU, 0).position.set(Math.sin((i / 4) * TAU) * 0.55, 0, Math.cos((i / 4) * TAU) * 0.55);
+  heli.add(rotor);
+  const tail = dyn(grp(0.05, 0.82, -1.22));
+  put(tail, box(0.01, 0.32, 0.04), '#2a2c33', 0, 0, 0);
+  heli.add(tail);
+  g.add(heli);
+  g.userData.light = { y: 0.4, color: '#7fffa0', intensity: 1.6, distance: 3.2 };
+  g.userData.animate = (t) => { rotor.rotation.y = t * 2.2; tail.rotation.x = t * 9; bulb.emissiveIntensity = 0.8 + (Math.sin(t * 4) > 0 ? 1 : 0); };
   return g;
 };
 

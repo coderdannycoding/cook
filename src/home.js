@@ -84,7 +84,7 @@ const HELPER_LOOKS = {
 // Relaxing at home (or a butler) leaves you well rested for the next day
 export const REST_PERK = { tips: 0.03, patience: 0.03 };
 // Crops: pick once a day for coins
-const HARVEST = { veggies: 40, appletree: 30 };
+const HARVEST = { veggies: 40, appletree: 30, beehive: 45, greenhouse: 60 };
 // The daily letter in the mailbox
 const FAN_LINES = [
   'Your food made my whole week.', 'Best meal in town, no contest.', 'My kids still talk about your desserts.',
@@ -144,6 +144,7 @@ function normalizeHome(h) {
   });
   const pt = h.paint && typeof h.paint === 'object' ? h.paint : {};
   h.paint = { wall: isHex(pt.wall) ? pt.wall : null, roof: isHex(pt.roof) ? pt.roof : null };
+  h.fence = FENCES[h.fence] ? h.fence : null;
   const cp = h.carPaint && typeof h.carPaint === 'object' ? h.carPaint : {};
   h.carPaint = {};
   for (const [id, c] of Object.entries(cp)) if (CARS[id] && isHex(c)) h.carPaint[id] = c;
@@ -242,7 +243,8 @@ const SPOTS = [
 ];
 // The yard grid: 1-unit cells in front of the house. Column GRID.path is the garden path to the gate
 // and always stays clear.
-const GRID = { x0: -8.9, z0: -0.3, cols: 11, rows: 6, path: 5 };
+// It runs on across the driveway, where the parking bays and the turntable stay clear.
+const GRID = { x0: -8.9, z0: -0.3, cols: 18, rows: 6, path: 5 };
 // How the chef uses each piece: where (item-local, the item faces +z), seat height, facing.
 // Seat kinds (sit, lie, soak, bounce, swing, dig) hop onto the piece; the rest stand at `at`.
 const USE = {
@@ -266,9 +268,22 @@ const USE = {
   minigolf: { kind: 'putt', at: [-0.62, -0.3], face: Math.PI / 2 },
   veggies: { kind: 'harvest', at: [0, 1.25], face: Math.PI },
   appletree: { kind: 'harvest', at: [0, 0.8], face: Math.PI },
+  beehive: { kind: 'harvest', at: [0, 0.85], face: Math.PI },
+  greenhouse: { kind: 'harvest', at: [0, 1.35], face: Math.PI },
+  adirondack: { kind: 'sit', at: [-0.52, 0.05], y: 0.36, face: 0 },
+  sofa: { kind: 'sit', at: [0, -0.5], y: 0.44, face: 0 },
+  pergola: { kind: 'sit', at: [0.2, -0.55], y: 0.47, face: 0 },
+  tent: { kind: 'lie', at: [0, -0.1], y: 0.1, face: Math.PI },
+  bouncy: { kind: 'bounce', at: [0, 0.1], y: 0.34, face: 0 },
+  skateramp: { kind: 'bounce', at: [0, 0], y: 0.32, face: Math.PI / 2 },
+  kiddiepool: { kind: 'soak', at: [0, 0], y: 0.02, face: 0 },
+  pingpong: { kind: 'grill', at: [1.2, 0], face: -Math.PI / 2 },
+  observatory: { kind: 'look', at: [0, 1.4], face: Math.PI },
 };
 const SEATED = new Set(['sit', 'lie', 'soak', 'bounce', 'dig']);
 const MAILBOX = { x: GATE.x1 + 0.55, z: PLOT.z1 + 0.5 };
+// Every parking bay (owned car or not) and the turntable are kept free of furniture
+const RESERVED = SPOTS.map((s) => (s.turn ? { x: s.x, z: s.z, r: 1.45 } : { x0: s.x - 0.65, z0: s.z - 1.15, x1: s.x + 0.65, z1: s.z + 1.15 }));
 const POOL = { x0: -8.6, x1: -5.4, z0: 1.15, z1: 3.45 };
 const FOUNTAIN = { x: -3.4, z: 3.1, r: 1.15 };
 
@@ -1173,10 +1188,42 @@ function ironGate(g, x0, x1, z, gold) {
   for (const y of [0.15, 0.85]) put(g, box(len, 0.05, 0.04), '#2e3436', (x0 + x1) / 2, y, z);
 }
 
-function perimeter(g, tier, gold) {
+function ironFence(g, x0, z0, x1, z1) {
+  const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 0.24)), ang = Math.atan2(z1 - z0, x1 - x0);
+  const iron = P('#2e3436', 0.4, 0.5), gold = P('#e8b830', 0.3, 0.85);
+  for (let i = 0; i <= n; i++) {
+    const x = x0 + ((x1 - x0) * i) / n, z = z0 + ((z1 - z0) * i) / n;
+    put(g, cyl(0.018, 0.018, 0.8, 5), iron, x, 0.4, z);
+    put(g, cone(0.035, 0.09, 5), gold, x, 0.84, z);
+  }
+  for (const y of [0.12, 0.66]) put(g, box(len, 0.04, 0.035), iron, (x0 + x1) / 2, y, (z0 + z1) / 2, 0, -ang, 0);
+}
+function bambooFence(g, x0, z0, x1, z1) {
+  const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 0.09)), ang = Math.atan2(z1 - z0, x1 - x0);
+  const canes = [P('#c9b45a', 0.6), P('#b8a24a', 0.6), P('#d6c46a', 0.6)];
+  for (let i = 0; i <= n; i++) {
+    const x = x0 + ((x1 - x0) * i) / n, z = z0 + ((z1 - z0) * i) / n, h = 0.78 + (i % 3) * 0.05;
+    put(g, cyl(0.035, 0.035, h, 5), canes[i % 3], x, h / 2, z);
+  }
+  for (const y of [0.25, 0.6]) put(g, box(len, 0.03, 0.09), P('#7a5538'), (x0 + x1) / 2, y, (z0 + z1) / 2, 0, -ang, 0);
+}
+// Fence styles you can choose for the plot (otherwise each home has its own)
+export const FENCES = {
+  rope: { name: 'Rope', build: ropeFence },
+  rail: { name: 'Ranch rail', build: railFence },
+  picket: { name: 'White picket', build: picketFence },
+  pastel: { name: 'Pink picket', build: (g, ...a) => picketFence(g, ...a, '#ffb8cf') },
+  wall: { name: 'Low wall', build: lowWall },
+  hedge: { name: 'Hedge', build: hedge },
+  bamboo: { name: 'Bamboo', build: bambooFence },
+  iron: { name: 'Iron railings', build: ironFence },
+};
+export const FENCE_PRICE = 250;
+
+function perimeter(g, tier, gold, fence = null) {
   const { x0, x1, z0, z1 } = PLOT;
   const fronts = [[x0, GATE.x0], [GATE.x1, COURT.x0]];
-  const line = [ropeFence, railFence, picketFence, lowWall, hedge][tier];
+  const line = FENCES[fence]?.build ?? [ropeFence, railFence, picketFence, lowWall, hedge][tier];
   const sides = [[x0, z0, x1, z0], [x0, z0, x0, z1], [x1, z0, x1, z1]];
   for (const [a, b] of fronts) line(g, a, z1, b, z1);
   for (const s of sides) line(g, ...s);
@@ -1394,7 +1441,7 @@ function pavingMesh(rects, tint, own, y = 0.012) {
 }
 
 // Everything that changes with the house tier: lawn, paving, fence, garage, house and extras
-function buildTier(tier, paint = null) {
+function buildTier(tier, paint = null, fence = null) {
   const c = { anim: [], lights: [], obstacles: [], own: [], front: 1, paint };
   const root = new THREE.Group();
   const stat = new THREE.Group();
@@ -1417,7 +1464,7 @@ function buildTier(tier, paint = null) {
   for (const s of SPOTS.slice(1, 7)) {
     for (const dx of [-0.75, 0.75]) put(stat, box(0.06, 0.02, 2.3), line, s.x + dx, 0.02, s.z).castShadow = false;
   }
-  perimeter(stat, tier, gold);
+  perimeter(stat, tier, gold, fence);
   mailbox(stat, tier);
   garage(stat, tier);
   const h = HOUSE_BUILDERS[tier](c);
@@ -1717,7 +1764,7 @@ export class HomeMode {
     this.zoom = 1;
     this.panel = new HomePanel(this, {
       HOME_TIERS, TIER_IDS, PETS, CARS, HOME_ITEMS, ITEM_GROUPS, PET_LIMITS, PET_BONUS, PET_CARE, PAINT, COMFORT_LEVELS,
-      perkText, formatMoney, homePerks, homeComfort, comfortLevel, sadPets, isRested, HOME_STAFF, REST_PERK,
+      perkText, formatMoney, homePerks, homeComfort, comfortLevel, sadPets, isRested, HOME_STAFF, REST_PERK, FENCES, FENCE_PRICE,
       sellBack: ECON.sellRefund,
     });
     this.placing = null; // { id, rot, c, r, from (a placed item being moved), stored, ok }
@@ -1869,7 +1916,7 @@ export class HomeMode {
 
   setTier(tier, animate = true) {
     const old = this.tierObj;
-    const t = buildTier(tier, this.home.paint);
+    const t = buildTier(tier, this.home.paint, this.home.fence);
     this.tierObj = t;
     this.root.add(t);
     this.refreshObstacles();
@@ -1924,7 +1971,8 @@ export class HomeMode {
     const [w, d] = footprint(id, rot);
     if (c < 0 || r < 0 || c + w > GRID.cols || r + d > GRID.rows) return false;
     if (c <= GRID.path && GRID.path < c + w) return false;
-    if (rectHits(this.tierObj.userData.obstacles, cellRect(c, r, w, d, 0.1))) return false;
+    const q = cellRect(c, r, w, d, 0.1);
+    if (rectHits(this.tierObj.userData.obstacles, q) || rectHits(RESERVED, q)) return false;
     for (const it of this.home.items) {
       if (it === ignore) continue;
       const [w2, d2] = footprint(it.id, it.rot);
@@ -1993,7 +2041,7 @@ export class HomeMode {
     g.visible = false;
     const tileGeo = new THREE.PlaneGeometry(0.9, 0.9);
     tileGeo.rotateX(-PI / 2);
-    const tileMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.28, depthWrite: false });
+    const tileMat = new THREE.MeshBasicMaterial({ color: '#8dffa8', transparent: true, opacity: 0.32, depthWrite: false });
     const tiles = new THREE.InstancedMesh(tileGeo, tileMat, GRID.cols * GRID.rows);
     tiles.renderOrder = 2;
     g.add(tiles);
@@ -2457,6 +2505,18 @@ export class HomeMode {
     this.afterPurchase();
   }
 
+  setFence(id) {
+    const h = this.home;
+    if (id && !FENCES[id]) return;
+    if ((h.fence ?? null) === (id ?? null)) { this.game.audio.click?.(); return; }
+    if (id && !this.canAfford(FENCE_PRICE)) return;
+    if (id && !this.game.spend(FENCE_PRICE)) return;
+    h.fence = id;
+    this.setTier(h.tier, 'paint');
+    this.game.audio.place?.();
+    this.afterPurchase();
+  }
+
   paintCar(col) {
     const h = this.home, id = h.favCar;
     if (!id || (col && !PAINT.car.includes(col))) return;
@@ -2518,19 +2578,27 @@ export class HomeMode {
   // Pet furniture this pet can use: where to stand and what to do there
   petSpots(p) {
     const out = [];
-    const ACT = { foodbowls: 'eat', petbed: 'nap', doghouse: 'nap', agility: 'zoom', cattree: 'sit' };
+    const ACT = { foodbowls: 'eat', petbed: 'nap', doghouse: 'nap', agility: 'zoom', cattree: 'sit', birdhouse: 'sit', hutch: 'nap', kiddiepool: 'sit' };
     for (const it of this.home.items) {
       const D = HOME_ITEMS[it.id], act = ACT[it.id];
       if (!D.pet || !act) continue;
       if (it.id === 'cattree' && p.def.style !== 'cat') continue;
+      if (it.id === 'birdhouse' && p.def.style !== 'bird') continue;
+      if (it.id === 'hutch' && p.def.style !== 'hop') continue;
+      if (it.id === 'kiddiepool' && p.def.style !== 'dog' && p.def.style !== 'pig') continue;
       if (it.id === 'agility' && p.def.style !== 'dog') continue;
       const q = itemRect(it), cx = (q.x0 + q.x1) / 2, cz = (q.z0 + q.z1) / 2;
-      // beds are climbed into; bowls are eaten from just in front; the rest are used from the front
-      const a = -it.rot * (PI / 2);
-      const off = it.id === 'petbed' ? 0 : it.id === 'foodbowls' ? 0.48 : (it.rot % 2 ? q.x1 - q.x0 : q.z1 - q.z0) / 2 + 0.4;
-      const x = cx + Math.sin(a) * off, z = cz + Math.cos(a) * off;
-      if (x < YARD.x0 || x > YARD.x1 || z < YARD.z0 || z > YARD.z1 || blocked(this.obstacles, x, z, 0.2)) continue;
-      out.push({ x, z, act, cx, cz, it });
+      // beds and pools are climbed into, bowls are eaten from just in front; the rest are used from
+      // the front, or failing that from whichever side is open
+      const [w, d] = D.size;
+      const inside = it.id === 'petbed' || it.id === 'kiddiepool';
+      const sides = inside ? [[0, 0]] : it.id === 'foodbowls' ? [[0, 0.48]] : [[0, d / 2 + 0.4], [-(w / 2 + 0.4), 0], [w / 2 + 0.4, 0], [0, -(d / 2 + 0.4)]];
+      for (const [lx, lz] of sides) {
+        const p = this.itemPoint(it, lx, lz);
+        if (p.x < YARD.x0 || p.x > YARD.x1 || p.z < YARD.z0 || p.z > YARD.z1 || (!inside && blocked(this.obstacles, p.x, p.z, 0.2))) continue;
+        out.push({ x: p.x, z: p.z, act, cx, cz, it });
+        break;
+      }
     }
     return out;
   }
@@ -2778,7 +2846,7 @@ export class HomeMode {
     // On the Yard tab (and while placing) the camera moves in on the front yard
     const yard = !!(this.placing || this.sel || this.panel.tab === 'yard');
     const top = yard ? 1.2 : [1.8, 2.6, 3.6, 3.6, 4.6][this.home.tier];
-    const xs = yard ? [-9.2, 2.8] : [-8.8, 9.2], zs = yard ? [-1.2, 6.3] : [-5.6, 6.2];
+    const xs = yard ? [-9.2, 6.4] : [-8.8, 9.2], zs = yard ? [-1.2, 6.3] : [-5.6, 6.2];
     for (const x of xs) for (const z of zs) for (const y of [0, top]) {
       _w.set(x, y, z);
       const px = _w.dot(right), py = _w.dot(camUp);
