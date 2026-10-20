@@ -18,7 +18,7 @@ import { BuildMode } from './build.js';
 import { UI } from './ui.js';
 import { Tutorial } from './tutorial.js';
 import { TouchControls } from './touch.js';
-import { Player, warmCharacterPool } from './entities.js';
+import { Player, warmCharacterPool, characterPoolSize, POOL_TARGET } from './entities.js';
 import { newGameState, saveGame, loadGame, loadSettings, saveSettings } from './state.js';
 import {
   DISHES, CUISINES, CUISINE_ORDER, INGREDIENTS, COOKER_INFO, dishRequirements, allThumbKeys, itemFromKey,
@@ -739,9 +739,22 @@ class Game {
     input.endFrame();
   }
 
+  // Build one guest model in idle time (or after 0.4 s at the latest), so it rarely lands on a busy frame
+  warmPool() {
+    if (this._warmQueued || characterPoolSize() >= POOL_TARGET) return;
+    this._warmQueued = true;
+    const run = (d) => {
+      this._warmQueued = false;
+      if (this.phase === 'day' || this.phase === 'countdown') return;
+      if (!d || d.didTimeout || d.timeRemaining() > 6) warmCharacterPool(1);
+    };
+    if (window.requestIdleCallback) window.requestIdleCallback(run, { timeout: 400 });
+    else setTimeout(run, 150);
+  }
+
   update(dt) {
-    // Outside service, top up the pool of ready-made guest models (one every few frames)
-    if (this.phase !== 'day' && this.phase !== 'countdown' && (this._warm = (this._warm || 0) + 1) % 8 === 0) warmCharacterPool(1);
+    // Outside service, top up the pool of ready-made guest models while the browser is idle
+    if (this.phase !== 'day' && this.phase !== 'countdown') this.warmPool();
     if (this.home.active) {
       this.home.update(dt);
       return;

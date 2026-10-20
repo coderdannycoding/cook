@@ -11,7 +11,9 @@ import { clamp, damp, dampAngle, rand } from './utils.js';
 // reuse finished models: a few are built ahead of time and every one is returned when it leaves.
 const MODEL_POOL = [];
 const POOL_MAX = 24;
-export function warmCharacterPool(n = 1, target = 14) {
+export const POOL_TARGET = 14;
+export const characterPoolSize = () => MODEL_POOL.length;
+export function warmCharacterPool(n = 1, target = POOL_TARGET) {
   for (let i = 0; i < n && MODEL_POOL.length < target; i++) {
     const look = randomCustomerLook();
     MODEL_POOL.push({ look, model: buildCharacter(look) });
