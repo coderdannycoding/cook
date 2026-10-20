@@ -2202,6 +2202,8 @@ export class HomeMode {
         return;
       }
       const it = { id: P0.id, c: P0.c, r: P0.r, rot: P0.rot };
+      // a crop taken out of storage has to grow back first, so storing it can't reset the daily pick
+      if (P0.stored && HARVEST[P0.id]) it.picked = this.game.state.day;
       h.items.push(it);
       this.root.remove(P0.ghost);
       disposeObject(P0.ghost);
